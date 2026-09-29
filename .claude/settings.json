@@ -1,0 +1,7 @@
+{
+  "enabledPlugins": {
+    "bearing@bearing": true,
+    "bearing-backend@bearing": true,
+    "bearing-apps@bearing": true
+  }
+}
