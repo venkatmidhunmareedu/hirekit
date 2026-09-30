@@ -63,6 +63,7 @@ erDiagram
         criterion_kind kind "must_have or nice_to_have"
         numeric_6_3 weight "Weight in the total"
         integer position "Display order inside the role"
+        timestamptz retired_at "When the recruiter deleted the criterion"
         timestamptz created_at "When the row was written"
         timestamptz updated_at "Last change to the row, set by the repository on every UPDAT"
     }
@@ -133,6 +134,7 @@ erDiagram
         candidate_stage from_stage "Stage before a stage_change"
         candidate_stage to_stage "Stage after a stage_change"
         uuid subject_user_id FK "The interviewer whose feedback an event concerns"
+        text old_comment "The comment before a feedback_edited change"
         text note "Override note or optional stage reason"
         timestamptz created_at "When it happened"
     }
@@ -226,7 +228,7 @@ erDiagram
 | criteria | one-to-many via (questions.role_id, questions.criterion_id) | questions | A question probes one criterion of the same role; a composite key stops a question pointing at another role's criterion. (CASCADE) |
 | candidates | one-to-many via feedback.candidate_id | feedback | Feedback belongs to a candidate and follows it. (CASCADE) |
 | users | one-to-many via feedback.interviewer_id | feedback | An interviewer scores many candidates; submitted feedback is not lost with a user. (RESTRICT) |
-| criteria | one-to-many via feedback.criterion_id | feedback | Locked feedback is never silently deleted with a criterion (open concern 1). (RESTRICT) |
+| criteria | one-to-many via feedback.criterion_id | feedback | Locked feedback is never removed with a criterion; deleting a criterion sets retired_at instead. (RESTRICT) |
 | roles | one-to-many via jobs.role_id | jobs | Every job works for a role; the queue view is per role. (RESTRICT) |
 | candidates | one-to-many via jobs.candidate_id | jobs | A scoring job with no candidate has nothing to do. (CASCADE) |
 | questions | one-to-many via jobs.question_id | jobs | A regenerate job for a deleted question has nothing to do. (CASCADE) |

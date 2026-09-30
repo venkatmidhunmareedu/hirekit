@@ -23,6 +23,7 @@ criteria,name,text,No,,,,,No,"What is being judged, for example Python experienc
 criteria,kind,criterion_kind,No,,,,,No,must_have or nice_to_have.,AC-US-00-008-2: must-have coverage is computed from the kind; AC-US-00-015-1 groups by it.
 criteria,weight,"numeric(6,3)",No,,,,,No,"Weight in the total; default set by kind, editable.",AC-US-00-008-1: the total is the weighted sum; Q-001: editable per criterion.
 criteria,position,integer,No,,,,,No,Display order inside the role.,AC-US-00-002-1: the recruiter can reorder criteria.
+criteria,retired_at,timestamptz,Yes,,,,,No,When the recruiter deleted the criterion; null while it is live. Retired rows stay so scores and feedback keep their target.,"AC-US-00-002-1 (delete a criterion) with REQ-037 (locked feedback is kept): deleting retires, never removes a row that feedback or scores point at."
 criteria,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
 criteria,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
 rubric_levels,criterion_id,uuid,No,"PK, FK",,criteria.id,CASCADE,No,The criterion described.,AC-US-00-001-3: rubric descriptors belong to a criterion; they go with it.
@@ -77,6 +78,7 @@ audit_events,new_score,smallint,Yes,,,,,No,Value after the change.,AC-US-00-010-
 audit_events,from_stage,candidate_stage,Yes,,,,,No,Stage before a stage_change.,AC-US-00-011-2: the stage history records from.
 audit_events,to_stage,candidate_stage,Yes,,,,,No,Stage after a stage_change.,AC-US-00-011-2 and AC-US-00-011-3: records to; Rejected is logged under the recruiter.
 audit_events,subject_user_id,uuid,Yes,FK,,users.id,RESTRICT,No,The interviewer whose feedback an event concerns.,AC-US-00-014-5: an approved edit and the edit itself are recorded against that interviewer.
+audit_events,old_comment,text,Yes,,,,,Yes,The comment before a feedback_edited change; null for other kinds. [personal data: free text about a candidate],"AC-US-00-014-5: an approved edit is saved and recorded, so the previous comment must survive the overwrite."
 audit_events,note,text,Yes,,,,,Yes,Override note or optional stage reason. [personal data: free text about a candidate],AC-US-00-010-5 (note) and AC-US-00-011-3 (optional reason).
 audit_events,created_at,timestamptz,No,,now(),,,No,When it happened.,AC-US-00-010-5 and AC-US-00-011-2: time is recorded.
 interview_kits,role_id,uuid,No,"PK, FK",,roles.id,CASCADE,No,The role the kit is for.,REQ-035 and AC-US-00-013-1: the kit is per role. CASCADE because a kit has no life apart from its role.
@@ -94,7 +96,7 @@ questions,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: 
 questions,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
 feedback,candidate_id,uuid,No,"PK, FK",,candidates.id,CASCADE,No,The candidate interviewed.,AC-US-00-014-2: feedback is per candidate.
 feedback,interviewer_id,uuid,No,"PK, FK",,users.id,RESTRICT,No,The interviewer who scored.,AC-US-00-014-2 and AC-US-00-015-4: disagreement is found across interviewers. RESTRICT: feedback must not vanish with a user.
-feedback,criterion_id,uuid,No,"PK, FK",,criteria.id,RESTRICT,No,The criterion scored.,AC-US-00-014-1: one section per criterion. RESTRICT: locked feedback must not vanish when a criterion is deleted (open concern 1).
+feedback,criterion_id,uuid,No,"PK, FK",,criteria.id,RESTRICT,No,The criterion scored.,AC-US-00-014-1: one section per criterion. RESTRICT: locked feedback must not vanish; a criterion delete only retires it.
 feedback,score,smallint,No,,,,,No,The interviewer's score on the rubric scale.,AC-US-00-014-1: a score selector matching the rubric scale (Q-009).
 feedback,comment,text,No,,,,,Yes,The interviewer's short comment. [personal data: free text about a candidate],AC-US-00-014-2: every criterion is scored and commented before submit. Free text about a candidate.
 feedback,locked,boolean,No,,true,,,No,True after submit; a recruiter-approved edit sets it false until the interviewer saves again.,AC-US-00-014-4 and AC-US-00-014-5: read-only after submit except for an approved edit.

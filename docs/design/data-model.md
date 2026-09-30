@@ -1,6 +1,6 @@
 # Data model: HireKit
 
-**Store:** PostgreSQL · **Tables:** 18 · **Columns:** 131 · **Indexes:** 25 · **Personal-data columns:** 12
+**Store:** PostgreSQL · **Tables:** 18 · **Columns:** 133 · **Indexes:** 25 · **Personal-data columns:** 13
 
 One PostgreSQL database holds everything HireKit stores: users and sessions, roles with their criteria and rubric, candidates with their files and texts, scores with overrides, the audit history, the interview kit and feedback, the job queue, the model call log and the single budget row. The Api and the Worker (one backend package) read and write it; the Web never touches it. One store is enough because every acceptance criterion is relational or transactional (an upload commits its file, candidate and job together; a score exists only if its quote was verified), and the largest table stays near 10^6 rows.
 
@@ -83,7 +83,7 @@ One row per foreign key. The diagram with one sentence per relationship is `docs
 | criteria | questions | one-to-many | (questions.role_id, questions.criterion_id) | CASCADE | A question probes one criterion of the same role; a composite key stops a question pointing at another role's criterion. |
 | candidates | feedback | one-to-many | feedback.candidate_id | CASCADE | Feedback belongs to a candidate and follows it. |
 | users | feedback | one-to-many | feedback.interviewer_id | RESTRICT | An interviewer scores many candidates; submitted feedback is not lost with a user. |
-| criteria | feedback | one-to-many | feedback.criterion_id | RESTRICT | Locked feedback is never silently deleted with a criterion (open concern 1). |
+| criteria | feedback | one-to-many | feedback.criterion_id | RESTRICT | Locked feedback is never removed with a criterion; deleting a criterion sets retired_at instead. |
 | roles | jobs | one-to-many | jobs.role_id | RESTRICT | Every job works for a role; the queue view is per role. |
 | candidates | jobs | one-to-many | jobs.candidate_id | CASCADE | A scoring job with no candidate has nothing to do. |
 | questions | jobs | one-to-many | jobs.question_id | CASCADE | A regenerate job for a deleted question has nothing to do. |
@@ -172,7 +172,7 @@ One scoring criterion of a role: name, kind, weight and order.
 
 Serves US-00-001, US-00-002, US-00-008. Expected volume: hundreds of rows (10^2): about 8 per role.
 
-Writers: the Worker (a propose_criteria job writes the proposal into a Draft role), the Api (edits, reorder, delete) and the seed command. Every writer bumps roles.criteria_version in the same transaction.
+Writers: the Worker (a propose_criteria job writes the proposal into a Draft role), the Api (edits, reorder, delete = set retired_at) and the seed command. Edits are in-place updates by id and a delete never removes a row, so RESTRICT from feedback never blocks it (decided 2026-09-30). Every read of a role's criteria repeats retired_at IS NULL; a purge of retired rows is a batched hard delete once retention is decided. Every writer bumps roles.criteria_version in the same transaction.
 
 | Column | Type | Null | Key | Default | Description | Why |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -182,13 +182,14 @@ Writers: the Worker (a propose_criteria job writes the proposal into a Draft rol
 | `kind` | `criterion_kind` | No |  |  | must_have or nice_to_have. | AC-US-00-008-2: must-have coverage is computed from the kind; AC-US-00-015-1 groups by it. |
 | `weight` | `numeric(6,3)` | No |  |  | Weight in the total; default set by kind, editable. | AC-US-00-008-1: the total is the weighted sum; Q-001: editable per criterion. |
 | `position` | `integer` | No |  |  | Display order inside the role. | AC-US-00-002-1: the recruiter can reorder criteria. |
+| `retired_at` | `timestamptz` | Yes |  |  | When the recruiter deleted the criterion; null while it is live. Retired rows stay so scores and feedback keep their target. | AC-US-00-002-1 (delete a criterion) with REQ-037 (locked feedback is kept): deleting retires, never removes a row that feedback or scores point at. |
 | `created_at` | `timestamptz` | No |  | `now()` | When the row was written. | Rule: audit columns (postgres.md). |
 | `updated_at` | `timestamptz` | No |  | `now()` | Last change to the row, set by the repository on every UPDATE. | Rule: audit columns (postgres.md). |
 
 **Indexes**
 
 - `uq_criteria_role_id_id`: `UNIQUE (role_id, id)`. A unique constraint, not an index statement in schema.sql; it is the target of the composite foreign key from questions, so a question cannot point at another role's criterion.
-- `idx_criteria_role_position`: on (role_id, position). A role's criteria in display order (AC-US-00-002-1); the leading role_id is also the foreign-key index.
+- `idx_criteria_role_position`: on (role_id, position) where `retired_at IS NULL`. A role's live criteria in display order (AC-US-00-002-1); the query must repeat retired_at IS NULL. The leading role_id is also the foreign-key index.
 
 **Constraints**
 
@@ -383,6 +384,7 @@ Writers: the Api only: the override endpoint, the stage endpoint, the reveal end
 | `from_stage` | `candidate_stage` | Yes |  |  | Stage before a stage_change. | AC-US-00-011-2: the stage history records from. |
 | `to_stage` | `candidate_stage` | Yes |  |  | Stage after a stage_change. | AC-US-00-011-2 and AC-US-00-011-3: records to; Rejected is logged under the recruiter. |
 | `subject_user_id` | `uuid` | Yes | FK users.id |  | The interviewer whose feedback an event concerns. | AC-US-00-014-5: an approved edit and the edit itself are recorded against that interviewer. |
+| `old_comment` | `text` | Yes |  |  | The comment before a feedback_edited change; null for other kinds. **(personal data: free text about a candidate)** | AC-US-00-014-5: an approved edit is saved and recorded, so the previous comment must survive the overwrite. |
 | `note` | `text` | Yes |  |  | Override note or optional stage reason. **(personal data: free text about a candidate)** | AC-US-00-010-5 (note) and AC-US-00-011-3 (optional reason). |
 | `created_at` | `timestamptz` | No |  | `now()` | When it happened. | AC-US-00-010-5 and AC-US-00-011-2: time is recorded. |
 
@@ -460,7 +462,7 @@ Writers: the Api only. One submission inserts a whole set of rows for (candidate
 | --- | --- | --- | --- | --- | --- | --- |
 | `candidate_id` | `uuid` | No | PK, FK candidates.id |  | The candidate interviewed. | AC-US-00-014-2: feedback is per candidate. |
 | `interviewer_id` | `uuid` | No | PK, FK users.id |  | The interviewer who scored. | AC-US-00-014-2 and AC-US-00-015-4: disagreement is found across interviewers. RESTRICT: feedback must not vanish with a user. |
-| `criterion_id` | `uuid` | No | PK, FK criteria.id |  | The criterion scored. | AC-US-00-014-1: one section per criterion. RESTRICT: locked feedback must not vanish when a criterion is deleted (open concern 1). |
+| `criterion_id` | `uuid` | No | PK, FK criteria.id |  | The criterion scored. | AC-US-00-014-1: one section per criterion. RESTRICT: locked feedback must not vanish; a criterion delete only retires it. |
 | `score` | `smallint` | No |  |  | The interviewer's score on the rubric scale. | AC-US-00-014-1: a score selector matching the rubric scale (Q-009). |
 | `comment` | `text` | No |  |  | The interviewer's short comment. **(personal data: free text about a candidate)** | AC-US-00-014-2: every criterion is scored and commented before submit. Free text about a candidate. |
 | `locked` | `boolean` | No |  | `true` | True after submit; a recruiter-approved edit sets it false until the interviewer saves again. | AC-US-00-014-4 and AC-US-00-014-5: read-only after submit except for an approved edit. |
@@ -620,14 +622,14 @@ Lifetimes compose: a future candidate purge cascades to `resume_*`, `scores`, `a
 
 Size from the rule: no rule ties a table to a date yet, so rows accumulate. At the HLD peak every table stays below 10^7 rows for years (largest: `scores`, 10^5 to 10^6 a year), so a purge, when decided, is a batched hard delete, not partitions. `pg_dump` copies personal data; a backup is a copy of every table marked below.
 
-Personal-data columns (12): `users.name` (name), `users.email` (contact), `users.password_hash` (credential), `candidates.file_name` (name inside a file name), `candidates.identity_name` (name), `resume_files.content` (original resume file), `resume_raw_texts.raw_text` (full resume text), `resume_texts.anonymized_text` (derived from a resume; proxy signals can remain), `scores.quote` (excerpt of a resume), `scores.override_note` (free text about a candidate), `audit_events.note` (free text about a candidate), `feedback.comment` (free text about a candidate).
+Personal-data columns (13): `users.name` (name), `users.email` (contact), `users.password_hash` (credential), `candidates.file_name` (name inside a file name), `candidates.identity_name` (name), `resume_files.content` (original resume file), `resume_raw_texts.raw_text` (full resume text), `resume_texts.anonymized_text` (derived from a resume; proxy signals can remain), `scores.quote` (excerpt of a resume), `scores.override_note` (free text about a candidate), `audit_events.old_comment` (free text about a candidate), `audit_events.note` (free text about a candidate), `feedback.comment` (free text about a candidate).
 
 ## 7. Migration plan
 
 | # | db-migration name | Phase (expand \| migrate \| contract) | Hot table | Lock risk and batch note |
 | --- | --- | --- | --- | --- |
 | 1 | initial_schema (schema.sql) | expand | no | Empty database, no lock risk, no backfill. The repository has no migration yet, so no numbering convention is claimed: the Alembic setup (backend/alembic) numbers it. The Down step drops the trigger and function, then tables in reverse order, then the seven enum types. |
-| 2 | database_roles_and_grants | expand | no | Cluster-level roles `hirekit_api` and `hirekit_worker`; the Worker gets `UPDATE (processing_status, failure_reason, identity_name, updated_at)` on `candidates` and no update on `stage`, so only the Api can move a stage (tenet 4, open concern 11). No table lock beyond GRANT. Down revokes and drops the roles. |
+| 2 | database_roles_and_grants | expand | no | Cluster-level roles `hirekit_api` and `hirekit_worker`; the Worker gets `UPDATE (processing_status, failure_reason, identity_name, updated_at)` on `candidates` and no update on `stage`, so only the Api can move a stage (tenet 4, decided 2026-09-30). No table lock beyond GRANT. Down revokes and drops the roles. |
 
 Migrations: 2 (hot-table batches: 0). Not migrations: the `budget` row is inserted at start-up from `backend/recordings/spend-ledger.json` (its value comes from a committed file), and the seed command loads users, roles and criteria.
 
@@ -637,7 +639,7 @@ Later changes are new migrations, planned when they arrive. Two are already know
 
 Rules checked: 34 (23 against `database/references/postgres.md`, 11 design checks). Deviations: 5.
 
-Followed: snake_case plural names; ids as uuid or bigint identity, never `serial`; `timestamptz` throughout; NOT NULL by default; enum versus text CHECK by how often the set changes; no soft delete (hard delete only, so no partial unique index is owed); every foreign key with an explicit ON DELETE and an index on the referencing column; b-tree for equality and range, an expression index for `lower(email)`; composite order equality first, then the sort column; partial indexes repeat their predicate in the query; no covering index (no top read query is measured yet); no `CREATE INDEX CONCURRENTLY` (no table is over 1M rows); identifiers under 50 characters; the `lock_timeout` and `statement_timeout` header for db-migration; no unused-index review yet (no traffic). Design checks: every writer named per table; tenant-safe references (below); no new requirement on an existing table (new database); predicates immutable (no index or constraint calls `now()`; `deadline_at` and `lease_expires_at` are compared in queries); derived rows follow their parent; lifetimes compose (section 6); size from the rule (section 6); ambiguous numbers read aloud (open concern 8); hot-table changes (none); uniqueness has a lifecycle (`uq_users_email` is global; `uq_jobs_open_*` release when a job leaves queued or running).
+Followed: snake_case plural names; ids as uuid or bigint identity, never `serial`; `timestamptz` throughout; NOT NULL by default; enum versus text CHECK by how often the set changes; soft delete only for `criteria` (`retired_at`, with its partial index repeating `retired_at IS NULL`; the batched hard delete of retired rows waits for the retention decision, section 6); every foreign key with an explicit ON DELETE and an index on the referencing column; b-tree for equality and range, an expression index for `lower(email)`; composite order equality first, then the sort column; partial indexes repeat their predicate in the query; no covering index (no top read query is measured yet); no `CREATE INDEX CONCURRENTLY` (no table is over 1M rows); identifiers under 50 characters; the `lock_timeout` and `statement_timeout` header for db-migration; no unused-index review yet (no traffic). Design checks: every writer named per table; tenant-safe references (below); no new requirement on an existing table (new database); predicates immutable (no index or constraint calls `now()`; `deadline_at` and `lease_expires_at` are compared in queries); derived rows follow their parent; lifetimes compose (section 6); size from the rule (section 6); ambiguous numbers read aloud (open concern 8); hot-table changes (none); uniqueness has a lifecycle (`uq_users_email` is global; `uq_jobs_open_*` release when a job leaves queued or running).
 
 - deviation: tenant_id first in composite keys and tenant-safe references, HireKit is a single-organisation local app with no tenant column (HLD section 1 non-goals, Q-006), revisit if it is hosted for more than one organisation.
 - deviation: `text` with `CHECK (length(x) <= n)`, no story states a maximum for a title, description, note or comment, so any number would be invented; the Api validates request size, revisit when a story sets limits.
@@ -649,7 +651,7 @@ Followed: snake_case plural names; ids as uuid or bigint identity, never `serial
 
 Reviewed by: critic, 2026-09-30, against the acceptance criteria and the design checks.
 
-Findings: BLOCKER 0, MAJOR 6, MINOR 3, NIT 0 (open 3).
+Findings: BLOCKER 0, MAJOR 6, MINOR 3, NIT 0 (open 0).
 
 ### MAJOR: a manual retry reused the old job row with an expired deadline and an old version (`jobs`)
 
@@ -679,13 +681,13 @@ A reclaim that increments `attempt` past 3 violates `chk_jobs_attempt_range` and
 
 Deleting a criterion (AC-US-00-002-1) fails once feedback exists, and a delete-and-reinsert edit would cascade away scores and questions.
 
-**Fix:** criteria edits are in-place updates by id; whether a criterion with feedback can be deleted or is retired (`retired_at`) is the owner's call (open concern 1). Status: open.
+**Fix:** criteria edits are in-place updates by id; whether a criterion with feedback can be deleted or is retired (`retired_at`) was decided on 2026-09-30: deleting retires (`criteria.retired_at`), so RESTRICT never blocks it. Status: fixed in this version.
 
 ### MAJOR: "only a recruiter action changes a stage" is a convention, not a mechanism (`candidates`)
 
 A whole-row write by the Worker's repository could put back an old stage with no audit row.
 
-**Fix:** separate `hirekit_api` and `hirekit_worker` database roles with a column-level GRANT (migration 2, open concern 11). Status: open.
+**Fix:** separate `hirekit_api` and `hirekit_worker` database roles with a column-level GRANT (migration 2, decided on 2026-09-30). Status: fixed in the plan; the roles are created by migration 2.
 
 ### MINOR: settling a call could break the cap after the provider billed; budget row seeding was unstated (`budget`)
 
@@ -699,7 +701,7 @@ A whole-row write by the Worker's repository could put back an old stage with no
 
 Feedback's key is (candidate, interviewer, criterion), and `feedback_edited` keeps the old score but not the old comment.
 
-**Fix:** route by candidate and interviewer; store the old comment in the audit row (open concern 10). Status: open.
+**Fix:** route by candidate and interviewer; `audit_events.old_comment` keeps the previous comment (decided 2026-09-30). Status: fixed in this version; the route shape goes to the OpenAPI spec.
 
 Weakest claims the critic named: (1) "a score row exists only after its quote was verified" is enforced by code, not by the schema (open concern 9); (2) `resume_files` is deleted in the transaction that stores the text, so a re-run after that commit has no file (fixed: `process_resume` skips extraction when `resume_texts` exists); (3) derived rows follow their parent (fixed for kits and scores by the version columns).
 
@@ -707,7 +709,7 @@ Weakest claims the critic named: (1) "a score row exists only after its quote wa
 
 Each entry: what, the table, the consequence, owner and date. Owner for all: midhun.
 
-1. **[conflict]** REQ-004 (delete criteria) against REQ-037 (locked feedback). `feedback.criterion_id` is RESTRICT, so a criterion with submitted feedback cannot be deleted; soft retirement (`retired_at`) would allow it. Modelled as RESTRICT. (`feedback`, `criteria`) By 2026-10-14. Blocks development: no.
+1. **[settled 2026-09-30]** REQ-004 (delete criteria) against REQ-037 (locked feedback). `feedback.criterion_id` is RESTRICT, so a criterion with submitted feedback cannot be deleted; soft retirement (`retired_at`) would allow it. Decision: deleting a criterion sets `criteria.retired_at`; feedback stays RESTRICT. (`criteria`, `feedback`) Blocks development: no.
 2. **[gap]** Retention is UNDEFINED for personal-data tables (section 6). Q-012 is a stretch, but no real candidate data may be stored before it is decided. By 2026-10-14. Blocks development: no.
 3. **[ambiguity]** An override belongs to one `criteria_version`; after a re-run at a new version the new row carries none. Modelled so, with history in `audit_events`. Should overrides carry over? (`scores`) By 2026-10-14. Blocks development: no.
 4. **[gap]** PRD 4.2 lists "needs attention" as a file status; AC-US-00-003-5 does not. Modelled as `failed` with a reason. (`candidates`) By 2026-10-14. Blocks development: no.
@@ -716,8 +718,8 @@ Each entry: what, the table, the consequence, owner and date. Owner for all: mid
 7. **[gap]** `assignments.user_id` may name a recruiter; the route checks the role, the database does not. (`assignments`) By 2026-10-14. Blocks development: no.
 8. **[ambiguity]** "At most 3 attempts" is read as 3 attempts in total (`attempt` 0 to 3, then failed), not 3 retries after the first. (`jobs`) By 2026-10-07. Blocks development: no.
 9. **[risk]** The quote guarantee (tenet 3) is enforced by code; the database only requires a quote on a scored row. A trigger comparing whitespace-normalized text against `resume_texts` would move it into the database. (`scores`) By 2026-10-14. Blocks development: no.
-10. **[gap]** The approve-edit route should address (candidate, interviewer), and the audit row should keep the old comment; `audit_events` has no old-comment column. (`feedback`, `audit_events`) Decide in the LLD. By 2026-10-14. Blocks development: no.
-11. **[risk]** Stage protection needs database roles with a column-level GRANT (migration 2). Until it exists, tenet 4 rests on code review. (`candidates`) By 2026-10-14. Blocks development: no.
+10. **[settled 2026-09-30]** The approve-edit route should address (candidate, interviewer), and the audit row should keep the old comment; `audit_events` has no old-comment column. (`feedback`, `audit_events`) Decision: `audit_events.old_comment` added; the route is `POST /v1/candidates/{id}/feedback/{interviewer}:approve-edit`, to be written in the OpenAPI spec. Blocks development: no.
+11. **[settled 2026-09-30]** Stage protection needs database roles with a column-level GRANT (migration 2). Decision: migration 2 creates `hirekit_api` and `hirekit_worker` with column-level grants; until it is applied tenet 4 rests on code review. (`candidates`) By 2026-10-14. Blocks development: no.
 12. **[gap]** After a scoring job is discarded as stale, the candidate's `processing_status` has no state for it; modelled as `done` with stale scores and a re-run offered. (`candidates`, `jobs`) By 2026-10-14. Blocks development: no.
 13. **[gap]** `resume_texts` has no anonymizer version, so after an anonymizer fix, text verified under the old one cannot be told from new text. (`resume_texts`) By 2026-10-14. Blocks development: no.
 14. **[gap]** Nothing reconciles `reserved` `call_log` rows left by timeouts (HLD section 16 already lists who reconciles the budget). No index on status; add one if a report needs it. (`call_log`) By 2026-10-14. Blocks development: no.
@@ -729,6 +731,6 @@ Each entry: what, the table, the consequence, owner and date. Owner for all: mid
 
 `schema.sql` runs top to bottom in one transaction against an empty database: enum types first, then tables in foreign-key order. Use it as the first migration; every change after the first release is its own migration, never an edit to this file.
 
-- Gate: `data-model: 18 tables, 131 columns, 25 indexes, 43 checks, 7 enums, 12 personal-data columns, 0 problems`
+- Gate: `data-model: 18 tables, 133 columns, 25 indexes, 43 checks, 7 enums, 13 personal-data columns, 0 problems`
 - Applied to an empty Postgres: `schema-apply: docs/design/schema.sql applied to postgres:16, 18 tables`
-- Behaviour checked in a throwaway postgres:16 (13 statements, before the review fixes): quoteless scored row, no-evidence above 0, short override note, audit UPDATE, budget above 8, cross-role question, duplicate open job, criterion with feedback, candidate with audit, failed file with no reason, and a same-stage move were all refused as designed.
+- Behaviour checked in a throwaway postgres:16 after the decisions (16 statements): a quoteless scored row, a no-evidence score above 0, a short override note, an audit UPDATE, spend above 8, a cross-role question, a duplicate open job, a hard delete of a criterion with feedback, a delete of a candidate with audit history, a failed file with no reason, a same-stage move and a job with no criteria_version were all refused. Retiring a criterion that has feedback, and a feedback_edited event with old_comment, were accepted.

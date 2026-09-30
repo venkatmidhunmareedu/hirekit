@@ -92,6 +92,7 @@ CREATE TABLE criteria (
     kind criterion_kind NOT NULL,
     weight numeric(6,3) NOT NULL,
     position integer NOT NULL,
+    retired_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT criteria_pkey PRIMARY KEY (id),
@@ -106,10 +107,11 @@ COMMENT ON COLUMN criteria.name IS 'What is being judged, for example Python exp
 COMMENT ON COLUMN criteria.kind IS 'must_have or nice_to_have.';
 COMMENT ON COLUMN criteria.weight IS 'Weight in the total; default set by kind, editable.';
 COMMENT ON COLUMN criteria.position IS 'Display order inside the role.';
+COMMENT ON COLUMN criteria.retired_at IS 'When the recruiter deleted the criterion; null while it is live. Retired rows stay so scores and feedback keep their target.';
 COMMENT ON COLUMN criteria.created_at IS 'When the row was written.';
 COMMENT ON COLUMN criteria.updated_at IS 'Last change to the row, set by the repository on every UPDATE.';
--- A role's criteria in display order (AC-US-00-002-1); the leading role_id is also the foreign-key index.
-CREATE INDEX idx_criteria_role_position ON criteria (role_id, position);
+-- A role's live criteria in display order (AC-US-00-002-1); the query must repeat retired_at IS NULL. The leading role_id is also the foreign-key index.
+CREATE INDEX idx_criteria_role_position ON criteria (role_id, position) WHERE retired_at IS NULL;
 
 -- rubric_levels: The descriptor for each score level 0 to 4 of one criterion.
 -- Serves US-00-001, US-00-002, US-00-006
@@ -285,6 +287,7 @@ CREATE TABLE audit_events (
     from_stage candidate_stage,
     to_stage candidate_stage,
     subject_user_id uuid REFERENCES users (id) ON DELETE RESTRICT,
+    old_comment text,
     note text,
     created_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT audit_events_pkey PRIMARY KEY (id),
@@ -304,6 +307,7 @@ COMMENT ON COLUMN audit_events.new_score IS 'Value after the change.';
 COMMENT ON COLUMN audit_events.from_stage IS 'Stage before a stage_change.';
 COMMENT ON COLUMN audit_events.to_stage IS 'Stage after a stage_change.';
 COMMENT ON COLUMN audit_events.subject_user_id IS 'The interviewer whose feedback an event concerns.';
+COMMENT ON COLUMN audit_events.old_comment IS 'The comment before a feedback_edited change; null for other kinds. [personal data: free text about a candidate]';
 COMMENT ON COLUMN audit_events.note IS 'Override note or optional stage reason. [personal data: free text about a candidate]';
 COMMENT ON COLUMN audit_events.created_at IS 'When it happened.';
 -- A candidate's history, newest first (AC-US-00-011-2); also the foreign-key index.
