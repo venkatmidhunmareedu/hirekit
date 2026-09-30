@@ -469,7 +469,7 @@ The Web is proxied by the Vite dev server, so no CORS setting is needed (assumpt
 
 Every limit has both sides: 100 files accepted, 101 refused; a 9-character override note refused, 10 accepted; 2 and 4 candidates compared, 1 and 5 refused; the budget message in live mode at the cap and never in replay.
 
-Tests named: 65.
+Tests named: 91.
 
 ## 9. Work breakdown
 
@@ -477,16 +477,16 @@ Each item is one MR and leaves `make check` green; integration tests run under `
 
 1. **Auth core.** Files: `core/passwords.py`, `core/auth.py`, `app/api/auth/`, `db/repositories/users.py`, `sessions.py`, `core/errors.py` (edit), `core/config.py` (edit), `.env.example` (edit), `main.py` (edit), `tests/api/test_auth.py`, `test_permission_matrix.py` (the harness, empty of later routes). About 390 lines.
 2. **Roles and criteria.** Files: `app/api/roles/`, `domain/roles/service.py`, `db/repositories/roles.py`, `criteria.py`, tests. About 390 lines.
-3. **Jobs: propose, get, cancel, queue view.** Files: `app/api/jobs/`, `db/repositories/jobs_api.py`, the propose route in `app/api/roles/`, tests. About 260 lines.
+3. **Jobs: propose, get, cancel, queue view.** Files: `app/api/jobs/`, `db/repositories/jobs_api.py`, the propose route in `app/api/roles/`, tests. The cancel test is written against a hand-set lease row: the Worker's fence does not exist yet, and the Worker's own end of it is proven in the Worker design's tests. About 260 lines.
 4. **Upload.** Files: `app/api/resumes/`, upload part of `domain/candidates/service.py`, `db/repositories/uploads.py`, tests. About 340 lines.
-5. **Ranked list and detail.** Files: `app/api/candidates/` (list, detail), `domain/visibility.py`, `db/repositories/candidates.py`, tests. About 390 lines.
+5. **Ranked list, detail and text.** Files: `app/api/candidates/` (list, detail, `GET .../text`), `domain/visibility.py`, `db/repositories/candidates.py`, tests. About 390 lines.
 6. **Override, stage and reveal.** Files: the decision routes and service methods, `db/repositories/audit.py`, tests. About 330 lines.
-7. **Assignments and interviewer visibility.** Files: assignment routes and queries, the interviewer predicate tests. About 250 lines.
+7. **Assignments and interviewer visibility.** Files: assignment routes, `GET /v1/me/candidates`, the interviewer's role and kit predicate, and the predicate tests. About 300 lines.
 8. **Kit routes.** Files: `app/api/kit/`, `db/repositories/kit.py`, tests. About 280 lines.
 9. **Feedback.** Files: `app/api/feedback/`, `domain/feedback/service.py`, `db/repositories/feedback.py`, tests. About 380 lines.
 10. **Compare.** Files: `app/api/compare/`, `db/repositories/compare.py`, tests. About 250 lines.
 11. **Retry, rescore, cost log and budget.** Files: retry and rescore routes, `app/api/cost/`, `db/repositories/cost.py`, `budget_reached` handling, tests. About 300 lines.
-12. **Guards.** Files: the AST scan for stage writes, the route-declares-a-role check, the statement-capture helpers, `tests/api/test_boundaries.py`. About 200 lines.
+12. **Guards.** Files: the AST scan for stage writes, the AST scan that every repository function returning candidate data takes a `Viewer`, the route-declares-a-role check, the statement-capture helpers, `tests/api/test_boundaries.py`, and the `hirekit_api` grant test once migration 2 exists. About 240 lines.
 
 Items: 12 (largest about 390 lines, over 400: 0).
 
@@ -507,3 +507,5 @@ Items: 12 (largest about 390 lines, over 400: 0).
 - assumption: there is no path to delete a candidate (`audit_events` RESTRICT blocks it); a retention job must delete the events first (data-model section 6).
 - assumption: local role passwords for `hirekit_api` and `hirekit_worker` come from environment variables read by migration 2, and `.env.example` names them without values.
 - Downstream that goes stale once this is built: HLD section 5 (five new routes: `GET /v1/auth/me`, `GET /v1/me/candidates`, `GET /v1/candidates/{id}/text`, `PUT /v1/candidates/{id}/feedback`, `DELETE /v1/kit/questions/{id}`), `backend/api/openapi.yaml` (does not exist; the next task writes it from this table), the Web (its client is generated from the spec), the seed command's user creation, and migration 2.
+
+**Critic review (2026-09-30).** Findings: BLOCKER 1, MAJOR 5, MINOR 3, NIT 1, all folded into this version: `GET /v1/me/candidates` and the role and kit predicate for interviewers; stale scores shown and marked stale and unscored candidates never dropped; one shared retry and rescore rule with a candidate-level open-job check, cancel that marks the candidate failed, and budget and Draft checks on rescore; an upload that decides Approved once before the loop and reports a later Draft as per-file results; a field-visibility table so `file_name`, notes, audit history and other interviewers' feedback never reach an interviewer; idempotent assignment and 409 on a repeat feedback submit; an approve transaction with a version check; authentication before the multipart body, a request-size cap and a stricter docx check; and the exact migration 2 grants. Its three weakest claims are the Python-side check ban (now an AST scan over repositories), integration tests standing in for `make check`, and the upload's whole-request 409, each with its falsifier. Verdict: do not approve until the interviewer candidate-list route exists, then approve after the stale list, re-run targets, upload 409, `file_name` and feedback leaks are fixed, which this version does; not re-reviewed.
