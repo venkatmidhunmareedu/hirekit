@@ -567,7 +567,7 @@ The single running total of model spend, held under the USD 8 cap.
 
 Serves US-02-002. Expected volume: one row (10^0).
 
-Writers: the Gateway only, with one atomic UPDATE ... WHERE spent_usd + :reserve <= 8 (tenet 8). The row itself is inserted at start-up from spend-ledger.json, not by schema.sql, because its value comes from a committed file. Settle with LEAST(8, ...) and record any overshoot on the call_log row, because an actual cost above the reservation would otherwise violate the cap after the provider has billed; start-up sets spent_usd to GREATEST(database value, ledger value), never DO NOTHING. The 8 in the CHECK repeats the constant in code: raising the limit needs an ADR and a migration.
+Writers: the Gateway only, with one atomic UPDATE ... WHERE spent_usd + :reserve <= 8 (tenet 8). The row itself is inserted at start-up from spend-ledger.json, not by schema.sql, because its value comes from a committed file. Settle with LEAST(8, ...) because an actual cost above the reservation would otherwise violate the cap after the provider has billed; call_log.cost_usd keeps the true cost, so an overshoot shows as sum(cost_usd) above spent_usd; start-up sets spent_usd to GREATEST(database value, ledger value), never DO NOTHING. The 8 in the CHECK repeats the constant in code: raising the limit needs an ADR and a migration.
 
 | Column | Type | Null | Key | Default | Description | Why |
 | --- | --- | --- | --- | --- | --- | --- |
