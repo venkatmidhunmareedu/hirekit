@@ -295,7 +295,8 @@ All subclass `GatewayError(DomainError)`, created in the file shown, raised as i
 | `BudgetNotInitialisedError` | `service.py` | no | fails the job; the maintainer starts live mode through 4.3 |
 | `BudgetLedgerError` | `spend_ledger.py` | no | live mode refuses to start |
 | `LedgerUnavailableError` | `service.py` (database error at T1 or T4) | yes | reschedule; on the live path no call was made, so nothing was spent |
-| `RecordingMissingError(key, stale)` | `recordings.py` via `service.py` | no | the test or demo fails with "no recording for <key>" or, when `find_stale` matched the input, "a recording exists for the same input under a different prompt, model or criteria (<old key>); re-record" (AC-US-02-003-2, AC-US-02-003-3) |
+| `RecordingMissingError(key, found_key)` | `recordings.py` via `service.py` | no | the test or demo fails with "no recording for <key>" or, when `find_stale` matched the input, "a recording exists for the same input under a different prompt, model or criteria (<old key>); re-record" (AC-US-02-003-2, AC-US-02-003-3) |
+| `RecordingCorruptError` | `recordings.py` | no | a recording file that cannot be parsed or does not match its own key fails the test or demo naming the file (added while building item 2) |
 | `RateLimitedError` | `transport.py` | yes | reschedule |
 | `ProviderUnavailableError` | `transport.py` | yes | reschedule; the Worker's failure text is "The model service is unavailable. Try again later" |
 | `ProviderTimeoutError` | `transport.py` | yes | reschedule; the reservation stays |
