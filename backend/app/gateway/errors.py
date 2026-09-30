@@ -15,6 +15,9 @@ class GatewayError(DomainError):
     status_code = 500
     code = "gateway_error"
     retryable: bool = False
+    # True when the call may have been billed, so the reservation stays (over-counted, never
+    # under-counted, HLD section 7). False means the provider reported no usage: release it.
+    billed: bool = False
 
 
 class InvalidRequestError(GatewayError):
@@ -118,6 +121,7 @@ class ProviderTimeoutError(GatewayError):
 
     code = "provider_timeout"
     retryable = True
+    billed = True
 
 
 class ProviderRejectedError(GatewayError):
@@ -130,3 +134,4 @@ class ProviderProtocolError(GatewayError):
     """A 2xx reply whose body cannot be parsed; the reservation stays for a person."""
 
     code = "provider_protocol_error"
+    billed = True

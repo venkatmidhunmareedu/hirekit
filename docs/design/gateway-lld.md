@@ -318,7 +318,7 @@ All subclass `GatewayError(DomainError)`, created in the file shown, raised as i
 | `httpx.ConnectError`, `ConnectTimeout` (request never sent) | `ProviderUnavailableError` | released |
 | `ReadTimeout`, `WriteTimeout`, `ReadError`, `RemoteProtocolError`, or `asyncio.TimeoutError` from `asyncio.timeout(GATEWAY_TIMEOUT_SECONDS)` (request probably sent) | `ProviderTimeoutError` | kept |
 
-The whole call, not each phase, is bounded by `asyncio.timeout(GATEWAY_TIMEOUT_SECONDS)`, so one call cannot outlast the 180 second lease (HLD section 8). The key and any resume text are never put in an error message or a log line; messages carry ids, the request key and counts (tenet 7, AC-US-02-001-5, AC-US-02-001-6).
+Each error carries `billed`: true means the call may have been billed and the reservation stays, false means it is released; `Gateway.complete` reads it instead of matching classes. A 2xx body that fails validation is raised `from None`, because a pydantic error repeats the body in its repr and the body can echo the prompt; only the names of the bad fields are kept (found by a test while building item 4). The whole call, not each phase, is bounded by `asyncio.timeout(GATEWAY_TIMEOUT_SECONDS)`, so one call cannot outlast the 180 second lease (HLD section 8). The key and any resume text are never put in an error message or a log line; messages carry ids, the request key and counts (tenet 7, AC-US-02-001-5, AC-US-02-001-6).
 
 ## 7. Configuration
 
