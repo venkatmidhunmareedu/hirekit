@@ -629,7 +629,7 @@ Personal-data columns (13): `users.name` (name), `users.email` (contact), `users
 | # | db-migration name | Phase (expand \| migrate \| contract) | Hot table | Lock risk and batch note |
 | --- | --- | --- | --- | --- |
 | 1 | initial_schema (schema.sql) | expand | no | Empty database, no lock risk, no backfill. The repository has no migration yet, so no numbering convention is claimed: the Alembic setup (backend/alembic) numbers it. The Down step drops the trigger and function, then tables in reverse order, then the seven enum types. |
-| 2 | database_roles_and_grants | expand | no | Cluster-level roles `hirekit_api` and `hirekit_worker`; the Worker gets `UPDATE (processing_status, failure_reason, identity_name, updated_at)` on `candidates` and no update on `stage`, so only the Api can move a stage (tenet 4, decided 2026-09-30). No table lock beyond GRANT. Down revokes and drops the roles. |
+| 2 | database_roles_and_grants | expand | no | Built (alembic/versions/0002_database_roles_and_grants.py). Creates `hirekit_api` and `hirekit_worker` (NOLOGIN unless `HIREKIT_API_PASSWORD` and `HIREKIT_WORKER_PASSWORD` are set at migrate time) with per-table and per-column grants: the Worker cannot update `candidates.stage` (tenet 4), the Api cannot write a score's model columns (tenet 3) or the budget and call log (tenet 8), and neither can update or delete `audit_events`. Brief per-table lock while grants change. Down revokes and drops both roles; it fails if a role has privileges in another database of the cluster. |
 
 Migrations: 2 (hot-table batches: 0). Not migrations: the `budget` row is inserted at start-up from `backend/recordings/spend-ledger.json` (its value comes from a committed file), and the seed command loads users, roles and criteria.
 
