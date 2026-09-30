@@ -89,9 +89,9 @@ flowchart LR
 
 **Worker** (same owner). N processes claim jobs from the `jobs` table with a row lock that skips locked rows, hold a lease with a lease token, and write results only while the lease token still matches. In the running system it is the only process that calls the Gateway (the maintainer's record and eval commands are the other callers). Job types: `process_resume`, `propose_criteria`, `generate_kit`, `regenerate_question`, `rescore`.
 
-**Gateway** (same owner). One function, in this order:
+**Gateway** (same owner). One public method, `Gateway.complete`, in this order:
 
-1. Check that the input is an `AnonymizedText` or a `JobDescriptionText` instance (two real classes, tenet 2).
+1. Check that `system` is a `PromptText` and that `input` is the class its purpose requires, `AnonymizedText` for scoring and eval, `JobDescriptionText` for criteria and kit (three real classes, tenet 2; docs/design/gateway-lld.md section 3).
 2. Clamp `max_tokens` to 1500.
 3. Compute the request key from the request, model id, prompt version and schema-retry index (0 or 1).
 4. Replay mode: look up the recording, write a `call_log` row with `replayed=true` and cost 0, and return it. No budget change. A missing recording raises.
@@ -110,7 +110,7 @@ It never logs keys or text. The running total is seeded from a committed spend l
 
 ## 4. Data
 
-Owner of all entities: the Api and Worker (one database, ADR-0001). Full model to be written to docs/design/data-model.md with `data-model`; not written yet.
+Owner of all entities: the Api and Worker (one database, ADR-0001). Full model: docs/design/data-model.md, with schema.sql, data-dictionary.csv and erd.md (18 tables); the initial Alembic revision is built from schema.sql.
 
 | Entity | Notes | PII |
 | --- | --- | --- |
@@ -120,13 +120,13 @@ Owner of all entities: the Api and Worker (one database, ADR-0001). Full model t
 | candidate | per uploaded file, stage, content hash (REQ-010), `identity_name` (the name the anonymizer found, recruiter only) | yes |
 | resume_file | uploaded bytes (bytea); written with the candidate and job, deleted after extraction succeeds, kept after a failure (ADR-0008) | yes |
 | resume_text | raw text (recruiters only) and anonymized text in separate columns (REQ-009) | yes: raw text |
-| score | per candidate, criterion and scoring run: model value, quote, verified flag, status (scored, no evidence, failed), stale flag, override value and note | derived from resume |
+| score | per candidate, criterion and criteria version (the scoring run): model value, quote (stored only after code verified it, tenet 3), flag reason, status (scored, no evidence, failed), override value, note and author; stale when its version is below the role's, so there is no stale flag | derived from resume |
 | audit_event | overrides, stage moves, identity reveals and approved feedback edits, with user and time (REQ-030) | user ids |
 | assignment | interviewer to candidate (Q-004) | user and candidate ids |
-| interview_kit, question | per role, with a stale flag (Q-005); questions generated per criterion (REQ-035) | no |
+| interview_kit, question | per role; the kit records the criteria version it was generated against and is stale when that is below the role's (Q-005); questions generated per criterion (REQ-035) | no |
 | feedback | per interviewer, candidate, criterion, with a locked flag (REQ-036, REQ-037) | user and candidate ids |
 | call_log, budget | one row per call with status (reserved, settled, replayed); a single running-total row | no |
-| job | queue row: type, payload (ids and `criteria_version` only), status, attempt, `lease_token`, lease expiry, `run_after` | ids only |
+| job | queue row: type, status, role, candidate or question id, `criteria_version` (ids and one integer, no payload column), attempt, deadline, `lease_token`, lease expiry, `run_after` | ids only |
 
 Retention: no deletion job in the first build (Q-012); the database is local and seeded with synthetic data. Only the file name and content hash remain after extraction; the bytes are deleted with the `resume_file` row.
 
@@ -148,9 +148,9 @@ Contract: the Api's OpenAPI 3.1 document, generated from FastAPI and committed a
 - Roles and criteria: `POST /v1/roles`, `GET /v1/roles`, `GET /v1/roles/{id}`, `POST /v1/roles/{id}/criteria:propose` (returns a job id), `PUT /v1/roles/{id}/criteria`, `POST /v1/roles/{id}/approve`.
 - Resumes and candidates: `POST /v1/roles/{id}/resumes` (multipart), `GET /v1/roles/{id}/candidates`, `GET /v1/roles/{id}/queue` (per-file job status for the whole role), `GET /v1/candidates/{id}`, `POST /v1/candidates/{id}:retry`, `POST /v1/roles/{id}:rescore`.
 - Decisions: `PUT /v1/candidates/{id}/scores/{criterion}/override`, `POST /v1/candidates/{id}/stage`, `POST /v1/candidates/{id}:reveal-identity` (audited), `POST /v1/candidates/{id}/assignments`, `DELETE /v1/candidates/{id}/assignments/{user}`.
-- Kit and feedback: `POST /v1/roles/{id}/kit:generate`, `GET /v1/roles/{id}/kit`, `PUT /v1/kit/questions/{id}`, `POST /v1/kit/questions/{id}:regenerate`, `POST /v1/candidates/{id}/feedback`, `GET /v1/candidates/{id}/feedback`, `POST /v1/feedback/{id}:approve-edit`, `GET /v1/compare?ids=`.
+- Kit and feedback: `POST /v1/roles/{id}/kit:generate`, `GET /v1/roles/{id}/kit`, `PUT /v1/kit/questions/{id}`, `POST /v1/kit/questions/{id}:regenerate`, `POST /v1/candidates/{id}/feedback`, `GET /v1/candidates/{id}/feedback`, `POST /v1/candidates/{id}/feedback/{interviewer}:approve-edit`, `GET /v1/compare?ids=`.
 - Jobs and cost: `GET /v1/jobs/{id}`, `POST /v1/jobs/{id}:cancel`, `GET /v1/cost-log` (recruiter only).
-- Internal, not HTTP: the Gateway function and the job payload schemas (ids only), to be written in the low-level design (docs/design/gateway-lld.md, not written yet).
+- Internal, not HTTP: `Gateway.complete` (docs/design/gateway-lld.md, written and built) and the job columns (ids only, docs/design/data-model.md); the Worker's handlers are designed in docs/design/worker-lld.md.
 
 There are no events and no messages outside the `jobs` table.
 
@@ -273,7 +273,7 @@ No product analytics and no analytics store in the first build (section 1). Ques
 
 | Question | Source | Caveat |
 | --- | --- | --- |
-| How often is a quote flagged? | `score.quote_verified` false / total | complete count |
+| How often is a quote flagged? | `score.flag_reason` not null / total | complete count |
 | How often do recruiters override? | `audit_event` overrides / scores | complete count |
 | What does a batch cost? | `call_log` settled cost by purpose and day | may over-count calls whose reservation was never settled (section 7): an upper bound |
 | Which stage do candidates reach? | `audit_event` stage moves | complete count |
@@ -324,7 +324,7 @@ ADRs needed:
 
 - compute: where the Api, the Worker and PostgreSQL run for the demo (docker compose assumed, Q-006).
 
-Also needed, not ADRs: docs/design/data-model.md (`data-model`), the gateway low-level design, and the story and criteria updates listed in the changes below.
+Written since: docs/design/data-model.md and docs/design/gateway-lld.md (built). Also needed, not ADRs: the Worker and Api low-level designs, the OpenAPI spec, and the story and criteria updates listed in the changes below.
 
 ## 16. What the review found
 

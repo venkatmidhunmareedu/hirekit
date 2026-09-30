@@ -136,7 +136,7 @@ The PRD numbers its statements R-1, I-1, A-1 and so on. This table gives each a 
 | REQ-059 | CI from recordings only | criterion-of US-02-003 | how replay is used in CI | US-02-003 | AC-US-02-003-4, AC-US-02-003-5 |
 | REQ-060 | Seed data | story | the data every eval and the demo run on | US-02-007 | AC-US-02-007-1, AC-US-02-007-2, AC-US-02-007-3, AC-US-02-007-4, AC-US-02-007-5 |
 | REQ-061 | Data-retention setting (stretch) | out-of-scope | the PRD calls it a stretch goal (2.3); Q-012 decides it is out of the first build | none (Q-012) | none |
-| REQ-062 | Hide model scores until feedback | criterion-of US-00-014 | a visibility rule on the feedback story; the PRD leaves the final call open, see Q-008 | US-00-014 | AC-US-00-014-6, AC-US-00-014-7 |
+| REQ-062 | Hide model scores until feedback | criterion-of US-00-014 | a visibility rule on the feedback story; the PRD leaves the final call open, see Q-008 | US-00-014, US-00-015 | AC-US-00-014-6, AC-US-00-014-7, AC-US-00-015-6 |
 
 ## Gaps
 

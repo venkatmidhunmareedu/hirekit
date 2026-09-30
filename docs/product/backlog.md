@@ -159,11 +159,11 @@ Covers: REQ-045, REQ-046, REQ-059   Judgement: story
 
 **Acceptance criteria.**
 
-- AC-US-02-003-1. Given replay mode is on, when a request is made, then its response is looked up by a hash of the request and returned with no network call.
+- AC-US-02-003-1. Given replay mode is on, when a request is made, then its response is looked up by a hash of the request, the model id, the prompt version and the schema-retry index (0 or 1), and returned with no network call.
 Covers: REQ-045
 - AC-US-02-003-2. Given replay mode and no recording for the request hash, when the request is made, then the test fails with a message naming the hash, and no live call is made.
 Covers: REQ-046
-- AC-US-02-003-3. Given a prompt that changed since it was recorded, when replay runs, then the hash differs and the failure says the recording is stale.
+- AC-US-02-003-3. Given a prompt that changed since it was recorded, when replay runs, then the hash differs and the failure says a recording exists for the same input under a different prompt or model.
 Covers: REQ-046
 - AC-US-02-003-4. Given the CI environment, when the CI job runs, then replay mode is forced and any attempt at a live call fails the job.
 Covers: REQ-045, REQ-059
@@ -872,7 +872,7 @@ Covers: REQ-031, REQ-032, REQ-033, REQ-034, REQ-035   Judgement: merged from REQ
 
 **Acceptance criteria.**
 
-- AC-US-00-013-1. Given an Approved role, when the recruiter asks to generate a kit, then a kit is generated for that role; for a Draft role the action is blocked.
+- AC-US-00-013-1. Given an Approved role, when the recruiter asks to generate a kit, then a kit is generated for that role, one model call per criterion so that no call passes the 1,500 token cap; for a Draft role the action is blocked.
 Covers: REQ-031
 - AC-US-00-013-2. Given a generated kit, when it is viewed, then it holds questions grouped by criterion.
 Covers: REQ-032
@@ -959,7 +959,7 @@ Covers: REQ-062
 
 Epic: EP-06   Priority: Should   Points: TBD (estimate)
 Persona: Recruiter (group 00)   Ticket: unassigned
-Covers: REQ-038, REQ-039, REQ-052   Judgement: merged from REQ-038, REQ-039, plus quality REQ-052
+Covers: REQ-038, REQ-039, REQ-052, REQ-062   Judgement: merged from REQ-038, REQ-039, plus quality REQ-052 and REQ-062 (decisions.md conflict 4)
 
 **Narrative.** As a recruiter, I want to compare two to four candidates by criterion, so that I can see where they differ and where interviewers disagree.
 
@@ -987,6 +987,8 @@ Covers: REQ-038
 Covers: REQ-039
 - AC-US-00-015-5. Given a keyboard-only user, when they use the view, then every control is reachable at WCAG 2.1 AA contrast.
 Covers: REQ-052
+- AC-US-00-015-6. Given an interviewer who has not submitted feedback for a candidate, when they open the comparison view, then that candidate's resume score and override cells are hidden for them and no evidence quote is shown; the hiding is done by the query, not by the client.
+Covers: REQ-062
 
 **Not in this story.**
 

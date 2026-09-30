@@ -44,7 +44,7 @@ settled again, differently, in each file that runs into it.
 **Settled by:** midhun (project owner)
 
 **What now has to change to match:**
-- US-02-003 acceptance criteria: define the hash as request, model id, prompt version and schema-retry index.
+- US-02-003 acceptance criteria: define the hash as request, model id, prompt version and schema-retry index. Done (HK-11).
 - The gateway's low-level design: the request key includes `schema_retry` and the prompt version.
 
 ### Which entities does the data model need beyond the PRD's rough model?
@@ -72,5 +72,5 @@ settled again, differently, in each file that runs into it.
 **Settled by:** midhun (project owner)
 
 **What now has to change to match:**
-- US-00-015: add an acceptance criterion for the interviewer view and cover REQ-062.
+- US-00-015: add an acceptance criterion for the interviewer view and cover REQ-062. Done (HK-11).
 - The comparison endpoint's low-level design: the hiding is done by the query, not by the client.

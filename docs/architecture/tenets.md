@@ -14,7 +14,7 @@ _A breach looks like:_ a merge request adds a `POST /v1/roles/{id}/criteria:prop
 
 ## 2. Resume text reaches the model only as an AnonymizedText value
 
-**The gateway accepts only two real classes, `AnonymizedText` and `JobDescriptionText`, checks them with `isinstance` at runtime, and only the anonymizer and the job-description intake construct them.**
+**The gateway accepts only three real classes, `AnonymizedText`, `JobDescriptionText` and `PromptText`, checks them with `isinstance` at runtime (the class each purpose requires for `input`, and `PromptText` for `system`), and only the anonymizer, the job-description intake and the prompt module construct them.**
 
 The model never seeing identity signals is the product's central claim (REQ-018, REQ-047), so a runtime check, not a type hint that is erased or a code comment, must carry it.
 
