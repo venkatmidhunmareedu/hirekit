@@ -22,7 +22,7 @@ define need_tool
 command -v $(UV) >/dev/null || $(call skip,$(1),uv); $(UV) run --quiet $(2) --version >/dev/null 2>&1 || $(call skip,$(1),$(2))
 endef
 
-.PHONY: help setup dev check check-file fix test test-integration lint typecheck format format-check migrate migrate-verify migrate-down migrate-new vuln doctor db db-reset clean
+.PHONY: help setup dev check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new vuln doctor db db-reset clean
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
@@ -129,6 +129,15 @@ migrate-new: ## Autogenerate the next migration: make migrate-new name=add_invoi
 	@id=$$(printf '%04d' $$(( $$(ls alembic/versions/*.py 2>/dev/null | wc -l) + 1 ))); \
 	DATABASE_URL=$(DATABASE_URL) $(UV) run alembic revision --autogenerate --rev-id "$$id" -m "$(name)" && \
 	echo "migrate-new: alembic/versions/$${id}_$(name).py written; read every line before committing"
+
+record: ## Record model replies live (manual, spends money): make record RECORD_CMD="uv run python -m <pipeline>"
+	@rec="MODEL_MODE=live RECORD_RESPONSES=true DATABASE_URL=$(DATABASE_URL)"; \
+	env $$rec $(UV) run python -m app.gateway.record preflight || exit 1; \
+	rc=0; \
+	if [ -n "$(RECORD_CMD)" ]; then env $$rec $(RECORD_CMD) || rc=$$?; \
+	else echo "record: no pipeline entry given (RECORD_CMD); only the preflight and the ledger update ran"; fi; \
+	env $$rec $(UV) run python -m app.gateway.record finish || exit 1; \
+	exit $$rc
 
 doctor: ## Environment diagnostics
 	@echo "uv:        $$(command -v $(UV) >/dev/null && $(UV) --version || echo missing)"

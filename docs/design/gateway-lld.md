@@ -242,6 +242,8 @@ sequenceDiagram
     R->>R: write spend-ledger.json = spent (commit it)
 ```
 
+`make record` always runs `finish` after the pipeline, even when the pipeline failed, because money may already have been spent; it then exits with the pipeline's status. Invalid settings (for example live mode with no key) print a refusal, not a traceback. The pipeline command is passed as `RECORD_CMD` until the engine LLD supplies one.
+
 **How live mode is switched on.** `MODEL_MODE` is read from the process environment only, never from `.env` (the settings class does not list it as an env-file field), and `.env.example` does not contain it. `make record` runs `MODEL_MODE=live RECORD_RESPONSES=true RECORDINGS_DIR=<absolute path> python -m ...`, so a later `make test` or eval, which starts a fresh process, is in replay. Worker processes started by the record pipeline inherit the variables from that command; a Worker started under docker compose gets them only by explicit `environment:` entries, with `RECORDINGS_DIR` absolute. `tests/gateway/conftest.py` forces `MODEL_MODE=replay` and disables the env file.
 
 ## 5. Data access
@@ -296,6 +298,7 @@ All subclass `GatewayError(DomainError)`, created in the file shown, raised as i
 | `BudgetLedgerError` | `spend_ledger.py` | no | live mode refuses to start |
 | `LedgerUnavailableError` | `service.py` (the database cannot be reached at T1 or T4: `OperationalError`, `InterfaceError`, `OSError`) | yes | reschedule; on the live path no call was made, so nothing was spent |
 | `RecordingMissingError(key, found_key)` | `recordings.py` via `service.py` | no | the test or demo fails with "no recording for <key>" or, when `find_stale` matched the input, "a recording exists for the same input under a different prompt, model or criteria (<old key>); re-record" (AC-US-02-003-2, AC-US-02-003-3) |
+| `RecordRefusedError` | `record.py` | no | `make record` refuses to start: no credit-limit confirmation, not in live recording mode, or the budget is used up; the command prints "record: refused: ..." and exits 1 (added while building item 7) |
 | `RecordingCorruptError` | `recordings.py` | no | a recording file that cannot be parsed or does not match its own key fails the test or demo naming the file (added while building item 2) |
 | `RateLimitedError` | `transport.py` | yes | reschedule |
 | `ProviderUnavailableError` | `transport.py` | yes | reschedule; the Worker's failure text is "The model service is unavailable. Try again later" |

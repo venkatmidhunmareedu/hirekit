@@ -63,6 +63,11 @@ class FakeLedger:
     async def read_spent(self, session: AsyncSession) -> Decimal | None:
         return self.spent
 
+    async def ensure_budget(self, session: AsyncSession, *, ledger: Decimal) -> None:
+        """Create the row from the ledger, or raise it to the ledger; never lower it."""
+        self.budget_calls.append("ensure_budget")
+        self.spent = ledger if self.spent is None else max(self.spent, ledger)
+
     async def log_replay(
         self,
         session: AsyncSession,

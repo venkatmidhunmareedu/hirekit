@@ -135,3 +135,9 @@ class ProviderProtocolError(GatewayError):
 
     code = "provider_protocol_error"
     billed = True
+
+
+class RecordRefusedError(GatewayError):
+    """`make record` refused to start: a guard (credit limit, mode, budget) is not met."""
+
+    code = "record_refused"
