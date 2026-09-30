@@ -19,7 +19,7 @@ All under `backend/`. Line counts are estimates. No file is expected to pass 400
 | --- | --- | --- |
 | `app/gateway/__init__.py` (new) | exports `Gateway`, `GatewayRequest`, `GatewayResponse` only | 15 |
 | `app/gateway/text.py` (new) | `AnonymizedText`, `JobDescriptionText`, `PromptText` and the three `mint_*` functions | 90 |
-| `app/gateway/types.py` (new) | `Purpose`, `GatewayRequest` (validating), `GatewayResponse`, `Recording`, `MAX_TOKENS_CAP`, `PURPOSE_INPUT` | 110 |
+| `app/gateway/types.py` (new) | `Purpose`, `GatewayRequest` (validating), `GatewayResponse`, `Recording`, `PURPOSE_INPUT`, and the `MAX_TOKENS_CAP` re-export | 110 |
 | `app/gateway/errors.py` (new) | the `GatewayError` family, each with `retryable` | 120 |
 | `app/gateway/key.py` (new) | text normalization, canonical JSON and `request_key` (SHA-256) | 60 |
 | `app/gateway/recordings.py` (new) | `RecordingStore`: `get`, `put`, `find_stale` over `RECORDINGS_DIR/*.json` | 130 |
@@ -28,7 +28,7 @@ All under `backend/`. Line counts are estimates. No file is expected to pass 400
 | `app/gateway/service.py` (new) | `Gateway.complete`, the single public entry: replay and live paths | 220 |
 | `app/gateway/record.py` (new) | `record_preflight`, `record_finish` for the record command | 90 |
 | `app/budget/__init__.py` (new) | exports the policy functions | 5 |
-| `app/budget/policy.py` (new) | `BUDGET_LIMIT_USD`, `reserve_amount`, `actual_cost`, `model_actions_allowed`; pure, no gateway import | 80 |
+| `app/budget/policy.py` (new) | `BUDGET_LIMIT_USD`, `MAX_TOKENS_CAP`, `reserve_amount`, `actual_cost`, `model_actions_allowed`; pure, no gateway import | 80 |
 | `app/db/repositories/gateway_ledger.py` (new) | all gateway SQL: `reserve`, `settle`, `release`, `log_replay`, `ensure_budget` | 150 |
 | `app/db/repositories/budget.py` (new) | read-only `read_budget` for the Api and the gateway | 30 |
 | `app/db/models.py` (edit) | add `Budget` and `CallLog` mapped classes matching `docs/design/schema.sql` | 60 |
@@ -92,7 +92,7 @@ Validated once each, at the point named.
 
 **Request key** (`key.py`). Every text field is NFC-normalized and its newlines converted to `\n` before hashing, and the canonical JSON is UTF-8 with `sort_keys`, `separators=(",", ":")` and `ensure_ascii=False`, so a CRLF checkout or a different Unicode form of the same text gives the same key. The hashed object is `{key_version: 1, model, prompt_version, schema_retry, max_tokens (after clamping), temperature: 0, system, input}`. `input_sha256` is the SHA-256 of the normalized `input`, `purpose` and `schema_retry` only; it exists so a miss can say a recording for the same input exists under a different prompt, model or criteria (AC-US-02-003-3). The key excludes `role_id`, timestamps and any run-specific id.
 
-**Constants in code, not configuration**: `MAX_TOKENS_CAP = 1500` (`types.py`) and `BUDGET_LIMIT_USD = Decimal("8")` (`budget/policy.py`; HLD section 12: changing it needs an ADR and a migration of `chk_budget_spent_cap`). SQL receives the limit as a bound parameter, so the literal 8 appears once in Python and once in the CHECK.
+**Constants in code, not configuration**: `MAX_TOKENS_CAP = 1500` and `BUDGET_LIMIT_USD = Decimal("8")`, both in `budget/policy.py` (`gateway/types.py` re-exports the cap, so the Api's `model_actions_allowed` and the gateway share one value; HLD section 12: changing it needs an ADR and a migration of `chk_budget_spent_cap`). SQL receives the limit as a bound parameter, so the literal 8 appears once in Python and once in the CHECK.
 
 **Budget policy** (`budget/policy.py`, pure functions):
 

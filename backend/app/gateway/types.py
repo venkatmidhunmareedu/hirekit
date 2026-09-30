@@ -13,12 +13,21 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app.budget.policy import MAX_TOKENS_CAP
 from app.gateway.errors import InvalidRequestError
 from app.gateway.text import AnonymizedText, JobDescriptionText, PromptText
 
 Purpose = Literal["criteria", "scoring", "kit", "eval"]
 
-MAX_TOKENS_CAP: Final = 1500
+__all__ = [
+    "MAX_TOKENS_CAP",
+    "PURPOSE_INPUT",
+    "GatewayRequest",
+    "GatewayResponse",
+    "Purpose",
+    "RecordedResponse",
+    "Recording",
+]
 
 # Which text class each purpose accepts, so a raw resume wrapped in the wrong
 # class is refused too (AC-US-00-005-4).

@@ -5,3 +5,45 @@ docs/design/schema.sql). A model is added here only for a table the code reads o
 writes, with its work item (the gateway adds `Budget` and `CallLog`). Migrations for
 this schema are written by hand; autogenerate would propose dropping every unmapped table.
 """
+
+import uuid
+from datetime import datetime
+from decimal import Decimal
+
+from sqlalchemy import BigInteger, Enum, Identity, Numeric, SmallInteger, String, func
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
+
+
+class Budget(Base):
+    """The single running total of model spend (one row, id 1)."""
+
+    __tablename__ = "budget"
+
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    spent_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+
+class CallLog(Base):
+    """One row per gateway call, live or replayed."""
+
+    __tablename__ = "call_log"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    # No ForeignKey: `roles` has no model yet; the database enforces the reference.
+    role_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    purpose: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum("reserved", "settled", "replayed", "released", name="call_status", create_type=False),
+        nullable=False,
+    )
+    model: Mapped[str] = mapped_column(String, nullable=False)
+    request_key: Mapped[str] = mapped_column(String, nullable=False)
+    schema_retry: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+    input_tokens: Mapped[int | None] = mapped_column(nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(nullable=True)
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
