@@ -15,13 +15,15 @@ HireKit: structured, evidence-backed, anonymized resume screening. Product in
 `docs/designs/hirekit-build-plan.md`, technology choices in `docs/adr/` (index:
 `docs/decisions.md`).
 
-- Backend: Python 3.14, FastAPI, PostgreSQL, at the repository root (`app/`,
-  `tests/`, `alembic/`). Frontend: React with Vite in `web/`, added later with
-  its own gate. Neither exists yet; the layout above is the plan.
+- Backend: Python 3.14, FastAPI, PostgreSQL, in `backend/` (`app/`, `tests/`,
+  `alembic/`, its own `Makefile` and `uv.lock`; ADR-0007). Frontend: React with
+  Vite in `web/`, not created yet, with its own gate. The root `Makefile`
+  delegates every target to `backend/` (and `web/` when it exists).
 - Build order: engine first (gateway, anonymizer, scoring with quote check,
   both evals green), UI second.
-- `make check` fails today with "0 python files, nothing checked". That is the
-  gate working, not a fault; it passes once `app/` and `tests/` exist.
+- `make check` runs the backend gates (format, lint, mypy strict, unit tests,
+  pip-audit). A gate with nothing to check fails rather than passes; that is the
+  gate working, not a fault.
 
 Domain rules (PRD.md), each with a test:
 

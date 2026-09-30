@@ -12,3 +12,15 @@ deliverables/
 /.profile
 /.ripgreprc
 /.gitconfig
+
+# Backend (Python)
+.venv/
+.env
+__pycache__/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+junit.xml
+htmlcov/

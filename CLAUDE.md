@@ -9,7 +9,7 @@ Loaded into every session: keep this file under 40 lines.
 Repository:   HireKit (Server/API, web UI planned in web/)
 Stack:        Python 3.14, FastAPI, React + Vite (web/, later)
 Databases:    PostgreSQL
-Entrypoint:   app/main.py (not created yet)
+Entrypoint:   backend/app/main.py
 Run, test:    make dev, make test; gate: make check
 Git host:     none yet (no remote)
 Tracker:      none (BEARING_TRACKER; none is valid)
