@@ -68,7 +68,7 @@ Validated once each, at the point named.
 
 `system` must be a `PromptText` for every purpose.
 
-**`GatewayRequest`** (frozen dataclass, `types.py`). `__post_init__` validates every field and raises `InvalidRequest` (not retryable), because `Literal` is not enforced at runtime:
+**`GatewayRequest`** (frozen dataclass, `types.py`). `__post_init__` validates every field and raises `InvalidRequestError` (not retryable), because `Literal` is not enforced at runtime:
 
 | Field | Type | Rule |
 | --- | --- | --- |
@@ -117,7 +117,7 @@ sequenceDiagram
     participant T as Transport
     W->>G: GatewayRequest
     alt any field invalid, or system or input is the wrong class
-        G-->>W: InvalidRequest or InputNotAllowed (no key, no DB, no network)
+        G-->>W: InvalidRequestError or InputNotAllowedError (no key, no DB, no network)
     end
     G->>G: clamp max_tokens to 1500, build request key
     alt MODEL_MODE is replay
@@ -126,13 +126,13 @@ sequenceDiagram
             K-->>G: Recording
             G->>L: log_replay (status replayed, cost 0)
             alt database unreachable
-                G-->>W: LedgerUnavailable
+                G-->>W: LedgerUnavailableError
             else
                 G-->>W: GatewayResponse(replayed=true)
             end
         else no recording
             K-->>G: none, find_stale(input_sha256)
-            G-->>W: RecordingMissing(key, stale=true or false)
+            G-->>W: RecordingMissingError(key, stale=true or false)
         end
     else MODEL_MODE is live
         G->>G: live path (4.2)
@@ -151,15 +151,15 @@ sequenceDiagram
     participant P as OpenRouter
     G->>T: build transport (once, on first live call)
     alt CI is set
-        T-->>G: LiveCallForbidden (no reservation was made)
+        T-->>G: LiveCallForbiddenError (no reservation was made)
     end
     G->>L: T1 reserve(r): UPDATE budget WHERE spent + r <= limit, INSERT call_log reserved
     alt zero rows updated and budget row exists
-        G-->>G: raise BudgetReached(spent, limit)
+        G-->>G: raise BudgetReachedError(spent, limit)
     else budget row missing
-        G-->>G: raise BudgetNotInitialised
+        G-->>G: raise BudgetNotInitialisedError
     else database unreachable
-        G-->>G: raise LedgerUnavailable (no call made)
+        G-->>G: raise LedgerUnavailableError (no call made)
     end
     Note over G,L: T1 is committed before the HTTP call, and no transaction is open during it
     G->>T: post(model, messages, max_tokens, temperature 0) inside asyncio.timeout(60)
@@ -179,18 +179,18 @@ sequenceDiagram
         G-->>G: keep the reservation, raise ProviderProtocolError
     else 402 provider credit exhausted
         G->>L: T3 release
-        G-->>G: raise ProviderCreditExhausted
+        G-->>G: raise ProviderCreditExhaustedError
     else 429
         G->>L: T3 release
-        G-->>G: raise RateLimited
+        G-->>G: raise RateLimitedError
     else 5xx with no usage in the body, or connect error before the request was sent
         G->>L: T3 release
-        G-->>G: raise ProviderUnavailable
+        G-->>G: raise ProviderUnavailableError
     else other 4xx except 408
         G->>L: T3 release
-        G-->>G: raise ProviderRejected
+        G-->>G: raise ProviderRejectedError
     else 408, timeout, or the connection lost after the request was sent
-        G-->>G: keep the reservation (assumption: billed), raise ProviderTimeout
+        G-->>G: keep the reservation (assumption: billed), raise ProviderTimeoutError
     end
 ```
 
@@ -228,7 +228,7 @@ sequenceDiagram
     alt KEY_CREDIT_LIMIT_CONFIRMED is not yes
         R-->>M: refuse, tell the maintainer to set the OpenRouter key limit
     else CI is set
-        R-->>M: refuse, LiveCallForbidden
+        R-->>M: refuse, LiveCallForbiddenError
     else
         R->>L: ensure_budget (4.3), read_budget
         R-->>M: print remaining = limit - spent
@@ -287,19 +287,19 @@ All subclass `GatewayError(DomainError)`, created in the file shown, raised as i
 
 | Error | Created in | Retryable | Mapped where and to what |
 | --- | --- | --- | --- |
-| `InvalidRequest` | `types.py` | no | a programming error: the Worker fails the job with `last_error = invalid_request`, logged at error level with ids only |
-| `InputNotAllowed` | `service.py` step 1 | no | same, `last_error = input_not_allowed`. Never shown to a user. |
-| `LiveCallForbidden` | `transport.py` (CI set) and `record.py` | no | fails the CI job or the record command |
-| `BudgetReached(spent, limit)` | `service.py` after Q1 returns no row | no | the Worker fails the job with `last_error = budget_reached`. The Api does not call the gateway; it uses `model_actions_allowed` and answers with `409 budget_reached`, message "The model budget of $8.00 has been reached. No new model calls can be made." (AC-US-02-002-4), mapped in `app/core/errors.py` by the Api LLD. |
-| `ProviderCreditExhausted` | `transport.py` (402) | no | treated like `BudgetReached` by the Worker (the provider-side key limit is the real backstop, HLD section 6); the reservation is released |
-| `BudgetNotInitialised` | `service.py` | no | fails the job; the maintainer starts live mode through 4.3 |
+| `InvalidRequestError` | `types.py` | no | a programming error: the Worker fails the job with `last_error = invalid_request`, logged at error level with ids only |
+| `InputNotAllowedError` | `service.py` step 1 | no | same, `last_error = input_not_allowed`. Never shown to a user. |
+| `LiveCallForbiddenError` | `transport.py` (CI set) and `record.py` | no | fails the CI job or the record command |
+| `BudgetReachedError(spent, limit)` | `service.py` after Q1 returns no row | no | the Worker fails the job with `last_error = budget_reached`. The Api does not call the gateway; it uses `model_actions_allowed` and answers with `409 budget_reached`, message "The model budget of $8.00 has been reached. No new model calls can be made." (AC-US-02-002-4), mapped in `app/core/errors.py` by the Api LLD. |
+| `ProviderCreditExhaustedError` | `transport.py` (402) | no | treated like `BudgetReachedError` by the Worker (the provider-side key limit is the real backstop, HLD section 6); the reservation is released |
+| `BudgetNotInitialisedError` | `service.py` | no | fails the job; the maintainer starts live mode through 4.3 |
 | `BudgetLedgerError` | `spend_ledger.py` | no | live mode refuses to start |
-| `LedgerUnavailable` | `service.py` (database error at T1 or T4) | yes | reschedule; on the live path no call was made, so nothing was spent |
-| `RecordingMissing(key, stale)` | `recordings.py` via `service.py` | no | the test or demo fails with "no recording for <key>" or, when `find_stale` matched the input, "a recording exists for the same input under a different prompt, model or criteria (<old key>); re-record" (AC-US-02-003-2, AC-US-02-003-3) |
-| `RateLimited` | `transport.py` | yes | reschedule |
-| `ProviderUnavailable` | `transport.py` | yes | reschedule; the Worker's failure text is "The model service is unavailable. Try again later" |
-| `ProviderTimeout` | `transport.py` | yes | reschedule; the reservation stays |
-| `ProviderRejected` | `transport.py` | no | fail the job; the reservation is released |
+| `LedgerUnavailableError` | `service.py` (database error at T1 or T4) | yes | reschedule; on the live path no call was made, so nothing was spent |
+| `RecordingMissingError(key, stale)` | `recordings.py` via `service.py` | no | the test or demo fails with "no recording for <key>" or, when `find_stale` matched the input, "a recording exists for the same input under a different prompt, model or criteria (<old key>); re-record" (AC-US-02-003-2, AC-US-02-003-3) |
+| `RateLimitedError` | `transport.py` | yes | reschedule |
+| `ProviderUnavailableError` | `transport.py` | yes | reschedule; the Worker's failure text is "The model service is unavailable. Try again later" |
+| `ProviderTimeoutError` | `transport.py` | yes | reschedule; the reservation stays |
+| `ProviderRejectedError` | `transport.py` | no | fail the job; the reservation is released |
 | `ProviderProtocolError` | `transport.py` | no | fail the job; the reservation stays, a person reconciles |
 
 **Transport failure mapping**, one row per httpx outcome (`transport.py`), checked in this order:
@@ -308,14 +308,14 @@ All subclass `GatewayError(DomainError)`, created in the file shown, raised as i
 | --- | --- | --- |
 | 2xx, body parses, has usage | none | settled |
 | 2xx, body does not parse or has no usage | `ProviderProtocolError` | kept |
-| 402 | `ProviderCreditExhausted` | released |
-| 429 | `RateLimited` | released |
-| 408 | `ProviderTimeout` | kept |
-| other 4xx | `ProviderRejected` | released |
-| 5xx whose body reports usage | `ProviderUnavailable` | kept (billed) |
-| 5xx with no usage in the body | `ProviderUnavailable` | released |
-| `httpx.ConnectError`, `ConnectTimeout` (request never sent) | `ProviderUnavailable` | released |
-| `ReadTimeout`, `WriteTimeout`, `ReadError`, `RemoteProtocolError`, or `asyncio.TimeoutError` from `asyncio.timeout(GATEWAY_TIMEOUT_SECONDS)` (request probably sent) | `ProviderTimeout` | kept |
+| 402 | `ProviderCreditExhaustedError` | released |
+| 429 | `RateLimitedError` | released |
+| 408 | `ProviderTimeoutError` | kept |
+| other 4xx | `ProviderRejectedError` | released |
+| 5xx whose body reports usage | `ProviderUnavailableError` | kept (billed) |
+| 5xx with no usage in the body | `ProviderUnavailableError` | released |
+| `httpx.ConnectError`, `ConnectTimeout` (request never sent) | `ProviderUnavailableError` | released |
+| `ReadTimeout`, `WriteTimeout`, `ReadError`, `RemoteProtocolError`, or `asyncio.TimeoutError` from `asyncio.timeout(GATEWAY_TIMEOUT_SECONDS)` (request probably sent) | `ProviderTimeoutError` | kept |
 
 The whole call, not each phase, is bounded by `asyncio.timeout(GATEWAY_TIMEOUT_SECONDS)`, so one call cannot outlast the 180 second lease (HLD section 8). The key and any resume text are never put in an error message or a log line; messages carry ids, the request key and counts (tenet 7, AC-US-02-001-5, AC-US-02-001-6).
 
