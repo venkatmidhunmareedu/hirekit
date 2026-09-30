@@ -294,7 +294,7 @@ All subclass `GatewayError(DomainError)`, created in the file shown, raised as i
 | `ProviderCreditExhaustedError` | `transport.py` (402) | no | treated like `BudgetReachedError` by the Worker (the provider-side key limit is the real backstop, HLD section 6); the reservation is released |
 | `BudgetNotInitialisedError` | `service.py` | no | fails the job; the maintainer starts live mode through 4.3 |
 | `BudgetLedgerError` | `spend_ledger.py` | no | live mode refuses to start |
-| `LedgerUnavailableError` | `service.py` (database error at T1 or T4) | yes | reschedule; on the live path no call was made, so nothing was spent |
+| `LedgerUnavailableError` | `service.py` (the database cannot be reached at T1 or T4: `OperationalError`, `InterfaceError`, `OSError`) | yes | reschedule; on the live path no call was made, so nothing was spent |
 | `RecordingMissingError(key, found_key)` | `recordings.py` via `service.py` | no | the test or demo fails with "no recording for <key>" or, when `find_stale` matched the input, "a recording exists for the same input under a different prompt, model or criteria (<old key>); re-record" (AC-US-02-003-2, AC-US-02-003-3) |
 | `RecordingCorruptError` | `recordings.py` | no | a recording file that cannot be parsed or does not match its own key fails the test or demo naming the file (added while building item 2) |
 | `RateLimitedError` | `transport.py` | yes | reschedule |
@@ -318,7 +318,7 @@ All subclass `GatewayError(DomainError)`, created in the file shown, raised as i
 | `httpx.ConnectError`, `ConnectTimeout` (request never sent) | `ProviderUnavailableError` | released |
 | `ReadTimeout`, `WriteTimeout`, `ReadError`, `RemoteProtocolError`, or `asyncio.TimeoutError` from `asyncio.timeout(GATEWAY_TIMEOUT_SECONDS)` (request probably sent) | `ProviderTimeoutError` | kept |
 
-Each error carries `billed`: true means the call may have been billed and the reservation stays, false means it is released; `Gateway.complete` reads it instead of matching classes. A 2xx body that fails validation is raised `from None`, because a pydantic error repeats the body in its repr and the body can echo the prompt; only the names of the bad fields are kept (found by a test while building item 4). The whole call, not each phase, is bounded by `asyncio.timeout(GATEWAY_TIMEOUT_SECONDS)`, so one call cannot outlast the 180 second lease (HLD section 8). The key and any resume text are never put in an error message or a log line; messages carry ids, the request key and counts (tenet 7, AC-US-02-001-5, AC-US-02-001-6).
+Each error carries `billed`: true means the call may have been billed and the reservation stays, false means it is released; `Gateway.complete` reads it instead of matching classes. A 2xx body that fails validation is raised `from None`, because a pydantic error repeats the body in its repr and the body can echo the prompt; only the names of the bad fields are kept (found by a test while building item 4). The whole call, not each phase, is bounded by `asyncio.timeout(GATEWAY_TIMEOUT_SECONDS)`, so one call cannot outlast the 180 second lease (HLD section 8). Any other database error, such as an `IntegrityError` from a role id that does not exist, is a bug and propagates as is: a retry would fail forever, so it must not look like an outage (found by the Postgres tests in item 6). `Gateway.aclose()` closes the transport once a live call has built it. The key and any resume text are never put in an error message or a log line; messages carry ids, the request key and counts (tenet 7, AC-US-02-001-5, AC-US-02-001-6).
 
 ## 7. Configuration
 
@@ -380,8 +380,8 @@ Read once in `app/core/config.py` (`pydantic-settings`, fails fast on a bad valu
 | `test_unparseable_2xx_keeps_reservation` | unit (fake ledger) | HLD section 3 |
 | `test_whole_call_is_bounded_by_the_timeout_not_each_phase` | unit | HLD section 8 (lease) |
 | `test_settle_above_reservation_is_clamped_to_the_limit` | unit (fake ledger) | data-model budget note |
-| `test_second_settle_changes_nothing` | unit (fake ledger) | critic finding |
-| `test_release_after_settle_changes_nothing` | unit (fake ledger) | critic finding |
+| `test_second_settle_changes_nothing` | integration (in `test_gateway_ledger.py`, item 3; a fake would only test itself) | critic finding |
+| `test_release_after_settle_changes_nothing` | integration (in `test_gateway_ledger.py`, item 3) | critic finding |
 | `test_settle_failure_still_returns_reply_and_leaves_row_reserved` | unit | HLD section 7 |
 | `test_crash_after_reserve_leaves_reserved_row` | integration | HLD section 7 |
 | `test_replay_returns_recording_with_no_network_call` | unit | AC-US-02-003-1 |

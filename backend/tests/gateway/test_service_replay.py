@@ -140,7 +140,7 @@ async def test_replay_never_calls_reserve_settle_or_release_on_the_ledger(tmp_pa
 
     await make_gateway(settings, ledger).complete(request)
 
-    assert ledger.forbidden_calls == []
+    assert ledger.budget_calls == []
 
 
 async def test_ten_replay_passes_never_touch_the_budget(tmp_path: Path) -> None:
@@ -156,7 +156,7 @@ async def test_ten_replay_passes_never_touch_the_budget(tmp_path: Path) -> None:
         for request in requests:
             await gateway.complete(request)
 
-    assert ledger.forbidden_calls == []
+    assert ledger.budget_calls == []
     assert len(ledger.rows) == 90
 
 
@@ -199,7 +199,7 @@ async def test_missing_recording_never_falls_back_to_a_live_call(tmp_path: Path)
         await gateway.complete(make_request(text=RESUME))
 
     assert ledger.rows == []
-    assert ledger.forbidden_calls == []
+    assert ledger.budget_calls == []
 
 
 async def test_changed_prompt_reports_a_recording_for_the_same_input(tmp_path: Path) -> None:
@@ -295,11 +295,3 @@ async def test_no_resume_text_in_log_lines_or_error_messages(tmp_path: Path) -> 
     assert "Acme" not in text
     assert "payments" not in text
     assert any(line["event"] == "gateway_call" for line in logs)
-
-
-async def test_live_mode_is_not_built_until_item_6(tmp_path: Path) -> None:
-    """Placeholder that item 6 replaces with the live-path tests."""
-    settings = make_settings(tmp_path, model_mode="live", openrouter_api_key="k")
-    gateway = make_gateway(settings, FakeLedger())
-    with pytest.raises(NotImplementedError):
-        await gateway.complete(make_request(text=RESUME))

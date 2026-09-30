@@ -15,6 +15,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Budget, CallLog
+from app.db.repositories.budget import read_spent
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,10 @@ class Reservation:
 
 class GatewayLedger:
     """Repository for `budget` and `call_log` as the gateway uses them."""
+
+    async def read_spent(self, session: AsyncSession) -> Decimal | None:
+        """USD spent or reserved so far, or None when the budget row does not exist."""
+        return await read_spent(session)
 
     async def reserve(
         self,
