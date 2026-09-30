@@ -1,0 +1,18 @@
+{
+  "project": "HireKit",
+  "group": "HireKit",
+  "repos": [
+    {
+      "name": "HireKitApp",
+      "git_path": "HireKit/Server/HireKitApp",
+      "stack": "none",
+      "stack_note": "monorepo with two stacks: backend/ is python-api and web/ is react-web (ADR-0007); the kit plans one stack per entry, so each folder is adopted with onboard-repo --stack rather than new-repo",
+      "tech": "Python 3.14, FastAPI, async SQLAlchemy, Alembic, PostgreSQL (backend/); React, TypeScript, Vite (web/)",
+      "responsibility": "The API, the background worker and the web app in one repository, each folder with its own gate, plus the shared docs, seed data and recordings",
+      "apps": [
+        {"path": "backend", "name": "Api and worker", "for": "the REST API, the job worker, the anonymizer, the scoring pipeline and the model gateway"},
+        {"path": "web", "name": "Web", "for": "recruiters and interviewers using the ranked list, detail, kit, feedback and comparison screens"}
+      ]
+    }
+  ]
+}
