@@ -185,7 +185,7 @@ None. No environment variable, no setting: the word lists and patterns are code 
 | `test_load_anonymized_returns_the_stored_text_as_anonymized_text` | integration | AC-US-00-005-1, AC-US-00-005-2 |
 | `test_all_forty_seed_resumes_leave_no_name_email_phone_or_dob` | integration (once US-02-007 exists) | AC-US-02-004-1 |
 
-Tests named: 41. Every limit has both sides (500,000 characters refused, an empty string refused; a common-word name masked in a name position and kept in running text; a city masked capitalised and kept as a common word).
+Tests named: 42. Every limit has both sides (500,000 characters refused, an empty string refused; a common-word name masked in a name position and kept in running text; a city masked capitalised and kept as a common word).
 
 ## 9. Work breakdown
 
