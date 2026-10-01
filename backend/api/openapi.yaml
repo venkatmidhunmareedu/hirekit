@@ -1,0 +1,1547 @@
+openapi: 3.1.0
+info:
+  title: HireKit API
+  version: 1.0.0
+  description: |
+    The REST API the HireKit web app calls: sign-in, roles and criteria, resume upload,
+    the ranked candidate list, recruiter decisions, the interview kit, interviewer feedback,
+    comparison, jobs and the model cost log. Two roles use it: the recruiter and the
+    interviewer. An interviewer never receives resume text, evidence quotes, notes, audit
+    history, file names or another interviewer's feedback.
+    Serves: US-00-001 to US-00-016, US-02-002 (AC-US-02-002-4). Design: docs/design/api-lld.md.
+    Style: docs/api/README.md.
+  contact:
+    name: HireKit maintainers
+  x-api-style: REST over HTTPS with JSON bodies, one service, one React client generated from this file (ADR-0006).
+  x-versioning: >-
+    Major in the path (/v1). No dated behaviour versions in the first build; the first breaking
+    change is planned with the api-versioning skill.
+  x-authentication: >-
+    A server-side session in the HttpOnly cookie hirekit_session (ADR-0005). Every POST, PUT and
+    DELETE also sends the session's csrf_token in the X-CSRF-Token header. A record the caller may
+    not see is 404, never 403, so existence is not leaked.
+  x-conventions:
+    - rule: No Idempotency-Key header on creating POSTs.
+      why: The design stops duplicates in the database instead (unique open-job indexes, content-hash duplicate flags, idempotent assignment, 409 on a repeat feedback submit). Only POST /v1/roles can double-create on a retry, and a duplicate role is harmless and visible; revisit if it is not.
+    - rule: The ranked list and the job queue view use limit and offset, not cursors.
+      why: The order is a computed weighted total that no cursor can key on, and one role holds at most about 1,200 candidates (offset capped at 1,000); the cost log, which grows without bound, uses a cursor.
+    - rule: No X-API-Version and no rate-limit headers in the first build.
+      why: One client, one maintainer, local demo (HLD section 1); a hosted deployment adds both.
+    - rule: Errors carry details as an object, not a list.
+      why: The existing FastAPI envelope (app/core/errors.py) already returns an object and the generated client is built from it.
+servers:
+  - url: http://localhost:8080
+    description: local development, behind the Vite dev proxy
+security:
+  - cookieAuth: []
+    csrfToken: []
+tags:
+  - name: auth
+    description: Sign in, sign out, the current user.
+  - name: roles
+    description: Roles, criteria, approval, proposals.
+  - name: resumes
+    description: Bulk upload and the per-role queue view.
+  - name: candidates
+    description: The ranked list, detail, decisions and assignments.
+  - name: kit
+    description: The per-role interview kit.
+  - name: feedback
+    description: Interviewer feedback and its approved edits.
+  - name: compare
+    description: Side-by-side comparison of two to four candidates.
+  - name: jobs
+    description: Background jobs the Worker runs.
+  - name: cost
+    description: The model budget and the call log.
+  - name: health
+    description: Liveness and readiness.
+
+paths:
+  /healthz:
+    get:
+      operationId: getHealth
+      summary: Liveness
+      tags: [health]
+      security: []
+      x-story-ids: [unnumbered]
+      responses:
+        '200':
+          description: The process is up
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+  /readyz:
+    get:
+      operationId: getReadiness
+      summary: Readiness (the database answers)
+      tags: [health]
+      security: []
+      x-story-ids: [unnumbered]
+      responses:
+        '200':
+          description: Ready
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ready' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /v1/auth/login:
+    post:
+      operationId: login
+      summary: Sign in and set the session cookie
+      tags: [auth]
+      security: []
+      x-story-ids: [US-00-012]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Signed in; the cookie is set and the CSRF token returned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      summary: Sign out (deletes the session and clears the cookie)
+      tags: [auth]
+      x-story-ids: [US-00-012]
+      responses:
+        '204': { description: Signed out }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/auth/me:
+    get:
+      operationId: getCurrentUser
+      summary: The signed-in user and a CSRF token
+      tags: [auth]
+      security:
+        - cookieAuth: []
+      x-story-ids: [US-00-012]
+      responses:
+        '200':
+          description: The session
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/roles:
+    post:
+      operationId: createRole
+      summary: Create a Draft role
+      tags: [roles]
+      x-story-ids: [US-00-001]
+      x-roles: [recruiter]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoleCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Role' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    get:
+      operationId: listRoles
+      summary: List roles (at most 50, newest first)
+      tags: [roles]
+      x-story-ids: [US-00-001]
+      x-roles: [recruiter]
+      responses:
+        '200':
+          description: The roles
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    maxItems: 50
+                    items: { $ref: '#/components/schemas/Role' }
+                example:
+                  data:
+                    - id: 10000000-0000-4000-8000-000000000001
+                      title: Backend engineer
+                      job_description: Build and run our payments API.
+                      status: approved
+                      criteria_version: 2
+                      created_at: 2026-09-30T09:00:00Z
+                      updated_at: 2026-09-30T09:30:00Z
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/roles/{role_id}:
+    parameters:
+      - $ref: '#/components/parameters/RoleId'
+    get:
+      operationId: getRole
+      summary: One role with its criteria and rubric
+      description: >-
+        An interviewer may read a role only when they have an assigned candidate in it;
+        otherwise 404.
+      tags: [roles]
+      x-story-ids: [US-00-001, US-00-002, US-00-012]
+      x-roles: [recruiter, interviewer]
+      responses:
+        '200':
+          description: The role
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/roles/{role_id}/criteria:propose:
+    post:
+      operationId: proposeCriteria
+      summary: Ask the model to propose criteria (enqueues a job)
+      tags: [roles]
+      x-story-ids: [US-00-001]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+      responses:
+        '202':
+          description: Job enqueued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /v1/roles/{role_id}/criteria:
+    put:
+      operationId: replaceCriteria
+      summary: Replace the criteria set in place (a removed id is retired, never deleted)
+      description: >-
+        Edits by id. Bumps criteria_version and returns an approved role to Draft. Idempotent by
+        definition (PUT).
+      tags: [roles]
+      x-story-ids: [US-00-002]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CriteriaReplace' }
+      responses:
+        '200':
+          description: The role with its new criteria
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /v1/roles/{role_id}/approve:
+    post:
+      operationId: approveRole
+      summary: Approve the criteria
+      tags: [roles]
+      x-story-ids: [US-00-002]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApproveRequest' }
+      responses:
+        '200':
+          description: Approved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Role' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /v1/roles/{role_id}/resumes:
+    post:
+      operationId: uploadResumes
+      summary: Upload up to 100 PDF or DOCX files
+      description: >-
+        Authenticated and CSRF-checked before the body is read. Each file is accepted or rejected
+        on its own; the response has one result per file. An upload to a Draft role, or in live
+        mode at the budget cap, is refused as a whole before any file is written.
+      tags: [resumes]
+      x-story-ids: [US-00-003]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/UploadRequest' }
+      responses:
+        '207':
+          description: One result per file
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /v1/roles/{role_id}/queue:
+    get:
+      operationId: getQueue
+      summary: Per-file job status for the whole role (at most 200, newest first)
+      tags: [resumes]
+      x-story-ids: [US-00-003]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+        - $ref: '#/components/parameters/Limit200'
+      responses:
+        '200':
+          description: The queue
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QueueView' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/roles/{role_id}/candidates:
+    get:
+      operationId: listCandidates
+      summary: The ranked list
+      description: >-
+        Every candidate of the role, ranked by weighted total with overrides applied; low scorers
+        stay visible. Scores from an older criteria version are returned and marked stale. Offset
+        pagination is used because the order is computed; limit is at most 200 and offset at most
+        1,000.
+      tags: [candidates]
+      x-story-ids: [US-00-008, US-00-009]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+        - name: filter[stage]
+          in: query
+          schema: { $ref: '#/components/schemas/Stage' }
+        - name: sort
+          in: query
+          description: total (default, descending) or a criterion id
+          schema: { type: string, default: total }
+        - $ref: '#/components/parameters/Limit200'
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, maximum: 1000, default: 0 }
+      responses:
+        '200':
+          description: One page of the ranked list
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RankedList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/roles/{role_id}:rescore:
+    post:
+      operationId: rescoreRole
+      summary: Re-run scoring for every candidate that needs it
+      description: >-
+        Candidates with an open scoring job are skipped, not failed. Refused for a Draft role and
+        in live mode at the budget cap.
+      tags: [jobs]
+      x-story-ids: [US-00-002, US-00-006]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+      responses:
+        '202':
+          description: Jobs enqueued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RescoreAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /v1/me/candidates:
+    get:
+      operationId: listMyCandidates
+      summary: The interviewer's assigned candidates (at most 200)
+      tags: [candidates]
+      x-story-ids: [US-00-012, US-00-016]
+      x-roles: [interviewer]
+      parameters:
+        - $ref: '#/components/parameters/Limit200'
+      responses:
+        '200':
+          description: The candidates assigned to the caller
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MyCandidates' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/candidates/{candidate_id}:
+    parameters:
+      - $ref: '#/components/parameters/CandidateId'
+    get:
+      operationId: getCandidate
+      summary: One candidate
+      description: >-
+        A recruiter gets every field. An interviewer gets it only for a candidate assigned to them,
+        and never receives quotes, notes, flag reasons, audit history, file names, resume text, or
+        (until they submit feedback) any model score.
+      tags: [candidates]
+      x-story-ids: [US-00-008, US-00-009, US-00-012, US-00-014]
+      x-roles: [recruiter, interviewer]
+      responses:
+        '200':
+          description: The candidate
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CandidateDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/candidates/{candidate_id}/text:
+    get:
+      operationId: getCandidateText
+      summary: Raw and anonymized resume text
+      tags: [candidates]
+      x-story-ids: [US-00-005]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/CandidateId'
+      responses:
+        '200':
+          description: 'The texts (personal data, recruiters only)'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CandidateText' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/candidates/{candidate_id}:retry:
+    post:
+      operationId: retryCandidate
+      summary: Enqueue a new scoring job for a candidate that needs scoring
+      tags: [jobs]
+      x-story-ids: [US-00-003, US-00-006]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/CandidateId'
+      responses:
+        '202':
+          description: Job enqueued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /v1/candidates/{candidate_id}/scores/{criterion_id}/override:
+    put:
+      operationId: overrideScore
+      summary: Override a criterion score with a note
+      tags: [candidates]
+      x-story-ids: [US-00-010]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/CandidateId'
+        - $ref: '#/components/parameters/CriterionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OverrideRequest' }
+      responses:
+        '200':
+          description: The updated score cell
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScoreCell' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /v1/candidates/{candidate_id}/stage:
+    post:
+      operationId: changeStage
+      summary: Change the stage (the only route that writes it)
+      tags: [candidates]
+      x-story-ids: [US-00-011]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/CandidateId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StageRequest' }
+      responses:
+        '200':
+          description: The new stage
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StageChanged' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /v1/candidates/{candidate_id}:reveal-identity:
+    post:
+      operationId: revealIdentity
+      summary: Reveal the candidate's name (audited before it is returned)
+      tags: [candidates]
+      x-story-ids: [US-00-009]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/CandidateId'
+      responses:
+        '200':
+          description: The identity (personal data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Identity' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/candidates/{candidate_id}/assignments:
+    post:
+      operationId: assignInterviewer
+      summary: Assign an interviewer (idempotent)
+      tags: [candidates]
+      x-story-ids: [US-00-016]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/CandidateId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignRequest' }
+      responses:
+        '201':
+          description: Assigned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Assignment' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /v1/candidates/{candidate_id}/assignments/{user_id}:
+    delete:
+      operationId: removeAssignment
+      summary: Remove an assignment
+      tags: [candidates]
+      x-story-ids: [US-00-016]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/CandidateId'
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/roles/{role_id}/kit:generate:
+    post:
+      operationId: generateKit
+      summary: Generate the interview kit (enqueues a job, one model call per criterion)
+      tags: [kit]
+      x-story-ids: [US-00-013]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+      responses:
+        '202':
+          description: Job enqueued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /v1/roles/{role_id}/kit:
+    get:
+      operationId: getKit
+      summary: The kit; stale when it was generated for older criteria
+      tags: [kit]
+      x-story-ids: [US-00-002, US-00-013]
+      x-roles: [recruiter, interviewer]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+      responses:
+        '200':
+          description: The kit
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Kit' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/kit/questions/{question_id}:
+    parameters:
+      - $ref: '#/components/parameters/QuestionId'
+    put:
+      operationId: updateQuestion
+      summary: Edit or reorder a question in place
+      tags: [kit]
+      x-story-ids: [US-00-013]
+      x-roles: [recruiter]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuestionUpdate' }
+      responses:
+        '200':
+          description: The question
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Question' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      operationId: deleteQuestion
+      summary: Delete a question
+      tags: [kit]
+      x-story-ids: [US-00-013]
+      x-roles: [recruiter]
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/kit/questions/{question_id}:regenerate:
+    post:
+      operationId: regenerateQuestion
+      summary: Regenerate one question (enqueues a job)
+      tags: [kit]
+      x-story-ids: [US-00-013]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/QuestionId'
+      responses:
+        '202':
+          description: Job enqueued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /v1/candidates/{candidate_id}/feedback:
+    parameters:
+      - $ref: '#/components/parameters/CandidateId'
+    post:
+      operationId: submitFeedback
+      summary: Submit feedback for every criterion (locks it)
+      tags: [feedback]
+      x-story-ids: [US-00-014]
+      x-roles: [interviewer]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FeedbackSubmit' }
+      responses:
+        '201':
+          description: Submitted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeedbackList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    get:
+      operationId: getFeedback
+      summary: Feedback (a recruiter sees every interviewer's, an interviewer only their own)
+      tags: [feedback]
+      x-story-ids: [US-00-014, US-00-015]
+      x-roles: [recruiter, interviewer]
+      responses:
+        '200':
+          description: The feedback
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeedbackList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      operationId: editFeedback
+      summary: Save an approved edit and lock it again
+      tags: [feedback]
+      x-story-ids: [US-00-014]
+      x-roles: [interviewer]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FeedbackSubmit' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeedbackList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /v1/candidates/{candidate_id}/feedback/{interviewer_id}:approve-edit:
+    post:
+      operationId: approveFeedbackEdit
+      summary: Unlock one interviewer's feedback for an edit
+      tags: [feedback]
+      x-story-ids: [US-00-014]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/CandidateId'
+        - name: interviewer_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Unlocked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeedbackList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/compare:
+    get:
+      operationId: compareCandidates
+      summary: Compare two to four candidates by criterion
+      description: >-
+        For an interviewer, resume scores and overrides are hidden for a candidate they have not
+        submitted feedback on, only their own feedback is returned, no quote is ever selected, and
+        one unassigned id makes the whole request 404.
+      tags: [compare]
+      x-story-ids: [US-00-015]
+      x-roles: [recruiter, interviewer]
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          description: Two to four candidate ids, comma separated
+          schema: { type: string }
+          example: 30000000-0000-4000-8000-000000000001,30000000-0000-4000-8000-000000000002
+      responses:
+        '200':
+          description: The comparison
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comparison' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /v1/jobs/{job_id}:
+    get:
+      operationId: getJob
+      summary: A job's status
+      tags: [jobs]
+      x-story-ids: [US-00-001, US-00-003]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: The job
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/jobs/{job_id}:cancel:
+    post:
+      operationId: cancelJob
+      summary: Cancel a queued or running job
+      tags: [jobs]
+      x-story-ids: [US-00-001]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /v1/cost-log:
+    get:
+      operationId: getCostLog
+      summary: The model budget and the call log (cursor, newest first)
+      tags: [cost]
+      x-story-ids: [US-00-012, US-02-002]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200':
+          description: One page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostLog' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: hirekit_session
+      description: Server-side session cookie (HttpOnly, SameSite=Lax; Secure outside local development).
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: The csrf_token from login or GET /v1/auth/me; required on every POST, PUT and DELETE.
+  parameters:
+    RoleId: { name: role_id, in: path, required: true, schema: { type: string, format: uuid } }
+    CandidateId: { name: candidate_id, in: path, required: true, schema: { type: string, format: uuid } }
+    CriterionId: { name: criterion_id, in: path, required: true, schema: { type: string, format: uuid } }
+    QuestionId: { name: question_id, in: path, required: true, schema: { type: string, format: uuid } }
+    JobId: { name: job_id, in: path, required: true, schema: { type: integer, format: int64 } }
+    Cursor:
+      name: cursor
+      in: query
+      description: Opaque cursor from the previous page
+      schema: { type: string }
+    Limit200:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 100 }
+  responses:
+    Unauthorized:
+      description: No signed-in user, or the session expired
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          example: { error: { code: unauthenticated, message: sign in required, details: {}, request_id: req_01J9Z6 } }
+    Forbidden:
+      description: Signed in but not allowed (wrong role, or a missing or wrong CSRF token)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          example: { error: { code: forbidden, message: this role cannot do that, details: {}, request_id: req_01J9Z6 } }
+    NotFound:
+      description: Not found, or not visible to this caller (existence is never revealed)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          example: { error: { code: not_found, message: not found, details: {}, request_id: req_01J9Z6 } }
+    Conflict:
+      description: The request conflicts with the current state
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          example: { error: { code: role_not_approved, message: approve the criteria first, details: {}, request_id: req_01J9Z6 } }
+    PayloadTooLarge:
+      description: The request body is over the size cap
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          example: { error: { code: payload_too_large, message: request too large, details: {}, request_id: req_01J9Z6 } }
+    Unprocessable:
+      description: Valid shape but invalid content
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          example: { error: { code: validation_error, message: request failed validation, details: { errors: [] }, request_id: req_01J9Z6 } }
+    InternalError:
+      description: Unexpected error (no detail is returned)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          example: { error: { code: internal, message: internal error, details: {}, request_id: req_01J9Z6 } }
+    ServiceUnavailable:
+      description: A dependency is not reachable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          example: { error: { code: service_unavailable, message: database unreachable, details: {}, request_id: req_01J9Z6 } }
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+            request_id: { type: [string, 'null'] }
+      example: { error: { code: not_found, message: not found, details: {}, request_id: req_01J9Z6 } }
+      x-error-codes:
+        - { code: unauthenticated, status: 401, meaning: "No signed-in user, an expired session, or a wrong email or password" }
+        - { code: csrf_failed, status: 403, meaning: "The X-CSRF-Token header is missing or wrong" }
+        - { code: forbidden, status: 403, meaning: "The caller's role may not use this route" }
+        - { code: not_found, status: 404, meaning: "Missing, or not visible to this caller" }
+        - { code: role_not_approved, status: 409, meaning: "The role is Draft; approve the criteria first" }
+        - { code: scores_stale, status: 409, meaning: "The score belongs to an older criteria version" }
+        - { code: same_stage, status: 409, meaning: "The candidate is already in that stage" }
+        - { code: job_already_open, status: 409, meaning: "A scoring, proposal or kit job is already open" }
+        - { code: not_retryable, status: 409, meaning: "The candidate does not need scoring" }
+        - { code: job_not_cancellable, status: 409, meaning: "The job is already finished" }
+        - { code: feedback_locked, status: 409, meaning: "Feedback is already submitted and locked" }
+        - { code: criteria_changed, status: 409, meaning: "The criteria changed since the caller loaded them" }
+        - { code: budget_reached, status: 409, meaning: "The model budget is reached in live mode" }
+        - { code: incomplete_feedback, status: 422, meaning: "A criterion has no score or comment" }
+        - { code: too_many_files, status: 422, meaning: "More than 100 files in one upload" }
+        - { code: no_criteria, status: 422, meaning: "The role has no criteria to approve" }
+        - { code: validation_error, status: 422, meaning: "A field failed validation" }
+        - { code: payload_too_large, status: 413, meaning: "The request body is over the cap" }
+        - { code: internal, status: 500, meaning: "An unexpected error; quote the request_id" }
+        - { code: service_unavailable, status: 503, meaning: "The database cannot be reached" }
+    Health:
+      type: object
+      required: [status, version]
+      properties:
+        status: { type: string }
+        version: { type: string }
+      example: { status: ok, version: 0.1.0 }
+    Ready:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+      example: { status: ready }
+    Role_kind: { type: string, enum: [recruiter, interviewer], example: recruiter }
+    Stage:
+      type: string
+      enum: [new, screened, interview, offer, hired, rejected, withdrawn]
+      example: screened
+    LoginRequest:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+      example: { email: recruiter@example.com, password: change-me }
+    User:
+      type: object
+      required: [id, name, email, role]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role_kind' }
+      example: { id: 00000000-0000-4000-8000-000000000001, name: Riya, email: recruiter@example.com, role: recruiter }
+    Session:
+      type: object
+      required: [user, csrf_token]
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        csrf_token: { type: string }
+      example:
+        user: { id: 00000000-0000-4000-8000-000000000001, name: Riya, email: recruiter@example.com, role: recruiter }
+        csrf_token: 3f9c1d2ab84e4c7f
+    RoleCreate:
+      type: object
+      required: [title, job_description]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1 }
+        job_description: { type: string, minLength: 1 }
+      example: { title: Backend engineer, job_description: Build and run our payments API. }
+    Role:
+      type: object
+      required: [id, title, job_description, status, criteria_version, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        job_description: { type: string }
+        status: { type: string, enum: [draft, approved] }
+        criteria_version: { type: integer, minimum: 1 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      example:
+        id: 10000000-0000-4000-8000-000000000001
+        title: Backend engineer
+        job_description: Build and run our payments API.
+        status: draft
+        criteria_version: 1
+        created_at: 2026-09-30T09:00:00Z
+        updated_at: 2026-09-30T09:00:00Z
+    RubricLevel:
+      type: object
+      required: [level, descriptor]
+      properties:
+        level: { type: integer, minimum: 0, maximum: 4 }
+        descriptor: { type: string }
+      example: { level: 4, descriptor: Led the design of a production payments system }
+    Criterion:
+      type: object
+      required: [id, name, kind, weight, position, rubric]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        kind: { type: string, enum: [must_have, nice_to_have] }
+        weight: { type: number, exclusiveMinimum: 0 }
+        position: { type: integer }
+        rubric:
+          type: array
+          items: { $ref: '#/components/schemas/RubricLevel' }
+      example:
+        id: 20000000-0000-4000-8000-000000000001
+        name: Python experience
+        kind: must_have
+        weight: 3
+        position: 1
+        rubric: [{ level: 0, descriptor: No evidence }, { level: 4, descriptor: Led a production Python system }]
+    RoleDetail:
+      allOf:
+        - $ref: '#/components/schemas/Role'
+        - type: object
+          required: [criteria]
+          properties:
+            criteria:
+              type: array
+              items: { $ref: '#/components/schemas/Criterion' }
+      example:
+        id: 10000000-0000-4000-8000-000000000001
+        title: Backend engineer
+        job_description: Build and run our payments API.
+        status: approved
+        criteria_version: 2
+        created_at: 2026-09-30T09:00:00Z
+        updated_at: 2026-09-30T09:30:00Z
+        criteria:
+          - id: 20000000-0000-4000-8000-000000000001
+            name: Python experience
+            kind: must_have
+            weight: 3
+            position: 1
+            rubric: [{ level: 0, descriptor: No evidence }, { level: 4, descriptor: Led a production Python system }]
+    CriterionInput:
+      type: object
+      required: [name, kind, weight, rubric]
+      additionalProperties: false
+      properties:
+        id: { type: [string, 'null'], format: uuid, description: Existing id to edit in place; omit for a new criterion }
+        name: { type: string, minLength: 1 }
+        kind: { type: string, enum: [must_have, nice_to_have] }
+        weight: { type: number, exclusiveMinimum: 0 }
+        rubric:
+          type: array
+          items: { $ref: '#/components/schemas/RubricLevel' }
+      example:
+        id: 20000000-0000-4000-8000-000000000001
+        name: Python experience
+        kind: must_have
+        weight: 3
+        rubric: [{ level: 0, descriptor: No evidence }, { level: 4, descriptor: Led a production Python system }]
+    CriteriaReplace:
+      type: object
+      required: [criteria]
+      additionalProperties: false
+      properties:
+        criteria:
+          type: array
+          items: { $ref: '#/components/schemas/CriterionInput' }
+      example:
+        criteria:
+          - { id: 20000000-0000-4000-8000-000000000001, name: Python experience, kind: must_have, weight: 3, rubric: [{ level: 0, descriptor: No evidence }] }
+    ApproveRequest:
+      type: object
+      required: [criteria_version]
+      additionalProperties: false
+      properties:
+        criteria_version: { type: integer, description: The version the recruiter saw; a different current version is 409 criteria_changed }
+      example: { criteria_version: 2 }
+    JobAccepted:
+      type: object
+      required: [job_id]
+      properties:
+        job_id: { type: integer, format: int64 }
+      example: { job_id: 41 }
+    RescoreAccepted:
+      type: object
+      required: [job_ids, skipped_candidate_nos]
+      properties:
+        job_ids: { type: array, items: { type: integer, format: int64 } }
+        skipped_candidate_nos: { type: array, items: { type: integer } }
+      example: { job_ids: [41, 42], skipped_candidate_nos: [7] }
+    Job:
+      type: object
+      required: [id, type, status, role_id, criteria_version, attempt, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        type: { type: string, enum: [process_resume, propose_criteria, generate_kit, regenerate_question, rescore] }
+        status: { type: string, enum: [queued, running, succeeded, failed, stale, cancelled] }
+        role_id: { type: string, format: uuid }
+        candidate_no: { type: [integer, 'null'] }
+        criteria_version: { type: integer }
+        attempt: { type: integer, minimum: 0, maximum: 3 }
+        last_error: { type: [string, 'null'], description: 'A short code, never text from a resume' }
+        created_at: { type: string, format: date-time }
+      example:
+        id: 41
+        type: process_resume
+        status: running
+        role_id: 10000000-0000-4000-8000-000000000001
+        candidate_no: 14
+        criteria_version: 2
+        attempt: 1
+        last_error: null
+        created_at: 2026-09-30T09:40:00Z
+    UploadRequest:
+      type: object
+      required: [files]
+      properties:
+        files:
+          type: array
+          maxItems: 100
+          items: { type: string, format: binary }
+      example: { files: [resume-1.pdf, resume-2.docx] }
+    UploadFileResult:
+      type: object
+      required: [file_name, status]
+      properties:
+        file_name: { type: string, description: Echo of the name the caller just sent; no other response carries it }
+        status: { type: string, enum: [accepted, rejected, role_not_approved] }
+        candidate_id: { type: [string, 'null'], format: uuid }
+        candidate_no: { type: [integer, 'null'] }
+        duplicate_of_candidate_no: { type: [integer, 'null'] }
+        reason: { type: [string, 'null'] }
+      example:
+        file_name: resume-1.pdf
+        status: accepted
+        candidate_id: 30000000-0000-4000-8000-000000000001
+        candidate_no: 14
+        duplicate_of_candidate_no: null
+        reason: null
+    UploadResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/UploadFileResult' }
+      example:
+        results:
+          - { file_name: resume-1.pdf, status: accepted, candidate_id: 30000000-0000-4000-8000-000000000001, candidate_no: 14, duplicate_of_candidate_no: null, reason: null }
+          - { file_name: notes.txt, status: rejected, candidate_id: null, candidate_no: null, duplicate_of_candidate_no: null, reason: Only PDF and DOCX files are accepted }
+    QueueItem:
+      type: object
+      required: [candidate_id, candidate_no, processing_status]
+      properties:
+        candidate_id: { type: string, format: uuid }
+        candidate_no: { type: integer }
+        processing_status: { type: string, enum: [queued, parsing, anonymizing, scoring, done, failed] }
+        failure_reason: { type: [string, 'null'] }
+        job: { oneOf: [{ $ref: '#/components/schemas/Job' }, { type: 'null' }] }
+      example:
+        candidate_id: 30000000-0000-4000-8000-000000000001
+        candidate_no: 14
+        processing_status: scoring
+        failure_reason: null
+        job: null
+    QueueView:
+      type: object
+      required: [data, waiting, running]
+      properties:
+        data: { type: array, maxItems: 200, items: { $ref: '#/components/schemas/QueueItem' } }
+        waiting: { type: integer, description: Files waiting }
+        running: { type: integer, description: Files being processed }
+      example:
+        data:
+          - { candidate_id: 30000000-0000-4000-8000-000000000001, candidate_no: 14, processing_status: scoring, failure_reason: null, job: null }
+        waiting: 12
+        running: 4
+    ScoreCell:
+      type: object
+      required: [criterion_id, criterion_name, kind, status, source]
+      properties:
+        criterion_id: { type: string, format: uuid }
+        criterion_name: { type: string }
+        kind: { type: string, enum: [must_have, nice_to_have] }
+        status: { type: string, enum: [scored, no_evidence, failed] }
+        model_score: { type: [integer, 'null'], minimum: 0, maximum: 4 }
+        override_score: { type: [integer, 'null'], minimum: 0, maximum: 4 }
+        source: { type: string, enum: [model_suggestion, no_evidence_found, recruiter_override, failed] }
+        stale: { type: boolean }
+        quote: { type: [string, 'null'], description: Recruiter only; the verified evidence quote }
+        flag_reason: { type: [string, 'null'], description: Recruiter only }
+        override_note: { type: [string, 'null'], description: Recruiter only }
+      example:
+        criterion_id: 20000000-0000-4000-8000-000000000001
+        criterion_name: Python experience
+        kind: must_have
+        status: scored
+        model_score: 3
+        override_score: null
+        source: model_suggestion
+        stale: false
+        quote: Built a payments service in Python at Acme.
+        flag_reason: null
+        override_note: null
+    RankedCandidate:
+      type: object
+      required: [id, candidate_no, stage, processing_status, total, must_have_covered, must_have_total, stale, scores]
+      properties:
+        id: { type: string, format: uuid }
+        candidate_no: { type: integer }
+        stage: { $ref: '#/components/schemas/Stage' }
+        processing_status: { type: string, enum: [queued, parsing, anonymizing, scoring, done, failed] }
+        failure_reason: { type: [string, 'null'] }
+        total: { type: number }
+        must_have_covered: { type: integer }
+        must_have_total: { type: integer }
+        stale: { type: boolean, description: True when the scores are from an older criteria version }
+        duplicate_of_candidate_no: { type: [integer, 'null'] }
+        scores:
+          type: array
+          items: { $ref: '#/components/schemas/ScoreCell' }
+      example:
+        id: 30000000-0000-4000-8000-000000000001
+        candidate_no: 14
+        stage: screened
+        processing_status: done
+        failure_reason: null
+        total: 11.5
+        must_have_covered: 2
+        must_have_total: 3
+        stale: false
+        duplicate_of_candidate_no: null
+        scores: []
+    RankedList:
+      type: object
+      required: [data, page]
+      properties:
+        data: { type: array, maxItems: 200, items: { $ref: '#/components/schemas/RankedCandidate' } }
+        page:
+          type: object
+          required: [limit, offset, total]
+          properties:
+            limit: { type: integer }
+            offset: { type: integer }
+            total: { type: integer }
+      example:
+        data: []
+        page: { limit: 100, offset: 0, total: 0 }
+    MyCandidates:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          maxItems: 200
+          items:
+            type: object
+            required: [candidate_id, candidate_no, role_id, role_title, has_submitted]
+            properties:
+              candidate_id: { type: string, format: uuid }
+              candidate_no: { type: integer }
+              role_id: { type: string, format: uuid }
+              role_title: { type: string }
+              has_submitted: { type: boolean }
+      example:
+        data:
+          - { candidate_id: 30000000-0000-4000-8000-000000000001, candidate_no: 14, role_id: 10000000-0000-4000-8000-000000000001, role_title: Backend engineer, has_submitted: false }
+    AuditEvent:
+      type: object
+      required: [id, kind, actor_id, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        kind: { type: string, enum: [score_override, stage_change, identity_reveal, feedback_edit_approved, feedback_edited] }
+        actor_id: { type: string, format: uuid }
+        criterion_name: { type: [string, 'null'] }
+        old_score: { type: [integer, 'null'] }
+        new_score: { type: [integer, 'null'] }
+        from_stage: { oneOf: [{ $ref: '#/components/schemas/Stage' }, { type: 'null' }] }
+        to_stage: { oneOf: [{ $ref: '#/components/schemas/Stage' }, { type: 'null' }] }
+        note: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
+      example:
+        id: 12
+        kind: stage_change
+        actor_id: 00000000-0000-4000-8000-000000000001
+        criterion_name: null
+        old_score: null
+        new_score: null
+        from_stage: new
+        to_stage: screened
+        note: null
+        created_at: 2026-09-30T10:00:00Z
+    CandidateDetail:
+      type: object
+      required: [id, candidate_no, role_id]
+      properties:
+        id: { type: string, format: uuid }
+        candidate_no: { type: integer }
+        role_id: { type: string, format: uuid }
+        stage: { $ref: '#/components/schemas/Stage' }
+        processing_status: { type: string, enum: [queued, parsing, anonymizing, scoring, done, failed] }
+        scores:
+          type: array
+          description: For an interviewer, present only after they submit feedback, and without quote, flag reason or note
+          items: { $ref: '#/components/schemas/ScoreCell' }
+        audit: { type: array, description: 'Recruiter only', items: { $ref: '#/components/schemas/AuditEvent' } }
+        has_submitted: { type: boolean, description: Interviewer view }
+      example:
+        id: 30000000-0000-4000-8000-000000000001
+        candidate_no: 14
+        role_id: 10000000-0000-4000-8000-000000000001
+        stage: screened
+        processing_status: done
+        scores: []
+        audit: []
+        has_submitted: false
+    CandidateText:
+      type: object
+      required: [raw_text, anonymized_text]
+      properties:
+        raw_text: { type: string }
+        anonymized_text: { type: string }
+      example: { raw_text: Jane Doe. Built a payments service., anonymized_text: Built a payments service. }
+    OverrideRequest:
+      type: object
+      required: [override_score, note]
+      additionalProperties: false
+      properties:
+        override_score: { type: integer, minimum: 0, maximum: 4 }
+        note: { type: string, minLength: 10 }
+      example: { override_score: 4, note: 'Led the migration, seen in the interview notes' }
+    StageRequest:
+      type: object
+      required: [stage]
+      additionalProperties: false
+      properties:
+        stage: { $ref: '#/components/schemas/Stage' }
+        reason: { type: [string, 'null'], description: Optional; recorded in the audit history }
+      example: { stage: rejected, reason: Missing a must-have }
+    StageChanged:
+      type: object
+      required: [candidate_id, from_stage, to_stage]
+      properties:
+        candidate_id: { type: string, format: uuid }
+        from_stage: { $ref: '#/components/schemas/Stage' }
+        to_stage: { $ref: '#/components/schemas/Stage' }
+      example: { candidate_id: 30000000-0000-4000-8000-000000000001, from_stage: new, to_stage: screened }
+    Identity:
+      type: object
+      required: [identity_name, file_name]
+      properties:
+        identity_name: { type: [string, 'null'] }
+        file_name: { type: string }
+      example: { identity_name: Jane Doe, file_name: Jane_Doe_CV.pdf }
+    AssignRequest:
+      type: object
+      required: [user_id]
+      additionalProperties: false
+      properties:
+        user_id: { type: string, format: uuid, description: Must be an interviewer }
+      example: { user_id: 00000000-0000-4000-8000-000000000002 }
+    Assignment:
+      type: object
+      required: [candidate_id, user_id]
+      properties:
+        candidate_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+      example: { candidate_id: 30000000-0000-4000-8000-000000000001, user_id: 00000000-0000-4000-8000-000000000002 }
+    Question:
+      type: object
+      required: [id, criterion_id, question_text, strong_answer, weak_answer, position]
+      properties:
+        id: { type: string, format: uuid }
+        criterion_id: { type: string, format: uuid }
+        question_text: { type: string }
+        strong_answer: { type: string }
+        weak_answer: { type: string }
+        position: { type: integer }
+      example:
+        id: 50000000-0000-4000-8000-000000000001
+        criterion_id: 20000000-0000-4000-8000-000000000001
+        question_text: Tell us about a Python service you ran in production.
+        strong_answer: Names the load, the failures and what changed.
+        weak_answer: Describes a tutorial project.
+        position: 1
+    QuestionUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        question_text: { type: string, minLength: 1 }
+        strong_answer: { type: string, minLength: 1 }
+        weak_answer: { type: string, minLength: 1 }
+        position: { type: integer }
+      example: { question_text: Describe a Python service you ran in production., position: 2 }
+    Kit:
+      type: object
+      required: [role_id, stale, criteria_version, questions]
+      properties:
+        role_id: { type: string, format: uuid }
+        stale: { type: boolean, description: True when the kit was generated for older criteria }
+        criteria_version: { type: integer }
+        questions: { type: array, items: { $ref: '#/components/schemas/Question' } }
+      example:
+        role_id: 10000000-0000-4000-8000-000000000001
+        stale: false
+        criteria_version: 2
+        questions: []
+    FeedbackItem:
+      type: object
+      required: [criterion_id, score, comment]
+      additionalProperties: false
+      properties:
+        criterion_id: { type: string, format: uuid }
+        score: { type: integer, minimum: 0, maximum: 4 }
+        comment: { type: string, minLength: 1 }
+      example: { criterion_id: 20000000-0000-4000-8000-000000000001, score: 3, comment: Solid on the design questions }
+    FeedbackSubmit:
+      type: object
+      required: [items]
+      additionalProperties: false
+      properties:
+        items: { type: array, minItems: 1, items: { $ref: '#/components/schemas/FeedbackItem' } }
+      example:
+        items:
+          - { criterion_id: 20000000-0000-4000-8000-000000000001, score: 3, comment: Solid on the design questions }
+    FeedbackRow:
+      type: object
+      required: [interviewer_id, criterion_id, score, comment, locked]
+      properties:
+        interviewer_id: { type: string, format: uuid }
+        criterion_id: { type: string, format: uuid }
+        score: { type: integer }
+        comment: { type: string }
+        locked: { type: boolean }
+      example: { interviewer_id: 00000000-0000-4000-8000-000000000002, criterion_id: 20000000-0000-4000-8000-000000000001, score: 3, comment: Solid on the design questions, locked: true }
+    FeedbackList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/FeedbackRow' } }
+      example:
+        data:
+          - { interviewer_id: 00000000-0000-4000-8000-000000000002, criterion_id: 20000000-0000-4000-8000-000000000001, score: 3, comment: Solid on the design questions, locked: true }
+    CompareCell:
+      type: object
+      required: [criterion_id, feedback, disagreement]
+      properties:
+        criterion_id: { type: string, format: uuid }
+        model_score: { type: [integer, 'null'], description: Hidden from an interviewer who has not submitted for this candidate }
+        override_score: { type: [integer, 'null'], description: Hidden likewise }
+        feedback: { type: array, items: { $ref: '#/components/schemas/FeedbackRow' } }
+        disagreement: { type: boolean, description: Interviewers scored this criterion differently }
+      example:
+        criterion_id: 20000000-0000-4000-8000-000000000001
+        model_score: 3
+        override_score: null
+        feedback: []
+        disagreement: false
+    Comparison:
+      type: object
+      required: [criteria, candidates]
+      properties:
+        criteria:
+          type: array
+          description: Grouped by kind, must_have first
+          items:
+            type: object
+            required: [id, name, kind]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              kind: { type: string, enum: [must_have, nice_to_have] }
+        candidates:
+          type: array
+          minItems: 2
+          maxItems: 4
+          items:
+            type: object
+            required: [candidate_id, candidate_no, cells]
+            properties:
+              candidate_id: { type: string, format: uuid }
+              candidate_no: { type: integer }
+              cells: { type: array, items: { $ref: '#/components/schemas/CompareCell' } }
+      example:
+        criteria: [{ id: 20000000-0000-4000-8000-000000000001, name: Python experience, kind: must_have }]
+        candidates:
+          - { candidate_id: 30000000-0000-4000-8000-000000000001, candidate_no: 14, cells: [] }
+          - { candidate_id: 30000000-0000-4000-8000-000000000002, candidate_no: 15, cells: [] }
+    CostLog:
+      type: object
+      required: [budget, data, page]
+      properties:
+        budget:
+          type: object
+          required: [spent_usd, limit_usd, mode, model_actions_allowed]
+          properties:
+            spent_usd: { type: string, description: 'A decimal string, never a float' }
+            limit_usd: { type: string }
+            mode: { type: string, enum: [replay, live] }
+            model_actions_allowed: { type: boolean }
+        data:
+          type: array
+          items:
+            type: object
+            required: [id, purpose, status, model, cost_usd, created_at]
+            properties:
+              id: { type: integer, format: int64 }
+              purpose: { type: string, enum: [criteria, scoring, kit, eval] }
+              status: { type: string, enum: [reserved, settled, replayed, released] }
+              model: { type: string }
+              input_tokens: { type: [integer, 'null'] }
+              output_tokens: { type: [integer, 'null'] }
+              cost_usd: { type: string }
+              created_at: { type: string, format: date-time }
+        page:
+          type: object
+          required: [next_cursor, has_more]
+          properties:
+            next_cursor: { type: [string, 'null'] }
+            has_more: { type: boolean }
+      example:
+        budget: { spent_usd: '0.412300', limit_usd: '8', mode: replay, model_actions_allowed: true }
+        data:
+          - { id: 90, purpose: scoring, status: settled, model: 'anthropic/claude-haiku-4.5', input_tokens: 1200, output_tokens: 300, cost_usd: '0.002700', created_at: 2026-09-30T09:45:00Z }
+        page: { next_cursor: null, has_more: false }

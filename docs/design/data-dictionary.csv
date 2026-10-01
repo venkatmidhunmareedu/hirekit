@@ -1,0 +1,134 @@
+Table,Column,Type,Nullable,Key,Default,References,On Delete,Personal Data,Description,Why
+users,id,uuid,No,PK,gen_random_uuid(),,,No,Surrogate key.,"AC-US-00-010-5: audit rows record which user acted, by id."
+users,name,text,No,,,,,Yes,"Display name shown beside overrides, stage moves and feedback. [personal data: name]",AC-US-00-011-3: a rejection is logged under the recruiter's name.
+users,email,text,No,,,,,Yes,"Sign-in identifier, unique ignoring case. [personal data: contact]",ADR-0005 and Q-002: seeded logins need a login identifier.
+users,role,user_role,No,,,,,No,recruiter or interviewer; the value every route dependency checks.,"AC-US-00-012-2: the service refuses by role, not only the UI."
+users,password_hash,text,No,,,,,Yes,Password hash; the password itself is never stored. [personal data: credential],ADR-0005: hashed passwords; seed passwords are generated at seed time.
+users,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+sessions,token_hash,bytea,No,PK,,,,No,SHA-256 of the session cookie value; the cookie itself is never stored.,ADR-0005: server-side sessions; a copied database must not yield working cookies.
+sessions,user_id,uuid,No,FK,,users.id,CASCADE,No,The signed-in user.,AC-US-00-012-5: a request with no signed-in user is refused; removing a user ends the session.
+sessions,csrf_token,text,No,,,,,No,Token the client echoes in a header on state-changing requests.,HLD section 9: every state-changing request carries a CSRF token the Api checks.
+sessions,expires_at,timestamptz,No,,,,,No,When the session stops being valid; checked on every request.,ADR-0005: we own session expiry. The lifetime is UNDEFINED (section 6).
+sessions,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+roles,id,uuid,No,PK,gen_random_uuid(),,,No,Surrogate key.,AC-US-00-001-1: a saved role has an id every candidate and criterion points to.
+roles,title,text,No,,,,,No,The role title.,AC-US-00-001-1: a role is created with a title.
+roles,job_description,text,No,,,,,No,The job description the criteria proposal and kit prompts are built from.,AC-US-00-001-1 and AC-US-00-013-4: the kit prompt contains the job description and criteria.
+roles,status,role_status,No,,'draft',,,No,Draft or Approved.,"AC-US-00-002-3: upload, scoring and kit are blocked while Draft; AC-US-00-001-1: a new role is Draft."
+roles,criteria_version,integer,No,,1,,,No,"Counter bumped by every criteria or rubric write, including a model proposal.","REQ-006 and HLD section 7: the Worker writes scores only while this equals the job's version, which closes the edit and re-approve case."
+roles,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+roles,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
+criteria,id,uuid,No,PK,gen_random_uuid(),,,No,Surrogate key.,AC-US-00-006-1: scores and questions are keyed by criterion.
+criteria,role_id,uuid,No,FK,,roles.id,CASCADE,No,The role this criterion belongs to.,AC-US-00-001-3: a criterion is part of a role's proposal. CASCADE because a criterion has no life apart from its role.
+criteria,name,text,No,,,,,No,"What is being judged, for example Python experience.",AC-US-00-001-3: each criterion has a name.
+criteria,kind,criterion_kind,No,,,,,No,must_have or nice_to_have.,AC-US-00-008-2: must-have coverage is computed from the kind; AC-US-00-015-1 groups by it.
+criteria,weight,"numeric(6,3)",No,,,,,No,"Weight in the total; default set by kind, editable.",AC-US-00-008-1: the total is the weighted sum; Q-001: editable per criterion.
+criteria,position,integer,No,,,,,No,Display order inside the role.,AC-US-00-002-1: the recruiter can reorder criteria.
+criteria,retired_at,timestamptz,Yes,,,,,No,When the recruiter deleted the criterion; null while it is live. Retired rows stay so scores and feedback keep their target.,"AC-US-00-002-1 (delete a criterion) with REQ-037 (locked feedback is kept): deleting retires, never removes a row that feedback or scores point at."
+criteria,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+criteria,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
+rubric_levels,criterion_id,uuid,No,"PK, FK",,criteria.id,CASCADE,No,The criterion described.,AC-US-00-001-3: rubric descriptors belong to a criterion; they go with it.
+rubric_levels,level,smallint,No,,,,,No,Score value from 0 to 4; 0 means no evidence.,"Q-009 and AC-US-00-006-2: the scale is 0 to 4, shown beside every score."
+rubric_levels,descriptor,text,No,,,,,No,What a resume at this level looks like.,AC-US-00-001-3: rubric descriptors for each score level.
+rubric_levels,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+rubric_levels,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
+candidates,id,uuid,No,PK,gen_random_uuid(),,,No,Surrogate key.,AC-US-00-009-1: the list and every action address a candidate by id.
+candidates,candidate_no,bigint,No,,identity,,,No,Number shown as C-014 in every list instead of a name.,"AC-US-00-009-2: candidates appear as IDs, not names. Global, not per role."
+candidates,role_id,uuid,No,FK,,roles.id,RESTRICT,No,The role the resume was uploaded to.,AC-US-00-003-1: each file becomes a row under an Approved role. RESTRICT: no story deletes a role that has candidates.
+candidates,stage,candidate_stage,No,,'new',,,No,Hiring stage; written only by the stage endpoint.,"AC-US-00-011-1 and AC-US-00-011-4: a recruiter moves it, the system never does; AC-US-00-009-3 filters by it."
+candidates,processing_status,processing_state,No,,'queued',,,No,Per-file pipeline status.,"AC-US-00-003-5: each file shows queued, parsing, anonymizing, scoring, done or failed."
+candidates,failure_reason,text,Yes,,,,,No,Plain reason a file failed; null otherwise.,AC-US-00-003-3: a failed file stays in the list with a plain reason.
+candidates,file_name,text,No,,,,,Yes,Original upload name. [personal data: name inside a file name],"AC-US-00-003-1: each file is shown as a row. File names often carry the name, so it is personal data."
+candidates,content_hash,text,No,,,,,No,"SHA-256 hex of the uploaded bytes, kept after the bytes are deleted.",AC-US-00-003-4: a matching hash for the role flags a duplicate.
+candidates,duplicate_of_id,uuid,Yes,FK,,candidates.id,SET NULL,No,The earlier candidate with the same hash; null when not a duplicate.,"AC-US-00-003-4: flagged, never rejected (REQ-029). SET NULL so removing the original does not remove the flagged row."
+candidates,identity_name,text,Yes,,,,,Yes,"Name the anonymizer found, for Reveal identity; recruiters only. [personal data: name]","AC-US-00-009-2 and Q-007: names are hidden until a logged reveal. Null until extraction, or when none was found."
+candidates,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+candidates,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
+resume_files,candidate_id,uuid,No,"PK, FK",,candidates.id,CASCADE,No,The candidate this file was uploaded as.,ADR-0008: the file is written in the same transaction as its candidate and job; one file per candidate.
+resume_files,media_type,text,No,,,,,No,PDF or DOCX media type.,AC-US-00-003-2: only PDF and DOCX are accepted.
+resume_files,content,bytea,No,,,,,Yes,The original file bytes. [personal data: original resume file],AC-US-00-003-3: a failed extraction needs the original for the retry action.
+resume_files,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+resume_raw_texts,candidate_id,uuid,No,"PK, FK",,candidates.id,CASCADE,No,The candidate whose file this text came from.,AC-US-00-005-1: raw text is stored apart from anonymized text; one row per candidate.
+resume_raw_texts,raw_text,text,No,,,,,Yes,"Extracted text with names, contacts and location intact. [personal data: full resume text]","AC-US-00-005-5: recruiters can read it, other accounts are denied. Its own table so no interviewer or list query can pull it by accident and so a purge can drop it alone (PRD section 9)."
+resume_raw_texts,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+resume_texts,candidate_id,uuid,No,"PK, FK",,candidates.id,CASCADE,No,The candidate this text belongs to.,"AC-US-00-005-1: stored in its own row, apart from the raw text."
+resume_texts,anonymized_text,text,No,,,,,Yes,Text after identity signals were removed. [personal data: derived from a resume; proxy signals can remain],"AC-US-00-005-2 and AC-US-00-007-1: scoring reads only this, and every quote must appear in it. Marked personal data because proxy signals can remain (PRD section 13)."
+resume_texts,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+scores,candidate_id,uuid,No,"PK, FK",,candidates.id,CASCADE,No,The candidate scored.,AC-US-00-006-1: a score belongs to a candidate; removing the candidate removes its scores.
+scores,criterion_id,uuid,No,"PK, FK",,criteria.id,CASCADE,No,The criterion scored.,AC-US-00-006-1: one score per approved criterion.
+scores,criteria_version,integer,No,,,,,No,The roles.criteria_version the score was computed against; the scoring run.,"AC-US-00-002-5: a score is stale when this is below the role's version, so no writer has a stale flag to forget."
+scores,status,score_status,No,,,,,No,"scored, no_evidence or failed.","AC-US-00-006-4 and AC-US-00-007-3: failed and no-evidence criteria are listed, never guessed."
+scores,model_score,smallint,Yes,,,,,No,The model's score after capping; null when failed.,AC-US-00-007-4 and AC-US-00-007-5: capped when the quote fails or there is no evidence.
+scores,quote,text,Yes,,,,,Yes,"The evidence quote, stored only after code found it in the anonymized text. [personal data: excerpt of a resume]",Tenet 3 and AC-US-00-007-1: a score row exists only after verify_quote passed. Null means no evidence found.
+scores,flag_reason,text,Yes,,,,,No,"One line saying why the item is flagged, for example the quote was not found.",AC-US-00-007-4: the item is flagged with a line that says why.
+scores,override_score,smallint,Yes,,,,,No,Recruiter's replacement value; null when not overridden.,AC-US-00-010-3: both the model value and the override are kept and shown.
+scores,override_note,text,Yes,,,,,Yes,Why the recruiter overrode. [personal data: free text about a candidate],AC-US-00-010-1: a note of at least 10 characters is required.
+scores,overridden_by,uuid,Yes,FK,,users.id,RESTRICT,No,The recruiter who overrode.,AC-US-00-008-4: an override shows as Recruiter override; AC-US-00-010-5: recorded under a user.
+scores,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+scores,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
+assignments,candidate_id,uuid,No,"PK, FK",,candidates.id,CASCADE,No,The candidate assigned.,AC-US-00-016-1: the assignment makes the candidate visible; removing the candidate removes it.
+assignments,user_id,uuid,No,"PK, FK",,users.id,RESTRICT,No,The interviewer assigned.,AC-US-00-016-1: the interviewer sees that candidate. RESTRICT: an assigned user cannot vanish under an open assignment.
+assignments,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+audit_events,id,bigint,No,PK,identity,,,No,Sequence number; the order of events.,REQ-030: an audit history is ordered.
+audit_events,candidate_id,uuid,No,FK,,candidates.id,RESTRICT,No,The candidate acted on.,AC-US-00-011-2: the history is per candidate. RESTRICT: a candidate with history cannot be deleted by accident.
+audit_events,actor_id,uuid,No,FK,,users.id,RESTRICT,No,The user who acted.,AC-US-00-010-5 and AC-US-00-011-2: user and time are recorded.
+audit_events,kind,text,No,,,,,No,"score_override, stage_change, identity_reveal, feedback_edit_approved or feedback_edited.",REQ-030 and AC-US-00-009-2: each audited action is one kind.
+audit_events,criterion_name,text,Yes,,,,,No,Name of the criterion at the time; null for stage and reveal events.,"AC-US-00-010-5: the override record must stay readable after the criterion is renamed or deleted, so the name is copied, not referenced."
+audit_events,old_score,smallint,Yes,,,,,No,Value before the change.,AC-US-00-010-5: old value and new value are recorded.
+audit_events,new_score,smallint,Yes,,,,,No,Value after the change.,AC-US-00-010-5: old value and new value are recorded.
+audit_events,from_stage,candidate_stage,Yes,,,,,No,Stage before a stage_change.,AC-US-00-011-2: the stage history records from.
+audit_events,to_stage,candidate_stage,Yes,,,,,No,Stage after a stage_change.,AC-US-00-011-2 and AC-US-00-011-3: records to; Rejected is logged under the recruiter.
+audit_events,subject_user_id,uuid,Yes,FK,,users.id,RESTRICT,No,The interviewer whose feedback an event concerns.,AC-US-00-014-5: an approved edit and the edit itself are recorded against that interviewer.
+audit_events,old_comment,text,Yes,,,,,Yes,The comment before a feedback_edited change; null for other kinds. [personal data: free text about a candidate],"AC-US-00-014-5: an approved edit is saved and recorded, so the previous comment must survive the overwrite."
+audit_events,note,text,Yes,,,,,Yes,Override note or optional stage reason. [personal data: free text about a candidate],AC-US-00-010-5 (note) and AC-US-00-011-3 (optional reason).
+audit_events,created_at,timestamptz,No,,now(),,,No,When it happened.,AC-US-00-010-5 and AC-US-00-011-2: time is recorded.
+interview_kits,role_id,uuid,No,"PK, FK",,roles.id,CASCADE,No,The role the kit is for.,REQ-035 and AC-US-00-013-1: the kit is per role. CASCADE because a kit has no life apart from its role.
+interview_kits,criteria_version,integer,No,,,,,No,The roles.criteria_version the kit was generated against.,"AC-US-00-002-6 and Q-005: the kit is stale when this is below the role's version, so no writer has a flag to forget (same pattern as scores)."
+interview_kits,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+interview_kits,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
+questions,id,uuid,No,PK,gen_random_uuid(),,,No,Surrogate key.,"AC-US-00-013-5: a single question is edited, reordered, deleted or regenerated by id."
+questions,role_id,uuid,No,FK,,interview_kits.role_id,CASCADE,No,The role whose kit holds the question.,AC-US-00-013-2: the kit is grouped by criterion within a role's kit.
+questions,criterion_id,uuid,No,FK,,criteria.id,CASCADE,No,The criterion the question probes.,"AC-US-00-013-2: questions grouped by criterion. Part of a composite foreign key with role_id, so it must belong to the same role."
+questions,question_text,text,No,,,,,No,The question.,AC-US-00-013-2: the kit holds questions.
+questions,strong_answer,text,No,,,,,No,What a strong answer looks like.,AC-US-00-013-3: each question has a strong answer description.
+questions,weak_answer,text,No,,,,,No,What a weak answer looks like.,AC-US-00-013-3: each question has a weak answer description.
+questions,position,integer,No,,,,,No,Order inside the criterion.,AC-US-00-013-5: the recruiter can reorder questions.
+questions,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+questions,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
+feedback,candidate_id,uuid,No,"PK, FK",,candidates.id,CASCADE,No,The candidate interviewed.,AC-US-00-014-2: feedback is per candidate.
+feedback,interviewer_id,uuid,No,"PK, FK",,users.id,RESTRICT,No,The interviewer who scored.,AC-US-00-014-2 and AC-US-00-015-4: disagreement is found across interviewers. RESTRICT: feedback must not vanish with a user.
+feedback,criterion_id,uuid,No,"PK, FK",,criteria.id,RESTRICT,No,The criterion scored.,AC-US-00-014-1: one section per criterion. RESTRICT: locked feedback must not vanish; a criterion delete only retires it.
+feedback,score,smallint,No,,,,,No,The interviewer's score on the rubric scale.,AC-US-00-014-1: a score selector matching the rubric scale (Q-009).
+feedback,comment,text,No,,,,,Yes,The interviewer's short comment. [personal data: free text about a candidate],AC-US-00-014-2: every criterion is scored and commented before submit. Free text about a candidate.
+feedback,locked,boolean,No,,true,,,No,True after submit; a recruiter-approved edit sets it false until the interviewer saves again.,AC-US-00-014-4 and AC-US-00-014-5: read-only after submit except for an approved edit.
+feedback,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+feedback,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
+jobs,id,bigint,No,PK,identity,,,No,Job id returned to the Web for polling.,"AC-US-00-001-2 and AC-US-00-003-6: the Web polls a job; ids are sequence numbers, never application-generated."
+jobs,type,text,No,,,,,No,"process_resume, propose_criteria, generate_kit, regenerate_question or rescore.",HLD section 3: the five Worker job types.
+jobs,status,text,No,,'queued',,,No,"queued, running, succeeded, failed (dead letter), stale or cancelled.","AC-US-00-001-4 (cancel), HLD section 7 (stale, dead letter)."
+jobs,role_id,uuid,No,FK,,roles.id,RESTRICT,No,The role the job works for.,AC-US-00-003-6: the queue view lists a role's jobs. RESTRICT: a role with jobs is not deleted.
+jobs,candidate_id,uuid,Yes,FK,,candidates.id,CASCADE,No,"The candidate, for process_resume and rescore.",AC-US-00-003-5: per-file status. CASCADE: a job for a removed candidate has nothing left to do.
+jobs,question_id,uuid,Yes,FK,,questions.id,CASCADE,No,"The question, for regenerate_question.",AC-US-00-013-5: a single question is regenerated. CASCADE: nothing to regenerate once deleted.
+jobs,criteria_version,integer,No,,,,,No,roles.criteria_version at enqueue time; ids and this integer are the whole payload.,"REQ-006 and HLD section 7: the Worker discards the result when it differs, marking the job stale. Tenet 7: ids only, no resume text."
+jobs,attempt,smallint,No,,0,,,No,"Attempts started, at most 3.","HLD section 6: at most 3 attempts, then failed (dead letter); read as 3 attempts in total (open concern 8)."
+jobs,run_after,timestamptz,No,,now(),,,No,Earliest time the job may be claimed; pushed out by backoff.,HLD section 6: transport retries reschedule the job with a delay instead of sleeping in the Worker.
+jobs,deadline_at,timestamptz,No,,now() + interval '30 minutes',,,No,Time after which retries stop and the job fails.,HLD section 6: a 30 minute deadline.
+jobs,lease_token,uuid,Yes,,,,,No,Random token of the Worker holding the job; every result write is conditional on it.,"HLD section 7: fencing, so a slow original cannot overwrite the Worker that re-claimed the job."
+jobs,lease_expires_at,timestamptz,Yes,,,,,No,When the lease lapses and another Worker may take the job.,HLD section 7: a lease of 180 seconds.
+jobs,last_error,text,Yes,,,,,No,Short error code or message from the last failed attempt; never resume text.,AC-US-00-003-3 and tenet 7: the failure is explained with ids and codes only.
+jobs,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+jobs,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
+call_log,id,bigint,No,PK,identity,,,No,Sequence number of the call.,AC-US-02-001-4: one log row per call.
+call_log,role_id,uuid,Yes,FK,,roles.id,RESTRICT,No,The role the call was for; null for eval calls made outside a role.,AC-US-02-001-4: the log holds the role. RESTRICT: the spend record outlives no role deletion.
+call_log,purpose,text,No,,,,,No,"criteria, scoring, kit or eval.",AC-US-02-001-4: purpose is logged.
+call_log,status,call_status,No,,,,,No,"reserved, settled, replayed or released.","Tenet 8: reserved before the call, settled after; replayed rows never touch the budget."
+call_log,model,text,No,,,,,No,"Model id sent, for example claude-haiku-4-5.",AC-US-02-001-2: the model is one configuration value; the log records it. Part of the replay key.
+call_log,request_key,text,No,,,,,No,"SHA-256 hex of request, model id, prompt version and schema-retry index; no text.","AC-US-02-003-1 and AC-US-02-003-2: replay is keyed by a hash, and a missing recording names it."
+call_log,schema_retry,smallint,No,,0,,,No,"0 for the first try, 1 for the retry after malformed output.",REQ-023 and decisions.md conflict 2: the retry has its own key.
+call_log,input_tokens,integer,Yes,,,,,No,Input tokens; null until settled.,AC-US-02-001-4: input tokens are logged.
+call_log,output_tokens,integer,Yes,,,,,No,Output tokens; null until settled.,AC-US-02-001-4: output tokens are logged.
+call_log,cost_usd,"numeric(12,6)",No,,0,,,No,"USD counted against the budget for this call: the reserved maximum, then the actual cost, 0 when replayed or released.","AC-US-02-002-1: the running total rises by each call's cost. An unsettled timeout keeps its reservation, so spend is over-counted, never under-counted (HLD section 7)."
+call_log,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
+call_log,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
+budget,id,smallint,No,PK,,,,No,Always 1; a single-row table.,"AC-US-02-002-1: one running total, not per role or per user (US-02-002 non-goals)."
+budget,spent_usd,"numeric(12,6)",No,,0,,,No,"USD spent or reserved so far, seeded from the committed spend ledger.","AC-US-02-002-2: refuses further calls at the cap; REQ-043 and HLD section 3: seeded from the ledger, never from zero."
+budget,updated_at,timestamptz,No,,now(),,,No,"Last change to the row, set by the repository on every UPDATE.",Rule: audit columns (postgres.md).
