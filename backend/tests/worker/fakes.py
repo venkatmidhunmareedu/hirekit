@@ -6,24 +6,29 @@ tests/integration/test_jobs_repository.py.
 """
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.repositories.jobs import Job
+from app.db.repositories.worker_writes import RoleState, ScoreRow
+from app.gateway import GatewayRequest, GatewayResponse
 from app.gateway.text import (
     AnonymizedText,
     JobDescriptionText,
+    PromptText,
     mint_anonymized,
     mint_job_description,
+    mint_prompt,
 )
 from app.worker.errors import LeaseLostError
-from app.worker.ports import CriterionSpec
+from app.worker.ports import CriterionSpec, ParsedScore
 
 START = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
 
@@ -145,6 +150,12 @@ class FakeJobs:
         self.calls.append(("set_status", candidate_id, status, failure_reason))
         self.status_sessions.append(session)
 
+    async def succeed(self, session: AsyncSession, job_id: int, lease_token: UUID) -> None:
+        self.calls.append(("succeed", job_id))
+
+    async def mark_stale(self, session: AsyncSession, job_id: int, lease_token: UUID) -> None:
+        self.calls.append(("mark_stale", job_id))
+
     def statuses(self) -> list[tuple[object, ...]]:
         """Only the candidate status writes."""
         return [c for c in self.calls if c[0] == "set_status"]
@@ -175,3 +186,118 @@ class FakeJobDescriptionLoader:
     ) -> JobDescriptionText:
         suffix = "" if criterion is None else f"\n{criterion.name}"
         return mint_job_description(self.descriptions[role_id] + suffix)
+
+
+def make_criteria(count: int = 2) -> list[CriterionSpec]:
+    return [
+        CriterionSpec(uuid4(), f"criterion {i}", "must_have", Decimal(1), i, ((0, "none"),))
+        for i in range(1, count + 1)
+    ]
+
+
+@dataclass
+class FakeScoringWrites:
+    """Stands in for `worker_writes`: one role state, the criteria, the scores written."""
+
+    jobs: FakeJobs
+    criteria: list[CriterionSpec] = field(default_factory=list)
+    role: RoleState | None = field(default_factory=lambda: RoleState("approved", 1))
+    accept_scores: bool = True
+    written: list[ScoreRow] = field(default_factory=list)
+
+    async def read_role(
+        self, session: AsyncSession, role_id: UUID, *, exclusive: bool = False
+    ) -> RoleState | None:
+        self.jobs.calls.append(("read_role", exclusive))
+        return self.role
+
+    async def read_criteria(self, session: AsyncSession, role_id: UUID) -> list[CriterionSpec]:
+        self.jobs.calls.append(("read_criteria",))
+        return self.criteria
+
+    async def write_scores(
+        self,
+        session: AsyncSession,
+        *,
+        role_id: UUID,
+        criteria_version: int,
+        candidate_id: UUID,
+        scores: list[ScoreRow],
+    ) -> bool:
+        self.jobs.calls.append(("write_scores", criteria_version))
+        if self.accept_scores:
+            self.written = list(scores)
+        return self.accept_scores
+
+    async def set_status(
+        self,
+        session: AsyncSession,
+        candidate_id: UUID,
+        status: str,
+        failure_reason: str | None = None,
+    ) -> None:
+        await self.jobs.set_status(session, candidate_id, status, failure_reason)
+
+
+@dataclass
+class FakeGateway:
+    """Replays `replies` in order (an exception is raised) and records each request."""
+
+    sessions: FakeSessions
+    replies: list[GatewayResponse | Exception] = field(default_factory=list)
+    requests: list[GatewayRequest] = field(default_factory=list)
+    open_during_call: list[int] = field(default_factory=list)
+
+    async def complete(self, request: GatewayRequest) -> GatewayResponse:
+        self.requests.append(request)
+        self.open_during_call.append(self.sessions.open)
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+
+def reply(text: str = "reply", finish_reason: str = "stop") -> GatewayResponse:
+    return GatewayResponse(text, 10, 10, finish_reason, "key", True, Decimal(0))
+
+
+@dataclass
+class FakeScoringPrompt:
+    built_for: list[list[CriterionSpec]] = field(default_factory=list)
+
+    def build(self, criteria: list[CriterionSpec]) -> PromptText:
+        self.built_for.append(criteria)
+        return mint_prompt("score each criterion")
+
+
+@dataclass
+class FakeScoreParser:
+    """One result per call: a list of scores, or an exception to raise."""
+
+    results: list[list[ParsedScore] | Exception] = field(default_factory=list)
+    parsed: list[str] = field(default_factory=list)
+    on_parse: Callable[[], None] | None = None
+
+    def parse(self, reply: str, criteria: list[CriterionSpec]) -> list[ParsedScore]:
+        self.parsed.append(reply)
+        if self.on_parse is not None:
+            self.on_parse()
+        result = self.results.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
+@dataclass
+class FakeQuoteVerifier:
+    """Accepts a quote only if it is in `found`; records the order against the other fakes."""
+
+    found: set[str] = field(default_factory=set)
+    checked: list[str] = field(default_factory=list)
+    jobs: FakeJobs | None = None
+
+    def verify(self, quote: str, text: AnonymizedText) -> bool:
+        self.checked.append(quote)
+        if self.jobs is not None:
+            self.jobs.calls.append(("verify", quote))
+        return quote in self.found
