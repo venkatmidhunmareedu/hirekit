@@ -70,10 +70,11 @@ def test_a_name_part_inside_a_word_or_a_placeholder_is_not_a_hit() -> None:
 
 
 def test_the_scan_checks_an_email_local_part_even_when_no_name_was_found() -> None:
-    result = scan_only("Mail: jane.doe@example.com\nJane Doe built a payments service.")
-    assert result.text.value == "Mail: [EMAIL]\n[NAME] [NAME] built a payments service."
-    assert result.identity_name is None
-    assert result.report.name_found is False
+    normalized = "Mail: jane.doe@example.com\nJane Doe built a payments service."
+    text = "Mail: [EMAIL]\nJane Doe built a payments service."
+    out, repaired = check(normalized, text, NameSet())
+    assert out == "Mail: [EMAIL]\n[NAME] [NAME] built a payments service."
+    assert repaired == 2
 
 
 def test_a_generic_mailbox_name_does_not_mask_ordinary_words() -> None:

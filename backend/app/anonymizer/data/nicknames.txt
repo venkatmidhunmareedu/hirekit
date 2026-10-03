@@ -1,0 +1,66 @@
+# Each line is one group of names for the same person; a candidate whose first name is in a
+# group has every other member masked too (Robert and Bob). Lowercase, space separated.
+robert bob bobby rob robbie bert
+william will bill billy willy liam
+richard rich rick ricky dick
+james jim jimmy jamie jimbo
+john jack johnny jon
+joseph joe joey
+thomas tom tommy
+charles charlie chuck chas
+edward ed eddie ted teddy ned
+michael mike mick mikey
+christopher chris kit
+daniel dan danny
+david dave davey
+matthew matt matty
+andrew andy drew
+anthony tony
+nicholas nick nicky
+steven steve stevie
+stephen steve stevie
+timothy tim timmy
+benjamin ben benny benji
+samuel sam sammy
+alexander alex xander sandy
+alexandra alex sandra sandy
+elizabeth liz beth betty eliza lizzie
+katherine kate katie kathy kat kitty
+catherine cathy kate katie cat
+margaret meg maggie peggy marge
+patricia pat patty trish tricia
+jennifer jen jenny jenn
+jessica jess jessie
+rebecca becky becca
+victoria vicky vicki tori
+susan sue susie suzy
+deborah deb debbie
+barbara barb barbie babs
+abigail abby gail
+christine chris christy tina
+cynthia cindy
+dorothy dot dottie dolly
+francis frank frankie
+frances fran frannie
+gregory greg
+jeffrey jeff
+jonathan jon jonny
+kenneth ken kenny
+lawrence larry laurie
+leonard leo len lenny
+nathaniel nate nat
+patrick pat paddy
+peter pete
+phillip philip phil
+ronald ron ronnie
+theodore ted theo teddy
+zachary zach zack zak
+vincent vince vinny
+henry harry hank
+isabella izzy bella isabel
+sophia sophie
+olivia liv livvy
+maria mary
+mary molly polly
+priyanka priya
+venkatesh venky venkat
