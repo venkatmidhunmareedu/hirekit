@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     record_responses: bool = False
     key_credit_limit_confirmed: str | None = None
 
+    # Worker (docs/design/worker-lld.md section 7).
+    worker_poll_seconds: float = 1.0
+    worker_lease_seconds: int = 180
+
     @classmethod
     def settings_customise_sources(
         cls,
@@ -104,6 +108,24 @@ class Settings(BaseSettings):
             msg = "GATEWAY_TIMEOUT_SECONDS must be greater than 0"
             raise ValueError(msg)
         return value
+
+    @field_validator("worker_poll_seconds")
+    @classmethod
+    def _positive_poll(cls, value: float) -> float:
+        """A zero poll would spin on an empty queue."""
+        if value <= 0:
+            msg = "WORKER_POLL_SECONDS must be greater than 0"
+            raise ValueError(msg)
+        return value
+
+    @model_validator(mode="after")
+    def _lease_outlasts_a_call(self) -> Self:
+        """The lease is renewed before each model call, so it must outlast one call plus slack."""
+        floor = 2 * self.gateway_timeout_seconds + 30
+        if self.worker_lease_seconds < floor:
+            msg = f"WORKER_LEASE_SECONDS must be at least {floor:g} (2 * timeout + 30)"
+            raise ValueError(msg)
+        return self
 
     @model_validator(mode="after")
     def _live_mode_rules(self) -> Self:
