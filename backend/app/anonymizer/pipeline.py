@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from app.anonymizer.contact import contact
+from app.anonymizer.names import discover, mask_names
 from app.anonymizer.tokens import NameSet, Replacement, apply_replacements
 from app.anonymizer.verify import check
 from app.core.errors import DomainError
@@ -19,7 +20,7 @@ MAX_INPUT_CHARS = 500_000
 
 Pass = Callable[[str, NameSet], list[Replacement]]
 # Each pass is a pure `text -> list[Replacement]`; the passes are added by work items 2 to 7.
-PASSES: tuple[Pass, ...] = (contact,)
+PASSES: tuple[Pass, ...] = (contact, mask_names)
 
 _NEWLINES = re.compile(r"\r\n?")
 
@@ -77,7 +78,7 @@ def _run(raw: str, passes: tuple[Pass, ...]) -> Anonymized:
     if not text.strip():
         msg = "cannot anonymize an empty text"
         raise ValueError(msg)
-    names = NameSet()  # ponytail: discovery arrives with names.py, work item 3
+    names = discover(text)
     replacements = [r for p in passes for r in p(text, names)]
     out, applied = apply_replacements(text, replacements)
     out, repaired = check(text, out, names)
