@@ -9,3 +9,13 @@ backend-07,backend-07b0,yoruba_m:italian_f,name;email;profile_handle;pronouns;ni
 backend-08,backend-08g,german_f:akan_m,name;email;profile_handle;pronouns;nickname;city
 backend-09,backend-09c,japanese_m:spanish_f,name;email;profile_handle;pronouns;nickname;city
 backend-10,backend-10r,bangladeshi_f:irish_m,name;email;profile_handle;pronouns;nickname;city
+support-01,support-01h,korean_f:brazilian_m,name;email;profile_handle;pronouns;nickname;city
+support-02,support-02q,turkish_m:vietnamese_f,name;email;profile_handle;city
+support-03,support-03b,filipino_f:russian_m,name;email;profile_handle;pronouns;nickname;city
+support-04,support-04b,greek_m:kenyan_f,name;email;profile_handle;pronouns;city
+support-05,support-05i,ethiopian_f:dutch_m,name;email;profile_handle;pronouns;nickname;city
+support-06,support-06d,persian_m:thai_f,name;email;profile_handle;city
+support-07,support-07g,french_f:indonesian_m,name;email;profile_handle;nickname;city
+support-08,support-08b,hungarian_f:zulu_m,name;email;profile_handle;city
+support-09,support-09b,ukrainian_f:senegalese_m,name;email;profile_handle;pronouns;nickname;city
+support-10,support-10f,czech_m:somali_f,name;email;city
