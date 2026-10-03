@@ -1,0 +1,51 @@
+# Religion words masked as `[RELIGION]` (a trailing `s` is matched too: Hindus). Languages and
+# cultural skills (Hindi, Urdu, Arabic, Hebrew, Sanskrit) are not here: they are evidence.
+# Words for places of worship are left out on purpose (Temple University, Church & Dwight).
+# One lowercase term per line.
+hindu
+hinduism
+muslim
+islam
+islamic
+christian
+christianity
+catholic
+catholicism
+protestant
+evangelical
+methodist
+baptist
+anglican
+lutheran
+presbyterian
+pentecostal
+adventist
+mormon
+quaker
+amish
+sikh
+sikhism
+buddhist
+buddhism
+jewish
+judaism
+jew
+hasidic
+jain
+jainism
+parsi
+zoroastrian
+baha'i
+bahai
+shia
+sunni
+sufi
+ahmadiyya
+taoist
+shinto
+rastafarian
+atheist
+atheism
+agnostic
+iskcon
+hare krishna
