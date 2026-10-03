@@ -2,16 +2,22 @@
 
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 
 from app.db.repositories.worker_writes import RoleState
 from app.gateway.errors import BudgetReachedError
-from app.gateway.text import AnonymizedText
+from app.gateway.text import AnonymizedText, mint_anonymized, mint_prompt
 from app.worker.context import JobContext
 from app.worker.errors import LeaseLostError, SchemaError
-from app.worker.handlers.scoring import NO_CANDIDATE, QUOTE_NOT_FOUND, ScoringDeps, score_candidate
+from app.worker.handlers.scoring import (
+    NO_CANDIDATE,
+    QUOTE_NOT_FOUND,
+    ScoringDeps,
+    score_candidate,
+    score_text,
+)
 from app.worker.outcome import SOMETHING_WENT_WRONG, Failed, Stale, Succeeded
 from app.worker.ports import ParsedScore
 from tests.worker.fakes import (
@@ -275,3 +281,37 @@ async def test_a_job_without_a_candidate_is_failed_and_calls_nothing() -> None:
     )
     assert r.gateway.requests == []
     assert r.jobs.calls == []
+
+
+async def test_score_text_runs_without_a_job_and_calls_before_call_ahead_of_each_request() -> None:
+    criteria = make_criteria(2)
+    gateway = FakeGateway(FakeSessions())
+    gateway.replies = [reply("cut", "length"), reply("good")]
+    parser = FakeScoreParser(
+        results=[
+            [ParsedScore(criteria[0].id, 4, "built billing"), ParsedScore(criteria[1].id, 2, "x")]
+        ]
+    )
+    events: list[str] = []
+
+    async def before_call() -> None:
+        events.append(f"before-{len(gateway.requests)}")
+
+    rows = await score_text(
+        gateway,
+        role_id=uuid4(),
+        prompt_version="scoring-v1",
+        system=mint_prompt("score"),
+        criteria=criteria,
+        text=mint_anonymized("Built billing in Go."),
+        parser=parser,
+        verifier=FakeQuoteVerifier(found={"built billing"}),
+        before_call=before_call,
+    )
+    assert events == ["before-0", "before-1"]
+    assert [q.schema_retry for q in gateway.requests] == [0, 1]
+    assert [(r.status, r.model_score, r.quote) for r in rows] == [
+        ("scored", 4, "built billing"),
+        ("no_evidence", 0, None),
+    ]
+    assert rows[1].flag_reason == QUOTE_NOT_FOUND

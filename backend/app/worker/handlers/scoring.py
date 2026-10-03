@@ -15,6 +15,7 @@ with value 0 (S-2 to S-4). A reply that stays malformed twice, or is truncated, 
 criterion as `failed` with no value (S-5, REQ-023).
 """
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Final, Protocol
 from uuid import UUID
@@ -125,8 +126,17 @@ async def score_candidate(ctx: JobContext, deps: ScoringDeps, *, mark_done: bool
         text = await deps.load_anonymized(session, candidate_id)
 
     system = deps.prompt.build(criteria)
-    parsed = await _ask(ctx, deps, system, text, criteria)
-    rows = _rows(criteria, parsed, text, deps.verifier)
+    rows = await score_text(
+        deps.gateway,
+        role_id=job.role_id,
+        prompt_version=deps.prompt_version,
+        system=system,
+        criteria=criteria,
+        text=text,
+        parser=deps.parser,
+        verifier=deps.verifier,
+        before_call=ctx.renew,
+    )
 
     async with ctx.fenced() as session:
         written = await deps.writes.write_scores(
@@ -154,24 +164,33 @@ async def _end_stale(
     return Stale()
 
 
-async def _ask(
-    ctx: JobContext,
-    deps: ScoringDeps,
+async def score_text(
+    gateway: ScoringGateway,
+    *,
+    role_id: UUID,
+    prompt_version: str,
     system: PromptText,
-    text: AnonymizedText,
     criteria: list[CriterionSpec],
-) -> list[ParsedScore] | None:
-    """One call, and one more with `schema_retry=1` if the reply is malformed or truncated.
+    text: AnonymizedText,
+    parser: ScoreParser,
+    verifier: QuoteVerifier,
+    before_call: Callable[[], Awaitable[None]] | None = None,
+) -> list[ScoreRow]:
+    """Score one anonymized text: one call, and one more if the reply is malformed or truncated.
 
-    None means both replies were unusable: every criterion is stored as failed.
+    Context-free core shared by the handler and the evals; `before_call` runs ahead of each
+    gateway call (the handler renews its lease there). One row per criterion: a value is stored
+    only with a quote that code found; two unusable replies make every row `failed`.
     """
+    parsed: list[ParsedScore] | None = None
     for schema_retry in (0, 1):
-        await ctx.renew()
-        reply = await deps.gateway.complete(
+        if before_call is not None:
+            await before_call()
+        reply = await gateway.complete(
             GatewayRequest(
                 purpose="scoring",
-                role_id=ctx.job.role_id,
-                prompt_version=deps.prompt_version,
+                role_id=role_id,
+                prompt_version=prompt_version,
                 system=system,
                 input=text,
                 max_tokens=SCORING_MAX_TOKENS,
@@ -181,10 +200,11 @@ async def _ask(
         if reply.finish_reason == "length":
             continue
         try:
-            return deps.parser.parse(reply.text, criteria)
+            parsed = parser.parse(reply.text, criteria)
         except SchemaError:
             continue
-    return None
+        break
+    return _rows(criteria, parsed, text, verifier)
 
 
 def _rows(
