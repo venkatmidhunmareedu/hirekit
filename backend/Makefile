@@ -147,6 +147,9 @@ doctor: ## Environment diagnostics
 	@echo "alembic:   $$($(UV) run --quiet alembic --version 2>/dev/null || echo missing)"
 	@echo "docker:    $$(command -v docker >/dev/null && docker --version || echo missing)"
 	@echo "lock:      $$([ -f uv.lock ] && echo present || echo 'MISSING (run make setup and commit uv.lock)')"
+	@echo "jobs:      $$(psql "$(PSQL_URL)" -Atc "SELECT coalesce(string_agg(status || '=' || n, ' '), 'none') FROM (SELECT status, count(*) n FROM jobs GROUP BY status ORDER BY status) s" 2>/dev/null || echo 'unavailable (no psql or database)')"
+	@echo "oldest queued: $$(psql "$(PSQL_URL)" -Atc "SELECT coalesce(min(run_after)::text, 'none') FROM jobs WHERE status = 'queued'" 2>/dev/null || echo 'unavailable')"
+	@echo "expired leases: $$(psql "$(PSQL_URL)" -Atc "SELECT count(*) FROM jobs WHERE status = 'running' AND lease_expires_at < now()" 2>/dev/null || echo 'unavailable')"
 	@echo "hooksPath: $$(git config core.hooksPath || echo 'NOT SET (run make setup)')"
 
 clean: ## Remove caches and build output

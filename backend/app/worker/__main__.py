@@ -13,7 +13,7 @@ import structlog
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.db.repositories import jobs
+from app.db.repositories import jobs, worker_writes
 from app.db.session import make_engine, make_session_factory
 from app.worker.loop import Handler, run_worker
 
@@ -41,6 +41,7 @@ async def main() -> None:
         await run_worker(
             sessions=make_session_factory(engine).begin,
             jobs=jobs,
+            writes=worker_writes,
             handlers=HANDLERS,
             stop=stop,
             now=lambda: datetime.now(UTC),

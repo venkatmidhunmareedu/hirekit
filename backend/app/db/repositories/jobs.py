@@ -14,6 +14,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.repositories.worker_writes import set_status
 from app.worker.errors import LeaseLostError
 from app.worker.outcome import SOMETHING_WENT_WRONG
 from app.worker.policy import MAX_ATTEMPTS
@@ -98,14 +99,8 @@ async def _fail_exhausted(
         ),
         {"id": job_id, "code": LEASE_EXPIRED},
     )
-    if job_type == "process_resume":
-        await session.execute(
-            text(
-                "UPDATE candidates SET processing_status = 'failed', failure_reason = :reason, "
-                "updated_at = now() WHERE id = :candidate"
-            ),
-            {"candidate": candidate_id, "reason": SOMETHING_WENT_WRONG},
-        )
+    if job_type == "process_resume" and candidate_id is not None:
+        await set_status(session, candidate_id, "failed", SOMETHING_WENT_WRONG)
 
 
 async def fence(session: AsyncSession, job_id: int, lease_token: UUID) -> None:
