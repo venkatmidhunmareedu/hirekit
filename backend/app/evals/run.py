@@ -9,7 +9,7 @@ budget and the logs stay simple. A `RecordingMissingError` is never caught here.
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
-from uuid import NAMESPACE_URL, UUID, uuid5
+from uuid import NAMESPACE_URL, uuid5
 
 from app.anonymizer import anonymize
 from app.extraction import ResumeExtractor
@@ -43,10 +43,6 @@ class ResumeResult:
     scores: tuple[CriterionScore, ...]
 
 
-def role_id(role: SeedRole) -> UUID:
-    return uuid5(NAMESPACE, role.slug)
-
-
 def criterion_specs(role: SeedRole) -> list[CriterionSpec]:
     """The role's criteria as the scoring step takes them; ids are the same on every run."""
     return [
@@ -77,7 +73,7 @@ async def score_resume(
     builder = ScoringPromptBuilder()
     rows = await score_text(
         gateway,
-        role_id=role_id(role),
+        role_id=None,  # call_log.role_id is a foreign key; an eval call has no role (schema.sql)
         prompt_version=builder.prompt_version,
         system=builder.build(specs),
         criteria=specs,

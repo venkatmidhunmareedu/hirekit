@@ -33,7 +33,7 @@ Set in the environment (never commit a key):
 - `MODEL_BASE_URL`: the OpenAI-compatible endpoint
 - `MODEL_ID`: the exact model id the proxy serves
 - `OPENROUTER_API_KEY`: the proxy key
-- `RECORDINGS_DIR`: a scratch directory that is NOT committed
+- `RECORDINGS_DIR`: a scratch directory that is NOT committed. The spend ledger lives in this directory, so create it first: `mkdir -p DIR && cp backend/recordings/spend-ledger.json DIR/` (preflight refuses without it)
 - `KEY_CREDIT_LIMIT_CONFIRMED=yes`: your statement that the key has a provider-side limit
 
 Run `make eval` with the same `RECORDINGS_DIR`. Results from a model other than Haiku are

@@ -167,7 +167,7 @@ async def _end_stale(
 async def score_text(
     gateway: ScoringGateway,
     *,
-    role_id: UUID,
+    role_id: UUID | None,
     prompt_version: str,
     system: PromptText,
     criteria: list[CriterionSpec],
