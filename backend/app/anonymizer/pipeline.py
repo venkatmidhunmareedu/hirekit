@@ -10,6 +10,7 @@ from app.anonymizer.contact import contact
 from app.anonymizer.dates import mask_dates
 from app.anonymizer.gender import mask_gender
 from app.anonymizer.names import discover, mask_names
+from app.anonymizer.places import mask_places
 from app.anonymizer.religion import mask_religion
 from app.anonymizer.tokens import NameSet, Replacement, apply_replacements
 from app.anonymizer.verify import check
@@ -23,9 +24,16 @@ MAX_INPUT_CHARS = 500_000
 
 Pass = Callable[[str, NameSet], list[Replacement]]
 # Each pass is a pure `text -> list[Replacement]`; the passes are added by work items 2 to 7.
-# Dates run first: of two equal-length matches the earlier pass wins, so `03-12-1990` (also a
-# phone-shaped run) is labelled a date.
-PASSES: tuple[Pass, ...] = (mask_dates, contact, mask_names, mask_gender, mask_religion)
+# Dates and places run before contact: of two equal-length matches the earlier pass wins, so
+# `03-12-1990` and `94105-1234` (also phone-shaped runs) are labelled a date and a postal code.
+PASSES: tuple[Pass, ...] = (
+    mask_dates,
+    mask_places,
+    contact,
+    mask_names,
+    mask_gender,
+    mask_religion,
+)
 
 _NEWLINES = re.compile(r"\r\n?")
 
