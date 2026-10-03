@@ -1,15 +1,12 @@
 """Name discovery and removal: the candidate's own name goes, everyone else's and evidence stay."""
 
-import subprocess
-import sys
-from pathlib import Path
-
 import pytest
 
 from app.anonymizer import anonymize
 from app.anonymizer.names import MAX_NAME_CHARS, discover, mask_names, split_parts
 from app.anonymizer.pipeline import PASSES
 from app.anonymizer.tokens import NameSet, apply_replacements
+from tests.timeout_helper import run_with_timeout
 
 SHY, NBSP, ZWSP, LIG_FI, DOTTED_I = chr(0xAD), chr(0xA0), chr(0x200B), chr(0xFB01), chr(0x130)
 
@@ -177,19 +174,23 @@ def test_the_replacements_apply_with_no_gap_between_a_name_and_its_variants() ->
     assert apply_replacements(text, mask_names(text, names))[0] == "[NAME]\n[NAME]"
 
 
+def _names_adversarial_input_finishes_quickly() -> None:
+    from app.anonymizer.names import discover, mask_names
+
+    n = 150_000
+    for s in [
+        "Jane Doe\n" + "Jane " * (n // 5),
+        "Jane Doe\n" + "J." * (n // 2),
+        "Jane Doe\n" + "Doe," * (n // 4),
+        "Jane Doe\n" + " " * n + "Doe",
+        "a " * (n // 2),
+        "Jane Doe\n" + "Jane\n" * (n // 5),
+        "Name:" * (n // 5),
+        "Regards,\n" * (n // 9),
+    ]:
+        mask_names(s, discover(s))
+
+
 def test_names_adversarial_input_finishes_quickly() -> None:
     """A regex runs in C and cannot be interrupted, so the proof is a subprocess with a timeout."""
-    code = (
-        "from app.anonymizer.names import discover, mask_names\n"
-        "n = 150_000\n"
-        "for s in ['Jane Doe\\n' + 'Jane ' * (n // 5), 'Jane Doe\\n' + 'J.' * (n // 2),"
-        " 'Jane Doe\\n' + 'Doe,' * (n // 4), 'Jane Doe\\n' + ' ' * n + 'Doe', 'a ' * (n // 2),"
-        " 'Jane Doe\\n' + 'Jane\\n' * (n // 5), 'Name:' * (n // 5), 'Regards,\\n' * (n // 9)]:\n"
-        "    mask_names(s, discover(s))\n"
-    )
-    subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [sys.executable, "-c", code],
-        check=True,
-        timeout=60,
-        cwd=Path(__file__).parents[2],
-    )
+    run_with_timeout(_names_adversarial_input_finishes_quickly, 60)

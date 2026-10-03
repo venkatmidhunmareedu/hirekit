@@ -14,6 +14,14 @@ IDS = {
     "candidate": "30000000-0000-0000-0000-000000000001",
 }
 
+WORKER_FORBIDDEN_COUNTS = (
+    "SELECT count(*) FROM feedback",
+    "SELECT count(*) FROM audit_events",
+    "SELECT count(*) FROM users",
+    "SELECT count(*) FROM sessions",
+    "SELECT count(*) FROM assignments",
+)
+
 
 async def seed_as_owner(session: AsyncSession) -> None:
     """Rows the role tests act on, written by the owner before the role is assumed."""
@@ -200,8 +208,8 @@ async def test_worker_role_has_no_access_to_feedback_audit_users_sessions_or_ass
 ) -> None:
     await seed_as_owner(session)
     await become(session, "hirekit_worker")
-    for table in ("feedback", "audit_events", "users", "sessions", "assignments"):
-        await denied(session, f"SELECT count(*) FROM {table}")  # noqa: S608
+    for sql in WORKER_FORBIDDEN_COUNTS:
+        await denied(session, sql)
 
 
 async def test_the_roles_exist_and_cannot_log_in_when_no_password_was_given(
