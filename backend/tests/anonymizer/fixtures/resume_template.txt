@@ -1,0 +1,20 @@
+{name}
+Senior Backend Engineer
+{email} | {phone} | {city}
+linkedin.com/in/{slug}
+
+Summary
+{first} builds payment systems. {he_she} led a team of 6 engineers and cut p95 latency from 900 ms to 120 ms.
+
+Experience
+Acme Logistics, Backend Engineer, 2018 - 2021
+Built the payments service in Python and PostgreSQL. {first} {last} owned on-call.
+Bank of America, Analyst, 2015 - 2018
+
+Education
+B.Tech, Computer Science, University of Madras, 2010 - 2014
+
+Skills: Python, FastAPI, SQL, Docker, AWS, Mobile apps
+References: Peter Hughes, manager at Acme
+Regards,
+{first}

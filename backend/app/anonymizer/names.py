@@ -162,9 +162,14 @@ def _spans(text: str, known: frozenset[str]) -> list[tuple[int, int]]:
     return spans
 
 
+def _is_placeholder(text: str, start: int, end: int) -> bool:
+    """`[NAME]` and its kin: an earlier run's placeholder is never a name (a candidate Name)."""
+    return text[max(start - 1, 0) : start] == "[" and text[end : end + 1] == "]"
+
+
 def _rx(body: str, flags: int = re.IGNORECASE) -> re.Pattern[str]:
     """`body` as a whole word that is not already part of a word or a placeholder."""
-    return re.compile(rf"(?<![\w\[])(?:{body})(?![\w\]])", flags)
+    return re.compile(rf"(?<!\w)(?:{body})(?!\w)", flags)
 
 
 def _alt(words: list[str] | frozenset[str] | set[str]) -> str:
@@ -186,6 +191,7 @@ def mask_names(text: str, names: NameSet) -> list[Replacement]:
         found.extend(
             Replacement(m.start(), m.end(), NAME, "name")
             for m in pattern.finditer(text, start, len(text) if end is None else end)
+            if not _is_placeholder(text, m.start(), m.end())
         )
 
     hyphenated = {_lower(w) for w in re.findall(_WORD, names.full) if "-" in w}
