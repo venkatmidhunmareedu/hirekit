@@ -1,0 +1,101 @@
+resume_id,criterion,label,rationale
+backend-01,Python and API development,4,Led redesign of a 60-endpoint FastAPI payments API with versioned contracts used by 300 partners.
+backend-01,SQL and relational data modeling,4,Designed a partitioned PostgreSQL ledger schema and cut a statement query p95 from 2.4 s to 180 ms.
+backend-01,Automated testing and code quality,4,Set the testing standard for a team of 12 with contract tests and a 40 percent drop in defects.
+backend-01,Cloud deployment and containers,3,"Owned container, Kubernetes and Terraform deployment for six services, but no multi-service cost or reliability result is stated."
+backend-01,Production operations and observability,4,"Defined SLOs, built alerts and cut mean time to recovery from 50 to 14 minutes."
+backend-01l,Python and API development,4,Led redesign of a 60-endpoint FastAPI payments API with versioned contracts used by 300 partners.
+backend-01l,SQL and relational data modeling,4,Designed a partitioned PostgreSQL ledger schema and cut a statement query p95 from 2.4 s to 180 ms.
+backend-01l,Automated testing and code quality,4,Set the testing standard for a team of 12 with contract tests and a 40 percent drop in defects.
+backend-01l,Cloud deployment and containers,3,"Owned container, Kubernetes and Terraform deployment for six services, but no multi-service cost or reliability result is stated."
+backend-01l,Production operations and observability,4,"Defined SLOs, built alerts and cut mean time to recovery from 50 to 14 minutes."
+backend-02,Python and API development,3,Owns a FastAPI customer REST API for orders and the billing service behind it in production.
+backend-02,SQL and relational data modeling,3,"Wrote indexes for billing tables and cut a month-end report from 40 s to 6 s, within an existing schema."
+backend-02,Automated testing and code quality,3,Writes unit tests for own changes and reviews pull requests; integration tests are only some.
+backend-02,Cloud deployment and containers,2,"Deployed a staging stack on AWS with a teammate and builds Docker staging images, but nothing in production."
+backend-02,Production operations and observability,2,"Takes one on-call week in five and reads Grafana dashboards, with no alerts built."
+backend-02b,Python and API development,3,Owns a FastAPI customer REST API for orders and the billing service behind it in production.
+backend-02b,SQL and relational data modeling,3,"Wrote indexes for billing tables and cut a month-end report from 40 s to 6 s, within an existing schema."
+backend-02b,Automated testing and code quality,3,Writes unit tests for own changes and reviews pull requests; integration tests are only some.
+backend-02b,Cloud deployment and containers,2,"Deployed a staging stack on AWS with a teammate and builds Docker staging images, but nothing in production."
+backend-02b,Production operations and observability,2,"Takes one on-call week in five and reads Grafana dashboards, with no alerts built."
+backend-03,Python and API development,2,"Maintains a few small Flask JSON report endpoints, but they are narrow and sit behind an internal gateway."
+backend-03,SQL and relational data modeling,4,"Redesigned the appointments schema, added partial indexes, cut the busiest query from 3 s to 120 ms and wrote a migration playbook used by four teams."
+backend-03,Automated testing and code quality,2,Tests are mostly SQL scripts run by hand and some checks; the move to pytest is only requested.
+backend-03,Cloud deployment and containers,1,"Lists Docker and a shared CI server as basic skills, with no deployment described."
+backend-03,Production operations and observability,0,"No on-call, metrics or alerts described; only slow query report reviews."
+backend-03h,Python and API development,2,"Maintains a few small Flask JSON report endpoints, but they are narrow and sit behind an internal gateway."
+backend-03h,SQL and relational data modeling,4,"Redesigned the appointments schema, added partial indexes, cut the busiest query from 3 s to 120 ms and wrote a migration playbook used by four teams."
+backend-03h,Automated testing and code quality,2,Tests are mostly SQL scripts run by hand and some checks; the move to pytest is only requested.
+backend-03h,Cloud deployment and containers,1,"Lists Docker and a shared CI server as basic skills, with no deployment described."
+backend-03h,Production operations and observability,0,"No on-call, metrics or alerts described; only slow query report reviews."
+backend-04,Python and API development,1,Built a tutorial-based Flask library app with a few JSON routes; no production service.
+backend-04,SQL and relational data modeling,1,Wrote simple SELECT and INSERT queries on SQLite in a course project.
+backend-04,Automated testing and code quality,1,Ran an existing test suite during an internship but wrote no tests.
+backend-04,Cloud deployment and containers,1,Lists a little Docker from a class demo only.
+backend-04,Production operations and observability,0,"No evidence of monitoring, on-call or production support."
+backend-04o,Python and API development,1,Built a tutorial-based Flask library app with a few JSON routes; no production service.
+backend-04o,SQL and relational data modeling,1,Wrote simple SELECT and INSERT queries on SQLite in a course project.
+backend-04o,Automated testing and code quality,1,Ran an existing test suite during an internship but wrote no tests.
+backend-04o,Cloud deployment and containers,1,Lists a little Docker from a class demo only.
+backend-04o,Production operations and observability,0,"No evidence of monitoring, on-call or production support."
+backend-05,Python and API development,1,Uses Python for glue scripts and a small Flask internal tool; states no customer-facing Python API.
+backend-05,SQL and relational data modeling,2,"Sets up PostgreSQL databases, backups and reads query plans with app teams but does not design schemas."
+backend-05,Automated testing and code quality,2,Writes JUnit tests for libraries and post-deploy smoke tests.
+backend-05,Cloud deployment and containers,4,"Built the container pipeline for 30 services, Terraform modules and a second AWS region move that cut cost by 22 percent."
+backend-05,Production operations and observability,4,"Set SLOs, built alerts and runbooks, and cut outages from nine to three a quarter."
+backend-05g,Python and API development,1,Uses Python for glue scripts and a small Flask internal tool; states no customer-facing Python API.
+backend-05g,SQL and relational data modeling,2,"Sets up PostgreSQL databases, backups and reads query plans with app teams but does not design schemas."
+backend-05g,Automated testing and code quality,2,Writes JUnit tests for libraries and post-deploy smoke tests.
+backend-05g,Cloud deployment and containers,4,"Built the container pipeline for 30 services, Terraform modules and a second AWS region move that cut cost by 22 percent."
+backend-05g,Production operations and observability,4,"Set SLOs, built alerts and runbooks, and cut outages from nine to three a quarter."
+backend-06,Python and API development,4,Built and owns a 45-endpoint FastAPI shipment API with versioning that retired two old versions without tickets.
+backend-06,SQL and relational data modeling,3,"Designed the events table and indexes and sped up the three slowest queries, cutting median response time by a third."
+backend-06,Automated testing and code quality,3,Owns the pytest suite with integration tests in containers and 85 percent coverage in CI.
+backend-06,Cloud deployment and containers,1,Deployed with Docker Compose to a virtual server; no Kubernetes or managed cloud services.
+backend-06,Production operations and observability,2,"Joins on-call and added structured logging, but alerting is run by another team."
+backend-06j,Python and API development,4,Built and owns a 45-endpoint FastAPI shipment API with versioning that retired two old versions without tickets.
+backend-06j,SQL and relational data modeling,3,"Designed the events table and indexes and sped up the three slowest queries, cutting median response time by a third."
+backend-06j,Automated testing and code quality,3,Owns the pytest suite with integration tests in containers and 85 percent coverage in CI.
+backend-06j,Cloud deployment and containers,1,Deployed with Docker Compose to a virtual server; no Kubernetes or managed cloud services.
+backend-06j,Production operations and observability,2,"Joins on-call and added structured logging, but alerting is run by another team."
+backend-07,Python and API development,1,Learned Python basics and saw what an API is at a bootcamp but built none on their own.
+backend-07,SQL and relational data modeling,0,Only watched videos on databases; no queries or schema work described.
+backend-07,Automated testing and code quality,0,No tests or code review mentioned.
+backend-07,Cloud deployment and containers,0,No cloud or container use mentioned.
+backend-07,Production operations and observability,0,Customer support experience only; no production software.
+backend-07b0,Python and API development,1,Learned Python basics and saw what an API is at a bootcamp but built none on their own.
+backend-07b0,SQL and relational data modeling,0,Only watched videos on databases; no queries or schema work described.
+backend-07b0,Automated testing and code quality,0,No tests or code review mentioned.
+backend-07b0,Cloud deployment and containers,0,No cloud or container use mentioned.
+backend-07b0,Production operations and observability,0,Customer support experience only; no production software.
+backend-08,Python and API development,0,No application code or API work; IT support and systems administration only.
+backend-08,SQL and relational data modeling,0,States no work with databases.
+backend-08,Automated testing and code quality,0,States no automated tests; none described.
+backend-08,Cloud deployment and containers,1,Used a virtual machine once to test a printer server; no containers or cloud.
+backend-08,Production operations and observability,2,"Joined a weekend on-call list, restarted failed services and read a monitoring screen."
+backend-08g,Python and API development,0,No application code or API work; IT support and systems administration only.
+backend-08g,SQL and relational data modeling,0,States no work with databases.
+backend-08g,Automated testing and code quality,0,States no automated tests; none described.
+backend-08g,Cloud deployment and containers,1,Used a virtual machine once to test a printer server; no containers or cloud.
+backend-08g,Production operations and observability,2,"Joined a weekend on-call list, restarted failed services and read a monitoring screen."
+backend-09,Python and API development,2,Adds endpoints in FastAPI one or two a sprint under the tech lead's guidance.
+backend-09,SQL and relational data modeling,2,Writes SQL for reports and changes to tables designed by the data team.
+backend-09,Automated testing and code quality,4,"Owns a 1,400-test suite, introduced contract and mutation tests and set a review checklist used by three other teams."
+backend-09,Cloud deployment and containers,1,Uses Docker for test containers and GitHub Actions only; no deployment described.
+backend-09,Production operations and observability,0,"No monitoring, alerts or on-call described."
+backend-09c,Python and API development,2,Adds endpoints in FastAPI one or two a sprint under the tech lead's guidance.
+backend-09c,SQL and relational data modeling,2,Writes SQL for reports and changes to tables designed by the data team.
+backend-09c,Automated testing and code quality,4,"Owns a 1,400-test suite, introduced contract and mutation tests and set a review checklist used by three other teams."
+backend-09c,Cloud deployment and containers,1,Uses Docker for test containers and GitHub Actions only; no deployment described.
+backend-09c,Production operations and observability,0,"No monitoring, alerts or on-call described."
+backend-10,Python and API development,3,"Owns a 70-endpoint FastAPI appointments service with typed models and a deprecation policy; scale is mid-size, not led across many teams."
+backend-10,SQL and relational data modeling,4,Designed an eight-table billing schema with row level history and cut a checkout query from 900 ms to 60 ms.
+backend-10,Automated testing and code quality,3,"Owns a 2,100-test suite gating every merge and runs a testing clinic; no team-wide standard or defect numbers."
+backend-10,Cloud deployment and containers,4,Built ECS deployments with Terraform and blue-green releases for three services and cut the cloud bill by 18 percent.
+backend-10,Production operations and observability,3,"Added metrics, logs and alerts and ran the incident review process; outages fell from eleven to four but no SLO program is stated."
+backend-10r,Python and API development,3,"Owns a 70-endpoint FastAPI appointments service with typed models and a deprecation policy; scale is mid-size, not led across many teams."
+backend-10r,SQL and relational data modeling,4,Designed an eight-table billing schema with row level history and cut a checkout query from 900 ms to 60 ms.
+backend-10r,Automated testing and code quality,3,"Owns a 2,100-test suite gating every merge and runs a testing clinic; no team-wide standard or defect numbers."
+backend-10r,Cloud deployment and containers,4,Built ECS deployments with Terraform and blue-green releases for three services and cut the cloud bill by 18 percent.
+backend-10r,Production operations and observability,3,"Added metrics, logs and alerts and ran the incident review process; outages fell from eleven to four but no SLO program is stated."

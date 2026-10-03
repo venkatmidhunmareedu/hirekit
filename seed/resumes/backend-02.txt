@@ -1,0 +1,26 @@
+James Whitfield
+Backend Developer, Denver, Colorado
+james.whitfield@example.com
+555-0102
+example.com/in/jameswhitfield
+
+Profile
+I am a backend developer with five years of experience in product teams. I enjoy turning messy requirements into small, well-named services. Most people on my team call me Jim.
+
+Core skills
+Skill | Years | Where used
+Python | 5 | Order and billing services at Marlow Retail
+FastAPI | 3 | Customer REST API, 25 endpoints
+PostgreSQL | 4 | Billing database, reporting queries
+pytest | 4 | Unit tests and some integration tests
+Docker | 2 | Local development and staging images
+AWS | 1 | Deployed a staging stack with a teammate
+Grafana | 1 | Read dashboards during on-call weeks
+
+Work history
+Backend Developer, Marlow Retail, 2021 to present. I own the customer REST API for orders (FastAPI) and the billing service behind it. I add endpoints, validate requests and map errors to clear responses. I wrote the indexes for the billing tables after a slow month-end report and brought it from 40 seconds to 6 seconds. I write unit tests for my own changes and review pull requests on the team. I take one on-call week in five.
+
+Junior Developer, Fenwick Digital, 2019 to 2021. Fixed bugs in a Django app and wrote small REST endpoints with guidance from a senior colleague.
+
+Education
+BEng Software Engineering, Ashford Institute of Technology, 2019

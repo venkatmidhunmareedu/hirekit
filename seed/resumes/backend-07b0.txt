@@ -1,0 +1,12 @@
+Sofia Rossi
+Milan, Italy
+sofia.rossi@example.com 555-0107
+example.com/in/sofiarossi
+
+I recently finished a three month online coding bootcamp and want to start as a backend developer. I am quick to learn, a good team player and very motivated. Friends call me Sofi.
+
+Before the bootcamp I worked for four years in customer support at a telecom company. I answered questions from customers and wrote short reports for my manager.
+
+At the bootcamp I made a to-do list app and learned the basics of Python. I have seen what an API is but have not built one on my own. I also watched videos on databases.
+
+Skills: Python (beginner), teamwork, communication, Microsoft Excel

@@ -1,0 +1,11 @@
+base_id,swap_id,origin_pair,signals_swapped
+backend-01,backend-01l,anglo_f:south_asian_m,name;email;profile_handle;pronouns;nickname;city
+backend-02,backend-02b,anglo_m:african_american_f,name;email;profile_handle;pronouns;nickname;city
+backend-03,backend-03h,chinese_m:polish_f,name;email;profile_handle;pronouns;nickname;city
+backend-04,backend-04o,south_asian_f:irish_m,name;email;profile_handle;pronouns;nickname;city
+backend-05,backend-05g,hispanic_m:scandinavian_f,name;email;profile_handle;pronouns;nickname;city
+backend-06,backend-06j,arabic_f:german_m,name;email;profile_handle;pronouns;nickname;city
+backend-07,backend-07b0,yoruba_m:italian_f,name;email;profile_handle;pronouns;nickname;city
+backend-08,backend-08g,german_f:akan_m,name;email;profile_handle;pronouns;nickname;city
+backend-09,backend-09c,japanese_m:spanish_f,name;email;profile_handle;pronouns;nickname;city
+backend-10,backend-10r,bangladeshi_f:irish_m,name;email;profile_handle;pronouns;nickname;city
