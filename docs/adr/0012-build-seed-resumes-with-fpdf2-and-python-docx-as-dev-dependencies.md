@@ -41,3 +41,4 @@ We will build the seed PDF and DOCX files with fpdf2 and python-docx, both in th
 
 - fpdf2 (outside the standard stack)
 - python-docx (outside the standard stack)
+- pillow, lxml and fonttools, pulled in transitively by the two (dev group only)
