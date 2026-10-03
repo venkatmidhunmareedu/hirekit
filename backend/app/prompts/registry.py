@@ -16,6 +16,7 @@ from app.gateway.text import PromptText, mint_prompt
 PROMPTS_DIR = Path(__file__).parent
 _PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
 _VERSION_FILE = re.compile(r"v(\d+)\.md")
+_CLOSE_ESCAPE = "<\\/"  # a value cannot close a delimiter tag the body opened: "</" becomes "<\/"
 _TYPES: dict[str, type] = {"str": str, "int": int}
 
 
@@ -180,5 +181,5 @@ def render(prompt: Prompt, variables: dict[str, object]) -> PromptText:
             raise PromptRegistryError(
                 f"{prompt.prompt_version}: {v.name} is not one of {list(v.enum)}"
             )
-        values[v.name] = text
+        values[v.name] = text.replace("</", _CLOSE_ESCAPE)
     return mint_prompt(_PLACEHOLDER.sub(lambda m: values[m.group(1)], prompt.template))
