@@ -29,16 +29,21 @@ from app.worker.loop import Handler
 from app.worker.quotes import WhitespaceQuoteVerifier
 
 
-def build_worker(
-    settings: Settings, transaction: Transaction
-) -> tuple[dict[str, Handler], Callable[[], Awaitable[None]]]:
-    """The handler registry over a real Gateway, and the coroutine function that closes it."""
-    gateway = Gateway(
+def build_gateway(settings: Settings, transaction: Transaction) -> Gateway:
+    """The real Gateway over the real ledger and the recordings directory."""
+    return Gateway(
         settings=settings,
         transaction=transaction,
         ledger=GatewayLedger(),
         store=RecordingStore(settings.recordings_dir),
     )
+
+
+def build_worker(
+    settings: Settings, transaction: Transaction
+) -> tuple[dict[str, Handler], Callable[[], Awaitable[None]]]:
+    """The handler registry over a real Gateway, and the coroutine function that closes it."""
+    gateway = build_gateway(settings, transaction)
     scoring_prompt = ScoringPromptBuilder()
     criteria_prompt = CriteriaPromptBuilder()
     kit_prompt = KitPromptBuilder()
