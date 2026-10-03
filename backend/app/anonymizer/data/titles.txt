@@ -1,0 +1,10 @@
+# Gendered titles. Masked as `[TITLE]` when written with a capital and followed by a dot, a capital
+# letter, a placeholder, `or`, a comma or the end of the line (so "Miss a deadline" is kept).
+# Neutral titles (Dr, Prof) are not here. One per line.
+Mr
+Mrs
+Ms
+Mx
+Miss
+Sir
+Madam

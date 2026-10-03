@@ -140,6 +140,7 @@ def test_the_name_is_found_from_a_name_field_the_first_lines_and_the_email() -> 
     assert discover("Name: Jane Doe\nPython").full == "Jane Doe"
     assert discover("Candidate: Jane Doe\nPython").full == "Jane Doe"
     assert discover("Jane Doe | Engineer\nPython").full == "Jane Doe"
+    assert discover("Mrs Jane Doe\nPython").full == "Jane Doe"
     assert discover("Mail: jane.doe@example.com\nBuilt things.").full == "Jane Doe"
     assert discover("Python developer\nSan Francisco\njohn.smith@x.io").full == "John Smith"
 
