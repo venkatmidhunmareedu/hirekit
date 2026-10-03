@@ -29,7 +29,7 @@
 
 We will extract PDF text with pypdf and DOCX text with zipfile and defusedxml, because both keep to body text, stay light on dependencies and keep a permissive licence.
 
-- PDF: cap pages at about 20, check a deadline between pages, read page text only and never document metadata.
+- PDF: cap pages at about 20 (HK-41 refuses a longer PDF rather than truncating it), check a deadline between pages, read page text only and never document metadata.
 - DOCX: open the archive, read `word/document.xml` only, enforce an uncompressed-size cap before reading, parse with defusedxml. Core properties and other parts are never opened.
 - The extractor returns body text only; metadata never enters the pipeline.
 
