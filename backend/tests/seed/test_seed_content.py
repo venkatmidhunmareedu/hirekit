@@ -15,29 +15,11 @@ MEDIA = {".pdf": "application/pdf", ".docx": DOCX_MEDIA_TYPE}
 EMAIL = re.compile(r"[\w.+-]+@[\w.-]+")
 PHONE = re.compile(r"\b\d{3}-\d{4}\b")
 
-# N-091: the anonymizer leaves many nicknames in place, so these name-swap pairs anonymize
-# to different text (support-06 and support-09 also differ on a city the places pass does not
-# know, Tehran and Dakar). Frozen on purpose: a fix shrinks the set and a regression grows it,
-# and either shows up here. Update this set only together with the anonymizer change.
-NICKNAME_GAP_PAIRS = frozenset(
-    {
-        "backend-01",
-        "backend-02",
-        "backend-04",
-        "backend-05",
-        "backend-06",
-        "backend-07",
-        "backend-08",
-        "backend-09",
-        "backend-10",
-        "support-01",
-        "support-03",
-        "support-05",
-        "support-06",
-        "support-07",
-        "support-09",
-    }
-)
+# N-091, N-095, N-096: the anonymizer used to leave stated nicknames (`known as Fati`, `call me
+# Jim`) and the cities Tehran and Dakar in place, so 15 of the 20 name-swap pairs anonymized to
+# different text (HK-48 closed both gaps). The set of pairs that still differ is now empty. Frozen
+# on purpose: a regression adds a pair and shows up here. Update only with an anonymizer change.
+NICKNAME_GAP_PAIRS: frozenset[str] = frozenset()
 
 
 @pytest.fixture(scope="module")

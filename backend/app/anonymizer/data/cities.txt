@@ -337,3 +337,27 @@ panama city
 san juan
 havana
 kingston
+tehran
+tabriz
+isfahan
+mashhad
+shiraz
+dakar
+baghdad
+kabul
+tashkent
+almaty
+abidjan
+kinshasa
+luanda
+harare
+lusaka
+maputo
+asuncion
+tbilisi
+yerevan
+baku
+minsk
+yangon
+phnom penh
+ulaanbaatar

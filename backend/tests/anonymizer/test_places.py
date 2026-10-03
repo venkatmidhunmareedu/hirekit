@@ -128,3 +128,12 @@ def _places_adversarial_input_finishes_quickly() -> None:
 def test_places_adversarial_input_finishes_quickly() -> None:
     """A regex runs in C and cannot be interrupted, so the proof is a subprocess with a timeout."""
     run_with_timeout(_places_adversarial_input_finishes_quickly, 60)
+
+
+@pytest.mark.parametrize("city", ["Tehran", "Dakar"])
+def test_large_cities_missing_from_the_first_seed_list_are_masked(city: str) -> None:
+    assert (
+        out(f"Reza Hosseini\nHead of Support\n{city}, Iran")
+        == "[NAME]\nHead of Support\n[LOCATION], [LOCATION]"
+    )
+    assert out(f"Built a team in {city}.") == "Built a team in [LOCATION]."
