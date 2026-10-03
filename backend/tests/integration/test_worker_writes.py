@@ -517,3 +517,15 @@ async def test_every_write_statement_is_allowed_to_the_worker_role(session: Asyn
         weak_answer="w",
     )
     assert len(await worker_writes.read_criteria(session, role)) == 2
+
+
+async def test_read_question_returns_the_criterion_of_this_roles_question_only(
+    session: AsyncSession,
+) -> None:
+    role, ids = await seed_approved_role(session)
+    first, _ = await seed_kit(session, role, ids)
+    other_role, _ = await seed_approved_role(session)
+
+    assert await worker_writes.read_question(session, role, first) == ids[0]
+    assert await worker_writes.read_question(session, other_role, first) is None
+    assert await worker_writes.read_question(session, role, uuid4()) is None

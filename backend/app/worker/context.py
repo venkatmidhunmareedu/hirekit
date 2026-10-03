@@ -28,7 +28,13 @@ class JobsRepository(Protocol):
     async def claim(self, session: AsyncSession, *, lease_seconds: int) -> Job | None: ...
 
     async def fence(
-        self, session: AsyncSession, job_id: int, lease_token: UUID, *, exclusive: bool = False
+        self,
+        session: AsyncSession,
+        job_id: int,
+        lease_token: UUID,
+        *,
+        exclusive: bool = False,
+        lock_open_jobs: bool = False,
     ) -> None: ...
 
     async def renew(
@@ -67,11 +73,20 @@ class JobContext:
             )
 
     @asynccontextmanager
-    async def fenced(self, *, exclusive: bool = False) -> AsyncIterator[AsyncSession]:
+    async def fenced(
+        self, *, exclusive: bool = False, lock_open_jobs: bool = False
+    ) -> AsyncIterator[AsyncSession]:
         """A transaction that locks the role, then the job row; every handler write goes in one.
 
         `exclusive` takes the role `FOR UPDATE`, for a write that changes the role (propose).
+        `lock_open_jobs` locks all the role's open jobs in ascending id first (`generate_kit`).
         """
         async with self.sessions() as session:
-            await self.jobs.fence(session, self.job.id, self.job.lease_token, exclusive=exclusive)
+            await self.jobs.fence(
+                session,
+                self.job.id,
+                self.job.lease_token,
+                exclusive=exclusive,
+                lock_open_jobs=lock_open_jobs,
+            )
             yield session

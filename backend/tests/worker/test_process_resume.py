@@ -25,6 +25,7 @@ from tests.worker.fakes import (
     FakeExtractor,
     FakeResumeWrites,
     make_criteria_deps,
+    make_kit_deps,
     reply,
 )
 from tests.worker.test_scoring import Rig, rig, scores
@@ -171,7 +172,10 @@ async def test_retry_puts_the_candidate_back_to_queued() -> None:
         jobs=r.base.jobs,
         writes=r.base.jobs,
         handlers=build_handlers(
-            r.base.deps, r.deps, make_criteria_deps(r.base.sessions, r.base.jobs)[0]
+            r.base.deps,
+            r.deps,
+            make_criteria_deps(r.base.sessions, r.base.jobs)[0],
+            make_kit_deps(r.base.sessions, r.base.jobs)[0],
         ),
         stop=stop,
         now=clock.now,

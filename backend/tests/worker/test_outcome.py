@@ -20,7 +20,7 @@ def failure_texts() -> list[str]:
 
 def test_failure_texts_carry_no_ids_or_resume_text() -> None:
     texts = failure_texts()
-    assert len(texts) == 12
+    assert len(texts) == 13
     for text in texts:
         assert text.endswith(".")
         assert not UUID.search(text)

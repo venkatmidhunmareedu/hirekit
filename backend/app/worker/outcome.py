@@ -27,6 +27,7 @@ ANONYMIZATION_LEAK: Final = (
 )
 SCORING_FAILED: Final = "Scoring failed. Try again, or contact the maintainer."
 CRITERIA_FAILED: Final = "Criteria could not be proposed. Try again, or write them by hand."
+KIT_FAILED: Final = "The interview kit could not be generated. Try again."
 SOMETHING_WENT_WRONG: Final = "Something went wrong. Try again."
 
 

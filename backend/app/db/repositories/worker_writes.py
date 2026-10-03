@@ -284,7 +284,9 @@ async def replace_kit(
 
     The role's open `regenerate_question` jobs are cancelled before the questions are deleted,
     after locking the open jobs in ascending id, so the cascade from `questions` into `jobs`
-    never meets a job row another Worker holds.
+    never meets a job row another Worker holds. A `generate_kit` fence (`lock_open_jobs`) has
+    already taken those locks, own row included; repeating them here is free and keeps a caller
+    without that fence from deleting questions under a held job.
     """
     role = await read_role(session, role_id)
     if role is None or role.status != "approved" or role.criteria_version != criteria_version:
@@ -333,6 +335,15 @@ async def replace_kit(
             ],
         )
     return True
+
+
+async def read_question(session: AsyncSession, role_id: UUID, question_id: UUID) -> UUID | None:
+    """Q11: the criterion a question probes, or None once it was deleted or is another role's."""
+    criterion: UUID | None = await session.scalar(
+        text("SELECT criterion_id FROM questions WHERE id = :id AND role_id = :role"),
+        {"id": question_id, "role": role_id},
+    )
+    return criterion
 
 
 async def replace_question(
