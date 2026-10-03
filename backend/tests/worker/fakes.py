@@ -30,7 +30,8 @@ from app.gateway.text import (
     mint_prompt,
 )
 from app.worker.errors import LeaseLostError
-from app.worker.ports import CriterionSpec, ParsedScore
+from app.worker.handlers.propose_criteria import CriteriaDeps
+from app.worker.ports import CriterionSpec, ParsedScore, ProposedCriterion
 
 START = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
 
@@ -390,3 +391,71 @@ class FakeResumeWrites:
         )
         self.file = None
         self.text_stored = True
+
+
+@dataclass
+class FakeCriteriaPrompt:
+    """One parse result per call: a proposal, or an exception to raise."""
+
+    results: list[list[ProposedCriterion] | Exception] = field(default_factory=list)
+    parsed: list[str] = field(default_factory=list)
+
+    def build(self) -> PromptText:
+        return mint_prompt("propose criteria")
+
+    def parse(self, reply: str) -> list[ProposedCriterion]:
+        self.parsed.append(reply)
+        result = self.results.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
+@dataclass
+class FakeCriteriaWrites:
+    """Stands in for `worker_writes` (Q5, Q6, Q10); `inserted_version` None refuses the write."""
+
+    jobs: FakeJobs
+    role: RoleState | None = field(default_factory=lambda: RoleState("draft", 1))
+    live: list[CriterionSpec] = field(default_factory=list)
+    inserted_version: int | None = 2
+    inserted: list[ProposedCriterion] = field(default_factory=list)
+
+    async def read_role(
+        self, session: AsyncSession, role_id: UUID, *, exclusive: bool = False
+    ) -> RoleState | None:
+        self.jobs.calls.append(("read_role", exclusive))
+        return self.role
+
+    async def read_criteria(self, session: AsyncSession, role_id: UUID) -> list[CriterionSpec]:
+        self.jobs.calls.append(("read_criteria",))
+        return self.live
+
+    async def insert_criteria(
+        self,
+        session: AsyncSession,
+        *,
+        role_id: UUID,
+        criteria_version: int,
+        proposed: list[ProposedCriterion],
+    ) -> int | None:
+        self.jobs.calls.append(("insert_criteria", criteria_version))
+        if self.inserted_version is not None:
+            self.inserted = list(proposed)
+        return self.inserted_version
+
+
+def make_criteria_deps(
+    sessions: FakeSessions, jobs: FakeJobs, role_id: UUID | None = None
+) -> tuple[CriteriaDeps, FakeGateway, FakeCriteriaPrompt, FakeCriteriaWrites]:
+    """A `CriteriaDeps` over fakes, with the pieces a test scripts or inspects."""
+    gateway, prompt, writes = FakeGateway(sessions), FakeCriteriaPrompt(), FakeCriteriaWrites(jobs)
+    loader = FakeJobDescriptionLoader(
+        {} if role_id is None else {role_id: "Senior Go engineer for billing."}
+    )
+    return (
+        CriteriaDeps(gateway, writes, jobs, loader, prompt, "criteria-v1"),
+        gateway,
+        prompt,
+        writes,
+    )

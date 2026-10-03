@@ -20,7 +20,13 @@ from app.worker.outcome import (
     Failed,
     Succeeded,
 )
-from tests.worker.fakes import FakeAnonymizer, FakeExtractor, FakeResumeWrites, reply
+from tests.worker.fakes import (
+    FakeAnonymizer,
+    FakeExtractor,
+    FakeResumeWrites,
+    make_criteria_deps,
+    reply,
+)
 from tests.worker.test_scoring import Rig, rig, scores
 
 
@@ -164,7 +170,9 @@ async def test_retry_puts_the_candidate_back_to_queued() -> None:
         sessions=r.base.sessions.begin,
         jobs=r.base.jobs,
         writes=r.base.jobs,
-        handlers=build_handlers(r.base.deps, r.deps),
+        handlers=build_handlers(
+            r.base.deps, r.deps, make_criteria_deps(r.base.sessions, r.base.jobs)[0]
+        ),
         stop=stop,
         now=clock.now,
         sleep=clock.sleep,
