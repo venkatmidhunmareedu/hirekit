@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from app.anonymizer.contact import contact
+from app.anonymizer.gender import mask_gender
 from app.anonymizer.names import discover, mask_names
 from app.anonymizer.tokens import NameSet, Replacement, apply_replacements
 from app.anonymizer.verify import check
@@ -20,7 +21,7 @@ MAX_INPUT_CHARS = 500_000
 
 Pass = Callable[[str, NameSet], list[Replacement]]
 # Each pass is a pure `text -> list[Replacement]`; the passes are added by work items 2 to 7.
-PASSES: tuple[Pass, ...] = (contact, mask_names)
+PASSES: tuple[Pass, ...] = (contact, mask_names, mask_gender)
 
 _NEWLINES = re.compile(r"\r\n?")
 

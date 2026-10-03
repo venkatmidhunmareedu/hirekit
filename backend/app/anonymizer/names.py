@@ -63,6 +63,8 @@ def _plausible(segment: str) -> str | None:
     if not text or len(text) >= MAX_NAME_CHARS:
         return None
     words = text.split(" ")
+    if words[0].rstrip(".").lower() in _words("titles.txt"):  # `Mr John Smith` is `John Smith`
+        words, text = words[1:], " ".join(words[1:])
     real = [w for w in words if w.lower() not in _PARTICLES]
     if not 2 <= len(real) <= 4 or len(words) > 6:
         return None
