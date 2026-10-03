@@ -24,6 +24,15 @@ async def test_fenced_locks_the_job_row_before_the_body_runs() -> None:
     assert jobs.calls[0][1:] == (ctx.job.id, ctx.job.lease_token)
 
 
+async def test_fenced_tells_the_fence_whether_the_role_lock_is_exclusive() -> None:
+    jobs, sessions = FakeJobs(FakeClock()), FakeSessions()
+    async with build(jobs, sessions).fenced(exclusive=True):
+        pass
+    async with build(jobs, sessions).fenced():
+        pass
+    assert jobs.fence_exclusive == [True, False]
+
+
 async def test_fenced_raises_lease_lost_and_never_runs_the_body_when_the_lease_is_gone() -> None:
     jobs, sessions = FakeJobs(FakeClock(), lease_gone=True), FakeSessions()
     with pytest.raises(LeaseLostError):
