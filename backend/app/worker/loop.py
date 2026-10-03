@@ -103,6 +103,9 @@ async def _run_one(
             await jobs.reschedule(
                 session, job.id, job.lease_token, run_after=outcome.run_after, code=outcome.code
             )
+            # The list shows the file waiting, not stuck in parsing or scoring (LLD section 3).
+            if job.type == "process_resume" and job.candidate_id is not None:
+                await writes.set_status(session, job.candidate_id, "queued")
     elif isinstance(outcome, Failed):
         async with ctx.sessions() as session:
             await jobs.fail(session, job.id, job.lease_token, code=outcome.code)

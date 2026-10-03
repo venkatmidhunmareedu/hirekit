@@ -20,6 +20,11 @@ EXTRACTION_FAILED: Final = (
     "No text could be read from this file (a scanned image or a corrupt file). "
     "Retry, or upload a text-based copy."
 )
+NO_FILE: Final = "The uploaded file is no longer stored. Upload it again."
+INPUT_TOO_LARGE: Final = "This file is too long to process."
+ANONYMIZATION_LEAK: Final = (
+    "This resume could not be made anonymous, so it was not sent to the model."
+)
 SCORING_FAILED: Final = "Scoring failed. Try again, or contact the maintainer."
 SOMETHING_WENT_WRONG: Final = "Something went wrong. Try again."
 

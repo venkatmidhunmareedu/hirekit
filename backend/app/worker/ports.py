@@ -13,6 +13,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.anonymizer import Anonymized
 from app.gateway.text import AnonymizedText, JobDescriptionText, PromptText
 
 
@@ -63,9 +64,13 @@ class Extractor(Protocol):
 
 
 class Anonymizer(Protocol):
-    """Raw text to the only text the model may see, and the name found (or None)."""
+    """Raw text to the only text the model may see, the name found (or None) and a count report.
 
-    def anonymize(self, raw: str) -> tuple[AnonymizedText, str | None]: ...
+    Implemented by `app.anonymizer.anonymize`; raises `InputTooLargeError` or
+    `AnonymizationLeakError`, both permanent.
+    """
+
+    def anonymize(self, raw: str) -> Anonymized: ...
 
 
 class ScoringPrompt(Protocol):
