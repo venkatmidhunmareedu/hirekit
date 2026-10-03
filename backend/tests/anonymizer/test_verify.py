@@ -9,15 +9,21 @@ from pathlib import Path
 import pytest
 
 from app.anonymizer import verify
-from app.anonymizer.pipeline import anonymize
+from app.anonymizer.pipeline import Anonymized, _run
 from app.anonymizer.tokens import NameSet, Replacement
 from app.anonymizer.verify import AnonymizationLeakError, check
+
+
+def scan_only(raw: str) -> Anonymized:
+    """No passes, so every finding below comes from the residual scan alone."""
+    return _run(raw, ())
+
 
 JANE = NameSet("Jane Doe", frozenset({"jane", "doe"}))
 
 
 def test_the_scan_repairs_an_email_and_counts_it() -> None:
-    result = anonymize("Reach me at jane.doe@example.com for details.")
+    result = scan_only("Reach me at jane.doe@example.com for details.")
     assert result.text.value == "Reach me at [EMAIL] for details."
     assert result.report.repaired == 1
 
@@ -40,14 +46,14 @@ def test_the_scan_repairs_an_email_and_counts_it() -> None:
     ],
 )
 def test_the_scan_repairs_each_class_it_covers(raw: str, expected: str) -> None:
-    result = anonymize(raw)
+    result = scan_only(raw)
     assert result.text.value == expected
     assert result.report.repaired == 1
 
 
 def test_year_ranges_and_numbers_that_are_evidence_are_kept() -> None:
     raw = "2018 - 2021, 2015-2018, 2019 2020 2021. Cut cost by 1,200,000 over 12 months. v3.12.1"
-    assert anonymize(raw).text.value == raw
+    assert scan_only(raw).text.value == raw
 
 
 def test_the_scan_masks_a_discovered_name_part_and_counts_it() -> None:
@@ -64,7 +70,7 @@ def test_a_name_part_inside_a_word_or_a_placeholder_is_not_a_hit() -> None:
 
 
 def test_the_scan_checks_an_email_local_part_even_when_no_name_was_found() -> None:
-    result = anonymize("Mail: jane.doe@example.com\nJane Doe built a payments service.")
+    result = scan_only("Mail: jane.doe@example.com\nJane Doe built a payments service.")
     assert result.text.value == "Mail: [EMAIL]\n[NAME] [NAME] built a payments service."
     assert result.identity_name is None
     assert result.report.name_found is False
@@ -72,7 +78,7 @@ def test_the_scan_checks_an_email_local_part_even_when_no_name_was_found() -> No
 
 def test_a_generic_mailbox_name_does_not_mask_ordinary_words() -> None:
     raw = "Mail: info@example.com\nRan the info desk and the contact centre."
-    assert anonymize(raw).text.value == "Mail: [EMAIL]\nRan the info desk and the contact centre."
+    assert scan_only(raw).text.value == "Mail: [EMAIL]\nRan the info desk and the contact centre."
 
 
 def test_the_scan_raises_only_when_its_own_repair_fails(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -81,7 +87,7 @@ def test_the_scan_raises_only_when_its_own_repair_fails(monkeypatch: pytest.Monk
 
     monkeypatch.setattr(verify, "apply_replacements", broken)
     with pytest.raises(AnonymizationLeakError) as caught:
-        anonymize("Mail jane@example.com")
+        scan_only("Mail jane@example.com")
     leaks = caught.value.details["leaks"]
     assert isinstance(leaks, dict)
     assert "contact" in leaks
@@ -92,13 +98,13 @@ def test_a_leak_error_and_the_report_carry_counts_never_text(
 ) -> None:
     monkeypatch.setattr(verify, "apply_replacements", lambda text, reps: (text, reps))
     with pytest.raises(AnonymizationLeakError) as caught:
-        anonymize("Mail secret.person@example.com")
+        scan_only("Mail secret.person@example.com")
     assert "secret" not in repr(caught.value.details)
     assert "secret" not in caught.value.message
 
 
 def test_a_report_holds_counts_only() -> None:
-    report = anonymize("Mail secret.person@example.com").report
+    report = scan_only("Mail secret.person@example.com").report
     assert "secret" not in repr(report)
 
 
