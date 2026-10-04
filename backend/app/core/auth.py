@@ -5,8 +5,8 @@ The cookie holds a random token; the database holds only its SHA-256 (ADR-0005).
 """
 
 import hmac
-from collections.abc import Callable, Coroutine
-from typing import Annotated, Any
+from collections.abc import Awaitable, Callable
+from typing import Annotated, Literal
 
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,7 +58,10 @@ async def current_user(
     return user
 
 
-def require_role(role: str) -> Callable[[User], Coroutine[Any, Any, User]]:
+Role = Literal["recruiter", "interviewer"]
+
+
+def require_role(role: Role) -> Callable[[User], Awaitable[User]]:
     """A dependency that admits only users with this role."""
 
     async def check(user: Annotated[User, Depends(current_user)]) -> User:

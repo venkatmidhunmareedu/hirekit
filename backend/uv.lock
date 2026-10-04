@@ -426,7 +426,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.20,<2" },
-    { name = "argon2-cffi", specifier = ">=25.1.0" },
+    { name = "argon2-cffi", specifier = ">=25.1,<26" },
     { name = "asyncpg", specifier = ">=0.31,<1" },
     { name = "defusedxml", specifier = ">=0.7,<1" },
     { name = "fastapi", specifier = ">=0.141,<1" },
