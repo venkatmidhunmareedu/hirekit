@@ -20,7 +20,7 @@ from app.db.session import make_engine, make_session_factory
 from app.seed.candidates import seed_candidates
 from app.seed.data import Expected, load_seed
 from app.seed.load import seed_roles
-from app.seed.users import format_outcome, seed_users
+from app.seed.users import SeedError, check_environment, format_outcome, seed_users
 
 log = structlog.get_logger()
 
@@ -53,15 +53,32 @@ async def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="give the existing seed users new passwords (default: keep them)",
     )
+    parser.add_argument(
+        "--allow-production",
+        action="store_true",
+        help="seed outside development and test; needs both SEED_PASSWORD_* set",
+    )
     args = parser.parse_args(argv)
     settings = get_settings()
+    try:
+        check_environment(settings.env, allow_production=args.allow_production, environ=os.environ)
+    except SeedError as error:
+        sys.exit(f"seed: {error}")
     configure_logging(settings.log_level, settings.log_format)
     engine = make_engine(settings)
     try:
         factory = make_session_factory(engine)
         result = await run_seed(factory)
-        async with factory.begin() as session:
-            users = await seed_users(session, os.environ, reset=args.reset_passwords)
+        try:
+            async with factory.begin() as session:
+                users = await seed_users(
+                    session,
+                    os.environ,
+                    reset=args.reset_passwords,
+                    allow_generate=sys.stdout.isatty(),  # never make a password up for a pipe
+                )
+        except SeedError as error:
+            sys.exit(f"seed: {error}")
     finally:
         await engine.dispose()
     log.info(
@@ -70,7 +87,9 @@ async def main(argv: list[str] | None = None) -> None:
         candidates_created=result.candidates_created,
         users={u.email: u.status for u in users},
     )
-    for outcome in users:  # the only place a generated password appears, once, on stdout
+    for (
+        outcome
+    ) in users:  # the only place a generated password appears, once, on an interactive terminal
         sys.stdout.write(format_outcome(outcome) + "\n")
 
 

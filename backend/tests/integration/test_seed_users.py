@@ -60,9 +60,9 @@ async def test_seeded_user_signs_in_and_a_rerun_changes_nothing(
     factory = async_sessionmaker(engine, expire_on_commit=False)
     recruiter, _ = unique_users
 
-    assert await _run(factory, {"T_PW_R": "first-pw-recruiter"}) == ["created", "created"]
+    assert await _run(factory, {"T_PW_R": "first-password-recruiter"}) == ["created", "created"]
     before = await _hash(factory, recruiter.email)
-    assert await _run(factory, {"T_PW_R": "other-pw"}) == ["kept", "kept"]
+    assert await _run(factory, {"T_PW_R": "other-password-123"}) == ["kept", "kept"]
     assert await _hash(factory, recruiter.email) == before
 
     async with factory() as db:
@@ -71,7 +71,7 @@ async def test_seeded_user_signs_in_and_a_rerun_changes_nothing(
             UserRepository(db),
             SessionRepository(db),
             email=recruiter.email.upper(),  # lower(email) matching
-            password="first-pw-recruiter",
+            password="first-password-recruiter",
             ttl=timedelta(minutes=1),
         )
         assert user.role == "recruiter"
@@ -84,13 +84,56 @@ async def test_reset_passwords_replaces_the_hash_without_a_second_row(
 ) -> None:
     factory = async_sessionmaker(engine, expire_on_commit=False)
     recruiter, _ = unique_users
-    await _run(factory, {"T_PW_R": "old-pw"})
+    await _run(factory, {"T_PW_R": "old-password-123456"})
 
-    assert await _run(factory, {"T_PW_R": "new-pw"}, reset=True) == ["reset", "reset"]
+    assert await _run(factory, {"T_PW_R": "new-password-123456"}, reset=True) == ["reset", "reset"]
 
-    assert verify_password(await _hash(factory, recruiter.email), "new-pw")
+    assert verify_password(await _hash(factory, recruiter.email), "new-password-123456")
     async with factory() as session:
         count = await session.scalar(
             text("SELECT count(*) FROM users WHERE lower(email) = :e"), {"e": recruiter.email}
         )
     assert count == 1
+
+
+async def test_reset_ends_the_users_sessions_in_the_same_transaction(
+    engine: AsyncEngine, unique_users: tuple[SeedUser, SeedUser]
+) -> None:
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    recruiter, _ = unique_users
+    await _run(factory, {"T_PW_R": "old-password-123456"})
+    async with factory() as db:
+        token, _csrf, _user = await login(
+            db,
+            UserRepository(db),
+            SessionRepository(db),
+            email=recruiter.email,
+            password="old-password-123456",
+            ttl=timedelta(minutes=5),
+        )
+    async with factory() as db:
+        assert await SessionRepository(db).read_valid(token) is not None
+
+    await _run(factory, {"T_PW_R": "new-password-123456"}, reset=True)
+
+    async with factory() as db:
+        assert await SessionRepository(db).read_valid(token) is None
+
+
+async def test_a_conflicting_insert_counts_as_kept_and_changes_nothing(
+    engine: AsyncEngine,
+    unique_users: tuple[SeedUser, SeedUser],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    recruiter, _ = unique_users
+    await _run(factory, {"T_PW_R": "first-password-recruiter"})
+    before = await _hash(factory, recruiter.email)
+    monkeypatch.setattr(seed_module, "decide", lambda exists, reset: "created")  # the overlap race
+
+    async with factory.begin() as session:
+        outcomes = await seed_users(session, {"T_PW_R": "racing-password-123"})
+
+    assert outcomes[0].status == "kept"
+    assert outcomes[0].generated_password is None
+    assert await _hash(factory, recruiter.email) == before
