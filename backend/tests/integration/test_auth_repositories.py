@@ -1,14 +1,16 @@
 """The user and session repositories against Postgres (timestamptz, hash-only storage)."""
 
 from datetime import UTC, datetime, timedelta
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from app.core.passwords import hash_password
 from app.db.repositories.sessions import SessionRepository, hash_token
 from app.db.repositories.users import UserRepository
+from app.domain.auth.service import login, logout
 
 pytestmark = pytest.mark.integration
 
@@ -69,3 +71,34 @@ async def test_by_email_ignores_case(session: AsyncSession) -> None:
 
     assert user is not None
     assert user.id == user_id
+
+
+async def test_login_and_logout_commit_through_the_service(engine: AsyncEngine) -> None:
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    email = f"svc-{uuid4().hex}@example.com"
+    async with factory.begin() as setup:
+        await setup.execute(
+            text(
+                "INSERT INTO users(name, email, role, password_hash) "
+                "VALUES ('Svc', :email, 'recruiter', :hash)"
+            ),
+            {"email": email, "hash": hash_password("correct-horse-battery")},
+        )
+    try:
+        async with factory() as db:
+            token, _, _user = await login(
+                db,
+                UserRepository(db),
+                SessionRepository(db),
+                email=email,
+                password="correct-horse-battery",
+                ttl=LIVE,
+            )
+        async with factory() as db:
+            assert await SessionRepository(db).read_valid(token) is not None
+            await logout(db, SessionRepository(db), token=token)
+        async with factory() as db:
+            assert await SessionRepository(db).read_valid(token) is None
+    finally:
+        async with factory.begin() as cleanup:
+            await cleanup.execute(text("DELETE FROM users WHERE email = :e"), {"e": email})

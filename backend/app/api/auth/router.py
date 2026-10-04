@@ -4,6 +4,7 @@ from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth.schemas import LoginRequest, SessionOut, UserOut
 from app.core.auth import (
@@ -18,7 +19,9 @@ from app.core.errors import ErrorEnvelope
 from app.db.models import UserSession
 from app.db.repositories.sessions import SessionRepository
 from app.db.repositories.users import UserRepository
+from app.db.session import get_session
 from app.domain.auth.service import login as sign_in
+from app.domain.auth.service import logout as sign_out
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -34,13 +37,14 @@ async def login(
     body: LoginRequest,
     response: Response,
     settings: Annotated[Settings, Depends(get_app_settings)],
+    db: Annotated[AsyncSession, Depends(get_session)],
     users: Annotated[UserRepository, Depends(get_users)],
     sessions: Annotated[SessionRepository, Depends(get_sessions)],
 ) -> SessionOut:
     """Check the credentials, open a session, set the cookie."""
     ttl = timedelta(hours=settings.session_ttl_hours)
     token, csrf_token, user = await sign_in(
-        users, sessions, email=body.email, password=body.password, ttl=ttl
+        db, users, sessions, email=body.email, password=body.password, ttl=ttl
     )
     response.set_cookie(
         COOKIE_NAME,
@@ -63,10 +67,11 @@ async def logout(
     response: Response,
     _: Annotated[UserSession, Depends(current_session)],
     settings: Annotated[Settings, Depends(get_app_settings)],
+    db: Annotated[AsyncSession, Depends(get_session)],
     sessions: Annotated[SessionRepository, Depends(get_sessions)],
 ) -> None:
     """Delete the session row and clear the cookie."""
-    await sessions.delete(request.cookies[COOKIE_NAME])
+    await sign_out(db, sessions, token=request.cookies[COOKIE_NAME])
     response.delete_cookie(
         COOKIE_NAME, httponly=True, samesite="lax", secure=settings.cookie_secure
     )

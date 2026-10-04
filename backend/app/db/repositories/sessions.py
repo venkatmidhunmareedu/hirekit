@@ -16,7 +16,7 @@ def hash_token(token: str) -> bytes:
 
 
 class SessionRepository:
-    """Create, read and delete sessions by cookie value. Writes commit: one statement each."""
+    """Sessions by cookie value. Writes join the caller's transaction; the service owns it."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -33,7 +33,7 @@ class SessionRepository:
                 expires_at=expires_at,
             )
         )
-        await self._session.commit()
+        await self._session.flush()
 
     async def read_valid(self, token: str) -> UserSession | None:
         """The session for this cookie value when it has not expired, else None."""
@@ -50,4 +50,3 @@ class SessionRepository:
         await self._session.execute(
             delete(UserSession).where(UserSession.token_hash == hash_token(token))
         )
-        await self._session.commit()
