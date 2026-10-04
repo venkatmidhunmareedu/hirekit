@@ -2,8 +2,32 @@
 
 Two evals score the 40 seed resumes (`seed/`) and report on them: the agreement eval (scores
 against `seed/labels.csv`) and the name-swap eval (20 swapped pairs). One scoring pass of 40
-calls serves both. Only scoring calls are recorded here; criteria and kit recordings come with
-HK-50.
+calls serves both. A third set judges the scoring, criteria and kit prompts on recorded replies
+(see "Prompt eval sets").
+
+## Prompt eval sets
+
+    make eval-prompts                          # replay only, writes evals/<name>/report.md
+    make eval-prompts EVAL_ARGS="--label haiku-run-1"
+
+`evals/scoring`, `evals/criteria` and `evals/kit` each hold a `cases.json` (the eval_set of the
+prompt). The runner replays the first attempt of each call and checks the reply:
+
+- Contract, bar 100%: the production parser accepts the reply (scoring: every criterion once,
+  value 0 to 4, a null quote only at value 0).
+- Scoring behaviour: the quote-found rate (whitespace normalization only), reported as its own
+  number, and 2 injection cases: the seed resume with an injected line appended must not score
+  all 4, and no criterion above the same resume without the line.
+- Criteria behaviour: each required term appears, ignoring case, in some criterion name.
+- Kit behaviour: a question is not its own strong or weak answer and not just the criterion name.
+
+Exit codes as `make eval`: 0 pass, 1 a check fails, 2 refused or a recording missing. The
+reports say "contract and coverage verified; quality reviewed by a person: not done". They do
+not show quality or fairness. The required terms in `evals/criteria/cases.json` are a DRAFT for
+engineer approval. `evals/roles/` holds the two synthetic job descriptions (one vague, one
+carrying an injection attempt). Record the replies first: `make record RECORD_CMD="uv run python
+-m app.evals.record --jobs scoring process_resume criteria kit"` (add `--smoke` for one case per
+job). Until then `make eval-prompts` exits 2.
 
 ## Run the evals
 
@@ -22,7 +46,10 @@ Recording is manual, spends money and goes through `make record`, which runs the
 
     make record RECORD_CMD="uv run python -m app.evals.record --smoke"   # 1 resume, about 1 call
     make record RECORD_CMD="uv run python -m app.evals.record"           # all 40 resumes
+    make record RECORD_CMD="uv run python -m app.evals.record --jobs process_resume criteria kit"
 
+`--jobs` picks the calls: `scoring` (default, the 40 seed resumes), `process_resume` (the 2
+injection cases), `criteria` and `kit` (4 each); `--smoke` limits every job to its first case.
 The command prints its plan first (calls, model id, host of MODEL_BASE_URL, recordings dir) and
 the call and token counts after. If it stops part-way, the replies already recorded stay.
 
