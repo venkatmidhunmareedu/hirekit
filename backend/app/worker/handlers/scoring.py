@@ -164,6 +164,29 @@ async def _end_stale(
     return Stale()
 
 
+async def call_scoring(
+    gateway: ScoringGateway,
+    *,
+    role_id: UUID | None,
+    prompt_version: str,
+    system: PromptText,
+    text: AnonymizedText,
+    schema_retry: int,
+) -> GatewayResponse:
+    """The one scoring request; the handlers and the prompt evals both make it here."""
+    return await gateway.complete(
+        GatewayRequest(
+            purpose="scoring",
+            role_id=role_id,
+            prompt_version=prompt_version,
+            system=system,
+            input=text,
+            max_tokens=SCORING_MAX_TOKENS,
+            schema_retry=schema_retry,
+        )
+    )
+
+
 async def score_text(
     gateway: ScoringGateway,
     *,
@@ -186,16 +209,13 @@ async def score_text(
     for schema_retry in (0, 1):
         if before_call is not None:
             await before_call()
-        reply = await gateway.complete(
-            GatewayRequest(
-                purpose="scoring",
-                role_id=role_id,
-                prompt_version=prompt_version,
-                system=system,
-                input=text,
-                max_tokens=SCORING_MAX_TOKENS,
-                schema_retry=schema_retry,
-            )
+        reply = await call_scoring(
+            gateway,
+            role_id=role_id,
+            prompt_version=prompt_version,
+            system=system,
+            text=text,
+            schema_retry=schema_retry,
         )
         if reply.finish_reason == "length":
             continue

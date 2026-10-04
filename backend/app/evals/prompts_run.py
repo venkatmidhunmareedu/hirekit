@@ -40,7 +40,6 @@ from app.evals.prompts import (
 )
 from app.evals.run import criterion_specs
 from app.extraction import ResumeExtractor
-from app.gateway import GatewayRequest
 from app.gateway.errors import GatewayError, RecordingMissingError
 from app.gateway.text import AnonymizedText
 from app.jobs.job_description import job_description_text
@@ -50,9 +49,9 @@ from app.prompts.scoring_prompt import ScoringPromptBuilder
 from app.seed.__main__ import DEFAULT_ROOT
 from app.seed.candidates import MEDIA_TYPES
 from app.seed.data import SeedData, SeedRole, load_role, load_seed
-from app.worker.handlers.kit import KIT_MAX_TOKENS
-from app.worker.handlers.propose_criteria import CRITERIA_MAX_TOKENS
-from app.worker.handlers.scoring import SCORING_MAX_TOKENS, ScoringGateway
+from app.worker.handlers.kit import call_kit
+from app.worker.handlers.propose_criteria import call_criteria
+from app.worker.handlers.scoring import ScoringGateway, call_scoring
 from app.worker.ports import CriterionSpec
 
 BACKEND: Final = Path(__file__).resolve().parents[2]
@@ -125,16 +124,13 @@ async def ask_scoring(
     anonymized = await asyncio.to_thread(anonymize, raw)
     specs = criterion_specs(role)
     builder = ScoringPromptBuilder()
-    reply = await gateway.complete(
-        GatewayRequest(
-            purpose="scoring",
-            role_id=None,
-            prompt_version=builder.prompt_version,
-            system=builder.build(specs),
-            input=anonymized.text,
-            max_tokens=SCORING_MAX_TOKENS,
-            schema_retry=0,
-        )
+    reply = await call_scoring(
+        gateway,
+        role_id=None,
+        prompt_version=builder.prompt_version,
+        system=builder.build(specs),
+        text=anonymized.text,
+        schema_retry=0,
     )
     return AskedScoring(reply.text, anonymized.text, specs)
 
@@ -142,16 +138,13 @@ async def ask_scoring(
 async def ask_criteria(gateway: ScoringGateway, role: SeedRole) -> str:
     """The criteria call for one job description; the first attempt only."""
     builder = CriteriaPromptBuilder()
-    reply = await gateway.complete(
-        GatewayRequest(
-            purpose="criteria",
-            role_id=None,
-            prompt_version=builder.prompt_version,
-            system=builder.build(),
-            input=job_description_text(role.title, role.job_description),
-            max_tokens=CRITERIA_MAX_TOKENS,
-            schema_retry=0,
-        )
+    reply = await call_criteria(
+        gateway,
+        role_id=None,
+        prompt_version=builder.prompt_version,
+        system=builder.build(),
+        description=job_description_text(role.title, role.job_description),
+        schema_retry=0,
     )
     return reply.text
 
@@ -160,16 +153,13 @@ async def ask_kit(gateway: ScoringGateway, role: SeedRole, criterion: str) -> st
     """The kit call for one criterion of one role; the first attempt only."""
     spec = next(s for s in criterion_specs(role) if s.name == criterion)
     builder = KitPromptBuilder()
-    reply = await gateway.complete(
-        GatewayRequest(
-            purpose="kit",
-            role_id=None,
-            prompt_version=builder.prompt_version,
-            system=builder.build(spec),
-            input=job_description_text(role.title, role.job_description, spec),
-            max_tokens=KIT_MAX_TOKENS,
-            schema_retry=0,
-        )
+    reply = await call_kit(
+        gateway,
+        role_id=None,
+        prompt_version=builder.prompt_version,
+        system=builder.build(spec),
+        description=job_description_text(role.title, role.job_description, spec),
+        schema_retry=0,
     )
     return reply.text
 
