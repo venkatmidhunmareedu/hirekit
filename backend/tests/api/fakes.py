@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from app.db.models import Criterion, Role, RubricLevel, User, UserSession
 from app.db.repositories.sessions import hash_token
+from app.db.repositories.uploads import RoleState
 
 
 class FakeUsers:
@@ -171,3 +172,62 @@ class FakeCriteria:
 
     async def replace_levels(self, criterion_id: uuid.UUID, levels: list[tuple[int, str]]) -> None:
         self.rubrics[criterion_id] = dict(levels)
+
+
+class FakeUploads:
+    """Candidates, files and jobs in memory; shares the roles fake so a role can turn Draft."""
+
+    def __init__(self, roles: FakeRoles) -> None:
+        self.roles = roles
+        self.spent: Decimal | None = Decimal(0)
+        self.candidates: list[dict[str, object]] = []
+        self.files: list[tuple[uuid.UUID, str, bytes]] = []
+        self.jobs: list[tuple[uuid.UUID, uuid.UUID, int]] = []
+        self.draft_after: int | None = None  # the role turns Draft once this many files are stored
+
+    async def spent_usd(self) -> Decimal | None:
+        return self.spent
+
+    async def lock_role(self, role_id: uuid.UUID) -> RoleState | None:
+        role = self.roles.rows.get(role_id)
+        if role is None:
+            return None
+        if self.draft_after is not None and len(self.files) >= self.draft_after:
+            role.status = "draft"
+        return RoleState(role.status, role.criteria_version)
+
+    async def find_duplicate(
+        self, role_id: uuid.UUID, content_hash: str
+    ) -> tuple[uuid.UUID, int] | None:
+        for c in self.candidates:
+            if c["role_id"] == role_id and c["content_hash"] == content_hash:
+                return uuid.UUID(str(c["id"])), int(str(c["candidate_no"]))
+        return None
+
+    async def insert_candidate(
+        self,
+        role_id: uuid.UUID,
+        file_name: str,
+        content_hash: str,
+        duplicate_of_id: uuid.UUID | None,
+    ) -> tuple[uuid.UUID, int]:
+        candidate_id, number = uuid.uuid4(), len(self.candidates) + 1
+        self.candidates.append(
+            {
+                "id": candidate_id,
+                "candidate_no": number,
+                "role_id": role_id,
+                "file_name": file_name,
+                "content_hash": content_hash,
+                "duplicate_of_id": duplicate_of_id,
+            }
+        )
+        return candidate_id, number
+
+    async def insert_file(self, candidate_id: uuid.UUID, media_type: str, content: bytes) -> None:
+        self.files.append((candidate_id, media_type, content))
+
+    async def enqueue_process_resume(
+        self, role_id: uuid.UUID, candidate_id: uuid.UUID, criteria_version: int
+    ) -> None:
+        self.jobs.append((role_id, candidate_id, criteria_version))

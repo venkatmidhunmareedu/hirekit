@@ -83,6 +83,26 @@ class RoleNotApprovedError(ConflictError):
     code = "role_not_approved"
 
 
+class BudgetReachedError(ConflictError):
+    """Live mode and the USD 8 model budget has no room for another model action."""
+
+    code = "budget_reached"
+
+
+class TooManyFilesError(DomainError):
+    """More files in one upload than the limit allows."""
+
+    status_code = 422
+    code = "too_many_files"
+
+
+class PayloadTooLargeError(DomainError):
+    """The request body is over the size cap."""
+
+    status_code = 413
+    code = "payload_too_large"
+
+
 class NoCriteriaError(DomainError):
     """The role has no live criteria to approve."""
 

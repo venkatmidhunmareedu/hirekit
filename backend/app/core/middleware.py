@@ -11,7 +11,7 @@ import structlog
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.core.errors import unhandled_response
+from app.core.errors import PayloadTooLargeError, error_response, unhandled_response
 
 log = structlog.get_logger()
 
@@ -59,3 +59,43 @@ class RequestIdMiddleware:
             duration_ms = round((time.perf_counter() - start) * 1000, 1)
             log.info("request", status=status, duration_ms=duration_ms)
             structlog.contextvars.clear_contextvars()
+
+
+class BodyLimitMiddleware:
+    """Refuse a body over `max_request_bytes` while it streams, whatever Content-Length says.
+
+    The upload route also checks the declared length before it reads anything; this is the
+    backstop for chunked or lying clients, and covers every other route too. FastAPI turns any
+    error raised while it reads a JSON body into a 400, so once the cap is passed the response
+    the app starts is replaced by the 413 envelope.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        limit: int = scope["app"].state.settings.max_request_bytes
+        seen = 0
+        exceeded = False
+
+        async def counted() -> Message:
+            nonlocal seen, exceeded
+            message = await receive()
+            if message["type"] == "http.request":
+                seen += len(message.get("body", b""))
+                if seen > limit:
+                    exceeded = True
+                    raise PayloadTooLargeError("request too large")
+            return message
+
+        async def guarded(message: Message) -> None:
+            if not exceeded:
+                await send(message)
+            elif message["type"] == "http.response.start":
+                refusal = error_response(413, PayloadTooLargeError.code, "request too large")
+                await refusal(scope, receive, send)
+
+        await self.app(scope, counted, guarded)

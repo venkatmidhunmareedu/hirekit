@@ -299,7 +299,11 @@ paths:
       description: >-
         Authenticated and CSRF-checked before the body is read. Each file is accepted or rejected
         on its own; the response has one result per file. An upload to a Draft role, or in live
-        mode at the budget cap, is refused as a whole before any file is written.
+        mode at the budget cap, is refused as a whole before any file is written. A role that
+        turns Draft while the request runs gives the files not yet stored a role_not_approved
+        result. The type comes from the file's first bytes, not its name or content type. A file
+        over the per-file limit is rejected on its own; a request over the whole-request limit is
+        413, and more than 100 files is 422 too_many_files.
       tags: [resumes]
       x-story-ids: [US-00-003]
       x-roles: [recruiter]

@@ -14,11 +14,12 @@ from fastapi import FastAPI
 from app import __version__
 from app.api.auth.router import router as auth_router
 from app.api.health.router import router as health_router
+from app.api.resumes.router import router as resumes_router
 from app.api.roles.router import router as roles_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
-from app.core.middleware import RequestIdMiddleware
+from app.core.middleware import BodyLimitMiddleware, RequestIdMiddleware
 from app.db.session import make_engine, make_session_factory
 
 log = structlog.get_logger()
@@ -53,9 +54,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url="/openapi.json" if docs_enabled else None,
     )
     app.state.settings = settings
+    app.add_middleware(BodyLimitMiddleware)
     app.add_middleware(RequestIdMiddleware)
     register_exception_handlers(app)
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(roles_router)
+    app.include_router(resumes_router)
     return app

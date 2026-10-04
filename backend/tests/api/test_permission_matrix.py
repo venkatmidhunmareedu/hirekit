@@ -18,7 +18,8 @@ from app.core.auth import CurrentUser, InterviewerUser, RecruiterUser, current_s
 from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
-from tests.api.fakes import FakeCriteria, FakeRoles, FakeSessions, FakeUsers
+from tests.api.fakes import FakeCriteria, FakeRoles, FakeSessions, FakeUploads, FakeUsers
+from tests.files import pdf_bytes
 
 # (method, path) -> roles allowed. An absent role gets 403; no sign-in gets 401.
 MATRIX: dict[tuple[str, str], frozenset[str]] = {
@@ -33,6 +34,7 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("GET", "/v1/roles/{role_id}"): frozenset({"recruiter", "interviewer"}),
     ("PUT", "/v1/roles/{role_id}/criteria"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/approve"): frozenset({"recruiter"}),
+    ("POST", "/v1/roles/{role_id}/resumes"): frozenset({"recruiter"}),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -71,6 +73,12 @@ BODIES: dict[tuple[str, str], dict[str, object]] = {
     },
     ("POST", "/v1/roles/{role_id}/approve"): {"criteria_version": 1},
 }
+# Routes whose body is multipart: a JSON body would be a 422 for them.
+FILES: dict[tuple[str, str], list[tuple[str, tuple[str, bytes, str]]]] = {
+    ("POST", "/v1/roles/{role_id}/resumes"): [
+        ("files", ("cv.pdf", pdf_bytes(), "application/pdf"))
+    ],
+}
 
 
 @pytest.mark.parametrize(("method", "path", "who"), CELLS)
@@ -80,11 +88,12 @@ async def test_matrix_cell(
     sessions: FakeSessions,
     roles: FakeRoles,
     criteria: FakeCriteria,
+    uploads: FakeUploads,
     method: str,
     path: str,
     who: str,
 ) -> None:
-    role = roles.seed()
+    role = roles.seed(status="approved")
     criteria.seed(role.id, "Python")
     url = path.replace("{role_id}", str(role.id))
     headers: dict[str, str] = {}
@@ -93,7 +102,13 @@ async def test_matrix_cell(
         headers = (await sessions.sign_in(user)).unsafe_headers
         roles.assigned.add((role.id, user.id))  # lets an interviewer read the role
 
-    response = await client.request(method, url, headers=headers, json=BODIES.get((method, path)))
+    response = await client.request(
+        method,
+        url,
+        headers=headers,
+        json=BODIES.get((method, path)),
+        files=FILES.get((method, path)),
+    )
 
     if who == "anonymous":
         assert (response.status_code, response.json()["error"]["code"]) == (401, "unauthenticated")
@@ -151,7 +166,8 @@ def test_every_route_declares_a_role_and_the_matrix_matches_the_table() -> None:
     app = create_app(Settings(_env_file=None, env="test", database_url=DB))
 
     assert unguarded(app) == set()
-    assert len(list(api_routes(app.routes))) == 10
+    served = len([key for key in MATRIX if key[1].startswith("/v1/")]) + len(PUBLIC)
+    assert len(list(api_routes(app.routes))) == served
 
 
 def test_the_guard_flags_a_route_without_a_session_dependency() -> None:
