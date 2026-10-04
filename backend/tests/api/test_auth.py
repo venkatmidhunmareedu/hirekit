@@ -157,3 +157,18 @@ async def test_logout_needs_the_csrf_token(
 
     assert response.status_code == 403
     assert len(sessions.rows) == 1
+
+
+async def test_a_second_login_replaces_the_cookie_and_deletes_the_old_session(
+    client: AsyncClient, sessions: FakeSessions, recruiter: str
+) -> None:
+    first = cookie_value(await login(client, recruiter, PHRASE))
+
+    second = await client.post(
+        "/v1/auth/login",
+        json={"email": recruiter, "password": PHRASE},
+        headers={"Cookie": f"hirekit_session={first}"},
+    )
+
+    assert cookie_value(second) != first
+    assert list(sessions.rows) == [hashlib.sha256(cookie_value(second).encode()).digest()]

@@ -50,3 +50,7 @@ class SessionRepository:
         await self._session.execute(
             delete(UserSession).where(UserSession.token_hash == hash_token(token))
         )
+
+    async def delete_for_user(self, user_id: uuid.UUID) -> None:
+        """Remove every session of this user (sign out everywhere)."""
+        await self._session.execute(delete(UserSession).where(UserSession.user_id == user_id))

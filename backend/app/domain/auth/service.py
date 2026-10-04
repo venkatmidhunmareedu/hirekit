@@ -26,6 +26,7 @@ async def login(
     email: str,
     password: str,
     ttl: timedelta,
+    old_token: str | None = None,
 ) -> tuple[str, str, User]:
     """The new cookie value, its CSRF token and the user.
 
@@ -43,6 +44,8 @@ async def login(
     token = secrets.token_urlsafe(32)
     csrf_token = secrets.token_urlsafe(32)
     async with db.begin():
+        if old_token:  # a new sign-in never leaves the browser's old session alive
+            await sessions.delete(old_token)
         await sessions.create(token, user.id, csrf_token, datetime.now(UTC) + ttl)
     return token, csrf_token, user
 

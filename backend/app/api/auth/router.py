@@ -35,6 +35,7 @@ def get_app_settings(request: Request) -> Settings:
 @router.post("/login", response_model=SessionOut, responses={401: {"model": ErrorEnvelope}})
 async def login(
     body: LoginRequest,
+    request: Request,
     response: Response,
     settings: Annotated[Settings, Depends(get_app_settings)],
     db: Annotated[AsyncSession, Depends(get_session)],
@@ -44,7 +45,13 @@ async def login(
     """Check the credentials, open a session, set the cookie."""
     ttl = timedelta(hours=settings.session_ttl_hours)
     token, csrf_token, user = await sign_in(
-        db, users, sessions, email=body.email, password=body.password, ttl=ttl
+        db,
+        users,
+        sessions,
+        email=body.email,
+        password=body.password,
+        ttl=ttl,
+        old_token=request.cookies.get(COOKIE_NAME),
     )
     response.set_cookie(
         COOKIE_NAME,

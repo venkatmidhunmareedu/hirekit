@@ -102,3 +102,19 @@ async def test_login_and_logout_commit_through_the_service(engine: AsyncEngine) 
     finally:
         async with factory.begin() as cleanup:
             await cleanup.execute(text("DELETE FROM users WHERE email = :e"), {"e": email})
+
+
+async def test_delete_for_user_removes_only_that_users_sessions(session: AsyncSession) -> None:
+    mine = await seed_user(session, "mine@example.com")
+    other = await seed_user(session, "other@example.com")
+    sessions = SessionRepository(session)
+    expires = datetime.now(UTC) + LIVE
+    await sessions.create("m1", mine, "c", expires)
+    await sessions.create("m2", mine, "c", expires)
+    await sessions.create("o1", other, "c", expires)
+
+    await sessions.delete_for_user(mine)
+
+    assert await sessions.read_valid("m1") is None
+    assert await sessions.read_valid("m2") is None
+    assert await sessions.read_valid("o1") is not None
