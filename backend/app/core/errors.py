@@ -29,6 +29,27 @@ class DomainError(Exception):
         self.details: dict[str, object] = dict(details or {})
 
 
+class UnauthenticatedError(DomainError):
+    """No valid session, or the sign-in credentials were wrong."""
+
+    status_code = 401
+    code = "unauthenticated"
+
+
+class CsrfError(DomainError):
+    """A state-changing request without the session's CSRF token."""
+
+    status_code = 403
+    code = "csrf_failed"
+
+
+class ForbiddenError(DomainError):
+    """Signed in, but the role does not allow the route."""
+
+    status_code = 403
+    code = "forbidden"
+
+
 class NotFoundError(DomainError):
     """The requested resource does not exist or is not visible to the caller."""
 

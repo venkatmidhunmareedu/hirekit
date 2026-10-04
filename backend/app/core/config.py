@@ -79,6 +79,10 @@ class Settings(BaseSettings):
     record_responses: bool = False
     key_credit_limit_confirmed: str | None = None
 
+    # Session cookie (docs/design/api-lld.md section 7). Unset secure means: on in production.
+    session_cookie_secure: bool | None = None
+    session_ttl_hours: int = 12
+
     # Worker (docs/design/worker-lld.md section 7).
     worker_poll_seconds: float = 1.0
     worker_lease_seconds: int = 180
@@ -99,6 +103,22 @@ class Settings(BaseSettings):
             _DotenvWithoutMode(dotenv_settings),
             file_secret_settings,
         )
+
+    @property
+    def cookie_secure(self) -> bool:
+        """The Secure flag on the session cookie: explicit setting, else on in production."""
+        if self.session_cookie_secure is None:
+            return self.env == "production"
+        return self.session_cookie_secure
+
+    @field_validator("session_ttl_hours")
+    @classmethod
+    def _positive_ttl(cls, value: int) -> int:
+        """A zero or negative lifetime would issue sessions that are already expired."""
+        if value <= 0:
+            msg = "SESSION_TTL_HOURS must be greater than 0"
+            raise ValueError(msg)
+        return value
 
     @field_validator("database_url")
     @classmethod
