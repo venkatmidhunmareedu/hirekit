@@ -1,9 +1,11 @@
 """`python -m app.evals.record`: the pipeline `make record` runs between preflight and finish.
 
-Scores the seed resumes through the live Gateway, which writes the recordings (no direct file
-writes here). Only scoring calls are recorded; criteria and kit recordings are HK-50.
-`--smoke` scores one resume. Refuses unless MODEL_MODE=live and RECORD_RESPONSES=true, and
-under CI. Exit codes: 0 done, 1 the run failed part-way, 2 refused.
+Makes the eval calls through the live Gateway, which writes the recordings (no direct file
+writes here). Jobs (`--jobs`, default scoring): `scoring` scores the 40 seed resumes;
+`process_resume` scores the injection cases of evals/scoring/cases.json (the seed resumes they
+build on come from `scoring`); `criteria` and `kit` make one call per case of their
+cases.json. `--smoke` limits every job to its first case. Refuses unless MODEL_MODE=live and
+RECORD_RESPONSES=true, and under CI. Exit codes: 0 done, 1 the run failed part-way, 2 refused.
 """
 
 import argparse
@@ -11,19 +13,23 @@ import asyncio
 import dataclasses
 import sys
 from pathlib import Path
-from typing import TextIO
+from typing import Final, TextIO
 from urllib.parse import urlsplit
 
 from pydantic import ValidationError
 
 from app.core.config import Settings
+from app.evals.cases import load_criteria_cases, load_kit_cases, load_scoring_cases
 from app.evals.gateway import open_gateway
+from app.evals.prompts_run import BACKEND, ask_criteria, ask_kit, ask_scoring
 from app.evals.run import run_scoring
 from app.gateway.errors import GatewayError
 from app.gateway.types import Recording
 from app.seed.__main__ import DEFAULT_ROOT
-from app.seed.data import SeedData, load_seed
+from app.seed.data import SeedData, load_role, load_seed
 from app.worker.handlers.scoring import ScoringGateway
+
+JOBS: Final = ("scoring", "process_resume", "criteria", "kit")
 
 
 def _recorded(directory: Path) -> dict[str, tuple[int, int]]:
@@ -38,6 +44,54 @@ def _recorded(directory: Path) -> dict[str, tuple[int, int]]:
     return found
 
 
+async def _make_calls(
+    job: str,
+    gateway: ScoringGateway,
+    seed: SeedData,
+    seed_root: Path,
+    backend: Path,
+    *,
+    smoke: bool,
+) -> int:
+    """Make the calls of one job; returns how many were made."""
+    evals = backend / "evals"
+    if job == "scoring":
+        if smoke:
+            first = min(seed.resumes)
+            seed = dataclasses.replace(seed, resumes={first: seed.resumes[first]})
+        await run_scoring(seed, gateway, seed_root=seed_root)
+        return len(seed.resumes)
+    if job == "process_resume":
+        injected = [c for c in load_scoring_cases(evals / "scoring/cases.json") if c.injected_line]
+        for scoring_case in injected[:1] if smoke else injected:
+            await ask_scoring(gateway, seed, seed_root, scoring_case)
+        return 1 if smoke else len(injected)
+    if job == "criteria":
+        criteria = load_criteria_cases(evals / "criteria/cases.json")
+        for criteria_case in criteria[:1] if smoke else criteria:
+            await ask_criteria(gateway, load_role(backend / criteria_case.role_file))
+        return 1 if smoke else len(criteria)
+    kit = load_kit_cases(evals / "kit/cases.json")
+    for kit_case in kit[:1] if smoke else kit:
+        await ask_kit(gateway, load_role(backend / kit_case.role_file), kit_case.criterion)
+    return 1 if smoke else len(kit)
+
+
+def _planned(
+    jobs: tuple[str, ...], seed: SeedData, backend: Path, *, smoke: bool
+) -> dict[str, int]:
+    evals = backend / "evals"
+    counts = {
+        "scoring": len(seed.resumes),
+        "process_resume": sum(
+            1 for c in load_scoring_cases(evals / "scoring/cases.json") if c.injected_line
+        ),
+        "criteria": len(load_criteria_cases(evals / "criteria/cases.json")),
+        "kit": len(load_kit_cases(evals / "kit/cases.json")),
+    }
+    return {j: min(counts[j], 1) if smoke else counts[j] for j in jobs}
+
+
 async def run_record(
     gateway: ScoringGateway,
     seed: SeedData,
@@ -47,17 +101,19 @@ async def run_record(
     smoke: bool,
     out: TextIO,
     plan: str = "",
+    jobs: tuple[str, ...] = ("scoring",),
+    backend: Path = BACKEND,
 ) -> int:
-    """Score one resume (smoke) or all, printing the plan first and the counts after."""
-    if smoke:
-        first = min(seed.resumes)
-        seed = dataclasses.replace(seed, resumes={first: seed.resumes[first]})
-    n = len(seed.resumes)
-    out.write(f"record: plan: {n} scoring {'call' if n == 1 else 'calls'}{plan}\n")
+    """Make the calls of each job (one case each when smoke), printing the plan and the counts."""
+    planned = _planned(jobs, seed, backend, smoke=smoke)
+    listed = ", ".join(f"{n} {job}" for job, n in planned.items())
+    total = sum(planned.values())
+    out.write(f"record: plan: {total} {'call' if total == 1 else 'calls'} ({listed}){plan}\n")
     before = _recorded(recordings_dir)
     code = 0
     try:
-        await run_scoring(seed, gateway, seed_root=seed_root)
+        for job in jobs:
+            await _make_calls(job, gateway, seed, seed_root, backend, smoke=smoke)
     except GatewayError as error:
         out.write(f"record: stopped: {error.message}\n")
         code = 1
@@ -68,7 +124,9 @@ async def run_record(
         f"output tokens {sum(t[1] for t in new)}\n"
     )
     if code == 0:
-        out.write("record: next, run make eval with the same RECORDINGS_DIR\n")
+        out.write(
+            "record: next, run make eval and make eval-prompts with the same RECORDINGS_DIR\n"
+        )
     return code
 
 
@@ -77,7 +135,10 @@ async def main(
 ) -> int:
     out = out or sys.stdout
     parser = argparse.ArgumentParser(prog="python -m app.evals.record")
-    parser.add_argument("--smoke", action="store_true", help="score one resume only")
+    parser.add_argument("--smoke", action="store_true", help="one case per job only")
+    parser.add_argument(
+        "--jobs", nargs="+", choices=JOBS, default=["scoring"], help="which calls to make"
+    )
     parser.add_argument("--seed-dir", type=Path, default=DEFAULT_ROOT)
     args = parser.parse_args(argv)
     try:
@@ -108,6 +169,7 @@ async def main(
             smoke=args.smoke,
             out=out,
             plan=plan,
+            jobs=tuple(args.jobs),
         )
 
 
