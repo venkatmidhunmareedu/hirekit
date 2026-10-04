@@ -11,7 +11,7 @@ DB = "postgresql+asyncpg://postgres:postgres@localhost:5432/test"
 def test_defaults() -> None:
     settings = Settings(_env_file=None, database_url=DB)
 
-    assert settings.env == "development"
+    assert settings.env is None
     assert settings.port == 8080
     assert settings.log_level == "info"
     assert settings.log_format == "json"

@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "HireKitApp"
-    env: Env = "development"
+    env: Env | None = None  # unset is not "development": the cookie fails closed (cookie_secure)
     port: int = 8080
     log_level: LogLevel = "info"
     log_format: LogFormat = "json"
@@ -106,9 +106,9 @@ class Settings(BaseSettings):
 
     @property
     def cookie_secure(self) -> bool:
-        """The Secure flag on the session cookie: explicit setting, else on in production."""
+        """The Secure flag: the explicit setting, else on unless ENV is development or test."""
         if self.session_cookie_secure is None:
-            return self.env == "production"
+            return self.env not in ("development", "test")
         return self.session_cookie_secure
 
     @field_validator("session_ttl_hours")
