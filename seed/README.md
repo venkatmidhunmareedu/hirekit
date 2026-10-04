@@ -21,3 +21,12 @@ A resume id is `<role slug>-<number>`. For each base resume `<slug>-NN` the swap
 
 - The resumes, the labels and (later) the scores all come from the same model family. The agreement eval is therefore a consistency check, not a comparison with independent ground truth.
 - Anonymization is a floor, not proof of fairness. It removes named signals; proxy signals such as schools, clubs, gendered wording and career gaps can remain. A passing name-swap eval says the named signals did not move the scores on these pairs, nothing more.
+
+## Sign-in users
+
+`make seed` also creates two users so a real database has someone who can sign in: `recruiter@hirekit.local` (recruiter) and `interviewer@hirekit.local` (interviewer). The code in `backend/app/seed/users.py` holds the addresses, never a password.
+
+- Each password is generated at seed time. The command prints it once to stdout, on the line `user created: <email> (<role>) password: <password>`, and never to the logs. Only its argon2id hash is stored, so a lost password cannot be read back: reset it.
+- To choose a password instead, set `SEED_PASSWORD_RECRUITER` and/or `SEED_PASSWORD_INTERVIEWER` before seeding. Only the seed command reads them (not the Api, not Settings), and a chosen password is not printed.
+- Running the command again keeps existing users and their passwords (matched by lower(email)) and prints `user kept`. `python -m app.seed --reset-passwords` (from `backend/`) gives the existing users new passwords and prints `user reset`.
+- The command connects with `DATABASE_URL`, the owner role. The Api role (`hirekit_api`) can only read `users`.
