@@ -2,8 +2,9 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
-from app.db.models import User, UserSession
+from app.db.models import Criterion, Role, RubricLevel, User, UserSession
 from app.db.repositories.sessions import hash_token
 
 
@@ -73,3 +74,100 @@ class SignedIn:
     @property
     def unsafe_headers(self) -> dict[str, str]:
         return {**self.cookie, "X-CSRF-Token": self.csrf}
+
+
+class FakeRoles:
+    def __init__(self) -> None:
+        self.rows: dict[uuid.UUID, Role] = {}
+        self.assigned: set[tuple[uuid.UUID, uuid.UUID]] = set()  # (role_id, user_id)
+
+    def seed(self, *, status: str = "draft", version: int = 1) -> Role:
+        role = Role(
+            id=uuid.uuid4(),
+            title="Backend engineer",
+            job_description="Build things.",
+            status=status,
+            criteria_version=version,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+        self.rows[role.id] = role
+        return role
+
+    async def create(self, title: str, job_description: str) -> Role:
+        role = self.seed()
+        role.title, role.job_description = title, job_description
+        return role
+
+    async def list_recent(self, limit: int) -> list[Role]:
+        newest_first = sorted(self.rows.values(), key=lambda r: r.created_at, reverse=True)
+        return newest_first[:limit]
+
+    async def get(self, role_id: uuid.UUID, *, lock: bool = False) -> Role | None:
+        return self.rows.get(role_id)
+
+    async def interviewer_can_read(self, role_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        return (role_id, user_id) in self.assigned
+
+    async def mark_draft_and_bump(self, role_id: uuid.UUID) -> Role:
+        role = self.rows[role_id]
+        role.status, role.criteria_version = "draft", role.criteria_version + 1
+        return role
+
+    async def mark_approved(self, role_id: uuid.UUID) -> Role:
+        role = self.rows[role_id]
+        role.status = "approved"
+        return role
+
+
+class FakeCriteria:
+    def __init__(self) -> None:
+        self.rows: dict[uuid.UUID, Criterion] = {}
+        self.rubrics: dict[uuid.UUID, dict[int, str]] = {}
+
+    def seed(
+        self, role_id: uuid.UUID, name: str, *, levels: int = 5, position: int = 0
+    ) -> Criterion:
+        criterion = Criterion(
+            id=uuid.uuid4(),
+            role_id=role_id,
+            name=name,
+            kind="must_have",
+            weight=Decimal(3),
+            position=position,
+            retired_at=None,
+        )
+        self.rows[criterion.id] = criterion
+        self.rubrics[criterion.id] = {n: f"level {n}" for n in range(levels)}
+        return criterion
+
+    async def live(self, role_id: uuid.UUID) -> list[Criterion]:
+        mine = [c for c in self.rows.values() if c.role_id == role_id and c.retired_at is None]
+        return sorted(mine, key=lambda c: c.position)
+
+    async def levels(self, criterion_ids: list[uuid.UUID]) -> list[RubricLevel]:
+        return [
+            RubricLevel(criterion_id=i, level=n, descriptor=d)
+            for i in criterion_ids
+            for n, d in sorted(self.rubrics.get(i, {}).items())
+        ]
+
+    async def add(
+        self, role_id: uuid.UUID, *, name: str, kind: str, weight: int, position: int
+    ) -> uuid.UUID:
+        criterion = self.seed(role_id, name, levels=0, position=position)
+        criterion.kind, criterion.weight = kind, Decimal(weight)
+        return criterion.id
+
+    async def edit(
+        self, criterion_id: uuid.UUID, *, name: str, kind: str, weight: int, position: int
+    ) -> None:
+        row = self.rows[criterion_id]
+        row.name, row.kind, row.weight, row.position = name, kind, Decimal(weight), position
+
+    async def retire(self, criterion_ids: list[uuid.UUID]) -> None:
+        for i in criterion_ids:
+            self.rows[i].retired_at = datetime.now(UTC)
+
+    async def replace_levels(self, criterion_id: uuid.UUID, levels: list[tuple[int, str]]) -> None:
+        self.rubrics[criterion_id] = dict(levels)
