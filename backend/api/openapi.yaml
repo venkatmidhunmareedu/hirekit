@@ -228,8 +228,10 @@ paths:
       operationId: replaceCriteria
       summary: Replace the criteria set in place (a removed id is retired, never deleted)
       description: >-
-        Edits by id. Bumps criteria_version and returns an approved role to Draft. Idempotent by
-        definition (PUT).
+        Edits by id; an id that is not a live criterion of this role is 422 validation_error. The
+        array index is the position. Every call, even one that changes nothing, returns the role to
+        Draft and bumps criteria_version. Scores, jobs and kits are never touched. Idempotent in
+        the criteria set (PUT), not in the version.
       tags: [roles]
       x-story-ids: [US-00-002]
       x-roles: [recruiter]
@@ -254,6 +256,11 @@ paths:
     post:
       operationId: approveRole
       summary: Approve the criteria
+      description: >-
+        409 criteria_changed (details.current_version) when the version is not the current one;
+        422 no_criteria without live criteria; 422 incomplete_rubric (details.criterion_ids) when a
+        live criterion lacks any level 0 to 4. Approving an already approved role at the current
+        version is a 200 with no change.
       tags: [roles]
       x-story-ids: [US-00-002]
       x-roles: [recruiter]
@@ -273,8 +280,18 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
+        '409':
+          description: The criteria changed since the caller loaded them
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+              example: { error: { code: criteria_changed, message: the criteria changed since you loaded them, details: { current_version: 3 }, request_id: req_01J9Z6 } }
+        '422':
+          description: No live criteria, an incomplete rubric, or an invalid body
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+              example: { error: { code: incomplete_rubric, message: every criterion needs a descriptor for levels 0 to 4, details: { criterion_ids: [20000000-0000-4000-8000-000000000001] }, request_id: req_01J9Z6 } }
   /v1/roles/{role_id}/resumes:
     post:
       operationId: uploadResumes
@@ -931,7 +948,9 @@ components:
         - { code: not_retryable, status: 409, meaning: "The candidate does not need scoring" }
         - { code: job_not_cancellable, status: 409, meaning: "The job is already finished" }
         - { code: feedback_locked, status: 409, meaning: "Feedback is already submitted and locked" }
-        - { code: criteria_changed, status: 409, meaning: "The criteria changed since the caller loaded them" }
+        - { code: criteria_changed, status: 409, meaning: "The criteria changed since the caller loaded them; details.current_version has the current one" }
+        - { code: no_criteria, status: 422, meaning: "The role has no live criteria to approve" }
+        - { code: incomplete_rubric, status: 422, meaning: "A live criterion lacks a descriptor for a level 0 to 4; details.criterion_ids lists them" }
         - { code: budget_reached, status: 409, meaning: "The model budget is reached in live mode" }
         - { code: incomplete_feedback, status: 422, meaning: "A criterion has no score or comment" }
         - { code: too_many_files, status: 422, meaning: "More than 100 files in one upload" }
@@ -949,10 +968,11 @@ components:
       example: { status: ok, version: 0.1.0 }
     Ready:
       type: object
-      required: [status]
+      required: [status, checks]
       properties:
         status: { type: string }
-      example: { status: ready }
+        checks: { type: object, additionalProperties: { type: string } }
+      example: { status: ok, checks: { database: ok } }
     Role_kind: { type: string, enum: [recruiter, interviewer], example: recruiter }
     Stage:
       type: string
@@ -989,8 +1009,8 @@ components:
       required: [title, job_description]
       additionalProperties: false
       properties:
-        title: { type: string, minLength: 1 }
-        job_description: { type: string, minLength: 1 }
+        title: { type: string, minLength: 1, maxLength: 200, description: Trimmed; not blank }
+        job_description: { type: string, minLength: 1, maxLength: 20000, description: Trimmed; not blank }
       example: { title: Backend engineer, job_description: Build and run our payments API. }
     Role:
       type: object
@@ -1016,7 +1036,7 @@ components:
       required: [level, descriptor]
       properties:
         level: { type: integer, minimum: 0, maximum: 4 }
-        descriptor: { type: string }
+        descriptor: { type: string, minLength: 1, maxLength: 200, description: Trimmed; one line }
       example: { level: 4, descriptor: Led the design of a production payments system }
     Criterion:
       type: object
@@ -1025,7 +1045,7 @@ components:
         id: { type: string, format: uuid }
         name: { type: string }
         kind: { type: string, enum: [must_have, nice_to_have] }
-        weight: { type: number, exclusiveMinimum: 0 }
+        weight: { type: number, exclusiveMinimum: 0, description: Stored as numeric(6,3); returned as a JSON number }
         position: { type: integer }
         rubric:
           type: array
@@ -1036,7 +1056,7 @@ components:
         kind: must_have
         weight: 3
         position: 1
-        rubric: [{ level: 0, descriptor: No evidence }, { level: 4, descriptor: Led a production Python system }]
+        rubric: [{ level: 0, descriptor: No evidence }, { level: 1, descriptor: Used Python in coursework }, { level: 2, descriptor: Shipped small Python services }, { level: 3, descriptor: Owned a production Python service }, { level: 4, descriptor: Led a production Python system }]
     RoleDetail:
       allOf:
         - $ref: '#/components/schemas/Role'
@@ -1060,25 +1080,28 @@ components:
             kind: must_have
             weight: 3
             position: 1
-            rubric: [{ level: 0, descriptor: No evidence }, { level: 4, descriptor: Led a production Python system }]
+            rubric: [{ level: 0, descriptor: No evidence }, { level: 1, descriptor: Used Python in coursework }, { level: 2, descriptor: Shipped small Python services }, { level: 3, descriptor: Owned a production Python service }, { level: 4, descriptor: Led a production Python system }]
     CriterionInput:
       type: object
       required: [name, kind, weight, rubric]
       additionalProperties: false
       properties:
         id: { type: [string, 'null'], format: uuid, description: Existing id to edit in place; omit for a new criterion }
-        name: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1, maxLength: 80, description: Trimmed; one line; unique in the set ignoring case and spacing }
         kind: { type: string, enum: [must_have, nice_to_have] }
-        weight: { type: number, exclusiveMinimum: 0 }
+        weight: { type: integer, minimum: 1, maximum: 5 }
         rubric:
           type: array
+          minItems: 0
+          maxItems: 5
+          description: Levels 0 to 4, each at most once. A save may leave levels out; approving needs all five.
           items: { $ref: '#/components/schemas/RubricLevel' }
       example:
         id: 20000000-0000-4000-8000-000000000001
         name: Python experience
         kind: must_have
         weight: 3
-        rubric: [{ level: 0, descriptor: No evidence }, { level: 4, descriptor: Led a production Python system }]
+        rubric: [{ level: 0, descriptor: No evidence }, { level: 1, descriptor: Used Python in coursework }, { level: 2, descriptor: Shipped small Python services }, { level: 3, descriptor: Owned a production Python service }, { level: 4, descriptor: Led a production Python system }]
     CriteriaReplace:
       type: object
       required: [criteria]
@@ -1086,16 +1109,27 @@ components:
       properties:
         criteria:
           type: array
+          minItems: 1
+          maxItems: 8
           items: { $ref: '#/components/schemas/CriterionInput' }
       example:
         criteria:
-          - { id: 20000000-0000-4000-8000-000000000001, name: Python experience, kind: must_have, weight: 3, rubric: [{ level: 0, descriptor: No evidence }] }
+          - id: 20000000-0000-4000-8000-000000000001
+            name: Python experience
+            kind: must_have
+            weight: 3
+            rubric:
+              - { level: 0, descriptor: No evidence }
+              - { level: 1, descriptor: Used Python in coursework }
+              - { level: 2, descriptor: Shipped small Python services }
+              - { level: 3, descriptor: Owned a production Python service }
+              - { level: 4, descriptor: Led a production Python system }
     ApproveRequest:
       type: object
       required: [criteria_version]
       additionalProperties: false
       properties:
-        criteria_version: { type: integer, description: The version the recruiter saw; a different current version is 409 criteria_changed }
+        criteria_version: { type: integer, minimum: 1, description: The version the recruiter saw; a different current version is 409 criteria_changed }
       example: { criteria_version: 2 }
     JobAccepted:
       type: object
