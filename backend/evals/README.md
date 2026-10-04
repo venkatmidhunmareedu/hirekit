@@ -26,7 +26,7 @@ reports say "contract and coverage verified; quality reviewed by a person: not d
 not show quality or fairness. The required terms in `evals/criteria/cases.json` are a DRAFT for
 engineer approval. `evals/roles/` holds the two synthetic job descriptions (one vague, one
 carrying an injection attempt). Record the replies first: `make record RECORD_CMD="uv run python
--m app.evals.record --jobs scoring process_resume criteria kit"` (add `--smoke` for one case per
+-m app.evals.record --jobs scoring injection criteria kit"` (add `--smoke` for one case per
 job). Until then `make eval-prompts` exits 2.
 
 ## Run the evals
@@ -46,9 +46,9 @@ Recording is manual, spends money and goes through `make record`, which runs the
 
     make record RECORD_CMD="uv run python -m app.evals.record --smoke"   # 1 resume, about 1 call
     make record RECORD_CMD="uv run python -m app.evals.record"           # all 40 resumes
-    make record RECORD_CMD="uv run python -m app.evals.record --jobs process_resume criteria kit"
+    make record RECORD_CMD="uv run python -m app.evals.record --jobs injection criteria kit"
 
-`--jobs` picks the calls: `scoring` (default, the 40 seed resumes), `process_resume` (the 2
+`--jobs` picks the calls: `scoring` (default, the 40 seed resumes), `injection` (the 2
 injection cases), `criteria` and `kit` (4 each); `--smoke` limits every job to its first case.
 The command prints its plan first (calls, model id, host of MODEL_BASE_URL, recordings dir) and
 the call and token counts after. If it stops part-way, the replies already recorded stay.

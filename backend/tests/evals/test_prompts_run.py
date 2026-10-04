@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from app.evals.prompts_run import PromptOutcome, main, run_prompt_evals
+from app.evals.prompts_run import PromptOutcome, main, run_prompt_evals, write_reports
 from app.gateway.errors import RecordingMissingError
 from app.gateway.types import GatewayRequest, GatewayResponse
 from app.seed.data import SeedData, load_seed
@@ -182,3 +182,19 @@ async def test_main_refuses_live_mode(tmp_path: Path) -> None:
     out = io.StringIO()
     assert await main([], settings=settings, out=out) == 2
     assert "live" in out.getvalue()
+
+
+def test_a_refused_run_removes_the_old_reports(tmp_path: Path) -> None:
+    for name in ("scoring", "criteria", "kit"):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "report.md").write_text("# PASS: old\n", encoding="utf-8")
+    write_reports(PromptOutcome(2, "recording missing", {}), tmp_path)
+    assert not list(tmp_path.glob("*/report.md"))
+
+
+def test_a_finished_run_writes_the_reports(tmp_path: Path) -> None:
+    for name in ("scoring", "criteria", "kit"):
+        (tmp_path / name).mkdir()
+    reports = {"scoring": "# FAIL: s", "criteria": "# PASS: c", "kit": "# PASS: k"}
+    write_reports(PromptOutcome(1, "", reports), tmp_path)
+    assert (tmp_path / "scoring" / "report.md").read_text(encoding="utf-8") == "# FAIL: s\n"

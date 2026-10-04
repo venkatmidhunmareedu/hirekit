@@ -275,6 +275,16 @@ async def run_prompt_evals(
     )
 
 
+def write_reports(outcome: PromptOutcome, evals: Path) -> None:
+    """Write each report; a refused run (exit 2) removes the old ones, which no longer match."""
+    for name in NAMES:
+        path = evals / name / "report.md"
+        if name in outcome.reports:
+            path.write_text(outcome.reports[name] + "\n", encoding="utf-8")
+        elif outcome.exit_code == 2:
+            path.unlink(missing_ok=True)
+
+
 async def main(
     argv: list[str], *, settings: Settings | None = None, out: TextIO | None = None
 ) -> int:
@@ -304,10 +314,9 @@ async def main(
         )
     if outcome.message:
         out.write(f"eval-prompts: {outcome.message}\n")
-    for name, text in outcome.reports.items():
+    for text in outcome.reports.values():
         out.write(text + "\n")
-        path = args.backend_dir / "evals" / name / "report.md"
-        path.write_text(text + "\n", encoding="utf-8")
+    write_reports(outcome, args.backend_dir / "evals")
     return outcome.exit_code
 
 

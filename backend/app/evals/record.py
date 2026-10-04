@@ -2,7 +2,7 @@
 
 Makes the eval calls through the live Gateway, which writes the recordings (no direct file
 writes here). Jobs (`--jobs`, default scoring): `scoring` scores the 40 seed resumes;
-`process_resume` scores the injection cases of evals/scoring/cases.json (the seed resumes they
+`injection` scores the injection cases of evals/scoring/cases.json (the seed resumes they
 build on come from `scoring`); `criteria` and `kit` make one call per case of their
 cases.json. `--smoke` limits every job to its first case. Refuses unless MODEL_MODE=live and
 RECORD_RESPONSES=true, and under CI. Exit codes: 0 done, 1 the run failed part-way, 2 refused.
@@ -29,7 +29,7 @@ from app.seed.__main__ import DEFAULT_ROOT
 from app.seed.data import SeedData, load_role, load_seed
 from app.worker.handlers.scoring import ScoringGateway
 
-JOBS: Final = ("scoring", "process_resume", "criteria", "kit")
+JOBS: Final = ("scoring", "injection", "criteria", "kit")
 
 
 def _recorded(directory: Path) -> dict[str, tuple[int, int]]:
@@ -61,7 +61,7 @@ async def _make_calls(
             seed = dataclasses.replace(seed, resumes={first: seed.resumes[first]})
         await run_scoring(seed, gateway, seed_root=seed_root)
         return len(seed.resumes)
-    if job == "process_resume":
+    if job == "injection":
         injected = [c for c in load_scoring_cases(evals / "scoring/cases.json") if c.injected_line]
         for scoring_case in injected[:1] if smoke else injected:
             await ask_scoring(gateway, seed, seed_root, scoring_case)
@@ -83,7 +83,7 @@ def _planned(
     evals = backend / "evals"
     counts = {
         "scoring": len(seed.resumes),
-        "process_resume": sum(
+        "injection": sum(
             1 for c in load_scoring_cases(evals / "scoring/cases.json") if c.injected_line
         ),
         "criteria": len(load_criteria_cases(evals / "criteria/cases.json")),
