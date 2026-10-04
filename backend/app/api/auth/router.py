@@ -25,6 +25,8 @@ from app.domain.auth.service import logout as sign_out
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
+NO_STORE = "no-store"
+
 
 def get_app_settings(request: Request) -> Settings:
     """The settings the lifespan stored on the app."""
@@ -43,6 +45,7 @@ async def login(
     sessions: Annotated[SessionRepository, Depends(get_sessions)],
 ) -> SessionOut:
     """Check the credentials, open a session, set the cookie."""
+    response.headers["Cache-Control"] = NO_STORE
     ttl = timedelta(hours=settings.session_ttl_hours)
     token, csrf_token, user = await sign_in(
         db,
@@ -78,6 +81,7 @@ async def logout(
     sessions: Annotated[SessionRepository, Depends(get_sessions)],
 ) -> None:
     """Delete the session row and clear the cookie."""
+    response.headers["Cache-Control"] = NO_STORE
     await sign_out(db, sessions, token=request.cookies[COOKIE_NAME])
     response.delete_cookie(
         COOKIE_NAME, httponly=True, samesite="lax", secure=settings.cookie_secure
@@ -86,7 +90,8 @@ async def logout(
 
 @router.get("/me", response_model=SessionOut, responses={401: {"model": ErrorEnvelope}})
 async def me(
-    user: CurrentUser, row: Annotated[UserSession, Depends(current_session)]
+    user: CurrentUser, row: Annotated[UserSession, Depends(current_session)], response: Response
 ) -> SessionOut:
     """The signed-in user and the session's CSRF token."""
+    response.headers["Cache-Control"] = NO_STORE
     return SessionOut(user=UserOut.model_validate(user), csrf_token=row.csrf_token)

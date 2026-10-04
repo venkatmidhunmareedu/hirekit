@@ -11,7 +11,10 @@ class LoginRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    email: str = Field(min_length=3, max_length=254)
+    # Mirrors chk_users_email_shape (one @, no whitespace) and also refuses control characters.
+    email: str = Field(
+        min_length=3, max_length=254, pattern=r"^[^@\s\x00-\x1f\x7f]+@[^@\s\x00-\x1f\x7f]+$"
+    )
     password: str = Field(min_length=1, max_length=1024)
 
 

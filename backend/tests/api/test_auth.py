@@ -172,3 +172,31 @@ async def test_a_second_login_replaces_the_cookie_and_deletes_the_old_session(
 
     assert cookie_value(second) != first
     assert list(sessions.rows) == [hashlib.sha256(cookie_value(second).encode()).digest()]
+
+
+@pytest.mark.parametrize(
+    "email", ["a\x00b@example.com", "a b@example.com", "a@@example.com", "no-at"]
+)
+async def test_login_refuses_an_email_the_schema_would_refuse(
+    client: AsyncClient, sessions: FakeSessions, recruiter: str, email: str
+) -> None:
+    response = await login(client, email, PHRASE)
+
+    assert response.status_code == 422
+
+
+async def test_login_me_and_logout_are_not_cacheable(
+    client: AsyncClient, sessions: FakeSessions, recruiter: str
+) -> None:
+    signed_in = await login(client, recruiter, PHRASE)
+    headers = {
+        "Cookie": f"hirekit_session={cookie_value(signed_in)}",
+        "X-CSRF-Token": signed_in.json()["csrf_token"],
+    }
+
+    me = await client.get("/v1/auth/me", headers=headers)
+    out = await client.post("/v1/auth/logout", headers=headers)
+
+    assert signed_in.headers["cache-control"] == "no-store"
+    assert me.headers["cache-control"] == "no-store"
+    assert out.headers["cache-control"] == "no-store"
