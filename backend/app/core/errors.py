@@ -64,6 +64,13 @@ class ConflictError(DomainError):
     code = "conflict"
 
 
+class ValidationFailedError(DomainError):
+    """A request the shape check passed but the stored state refuses (same envelope as a 422)."""
+
+    status_code = 422
+    code = "validation_error"
+
+
 class CriteriaChangedError(ConflictError):
     """The criteria changed since the caller loaded them; details carry current_version."""
 
