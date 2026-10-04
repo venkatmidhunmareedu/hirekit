@@ -1,0 +1,59 @@
+/* Design tokens from Design.md sections 3 to 5. Role tokens (--page, --card,
+   --text, ...) follow the theme mapping in section 3.3; dark applies through
+   prefers-color-scheme (section 12). Only one palette ships (section 2.3). */
+:root {
+  --brand: #3ecf8e;
+  --brand-deep: #24b47e;
+  --brand-tint: #e8f8f1;
+  --ink: #1c1c1c;
+  --gray-700: #5c5c5c;
+  --gray-500: #898989;
+  --gray-300: #b4b4b4;
+  --mist: #ededed;
+  --paper: #fafafa;
+  --white: #ffffff;
+
+  --info: #3b82c4;
+  --success: #24b47e;
+  --warning: #e0a030;
+  --danger: #d64545;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
+
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --page: var(--paper);
+  --card: var(--white);
+  --text: var(--ink);
+  --text-muted: var(--gray-700);
+  --border: var(--gray-300);
+  --focus: var(--brand-deep);
+  --wordmark-accent: var(--brand-deep);
+  --button-primary-fill: var(--brand);
+  --button-primary-text: var(--ink);
+  --row-hover: var(--brand-tint);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #141414;
+    --card: var(--ink);
+    --text: #ededed;
+    --text-muted: var(--gray-500);
+    --border: #2e2e2e;
+    --focus: var(--brand);
+    --wordmark-accent: var(--brand);
+    --row-hover: #232323;
+  }
+}
