@@ -8,8 +8,8 @@ Backfilled on 2026-10-03 from the reports of HK-17 to HK-40. Owner task numbers 
 
 | ID | Source | Item | Why it matters | Owner | Status |
 | --- | --- | --- | --- | --- | --- |
-| N-001 | HK-17 to HK-38 | `verify.py` scan does not check religion terms, titles or pronouns, which anonymizer LLD section 4 says it should | The scan is the independent backstop; a gap in a pass is not repaired | unassigned | open |
-| N-002 | HK-24 | `verify.py` name lookaround still skips a name in square brackets (`[Jane]`); the names pass now handles it | A name in brackets that the pass misses would not be repaired by the scan | unassigned | open |
+| N-001 | HK-17 to HK-38 | `verify.py` scan does not check religion terms, titles or pronouns, which anonymizer LLD section 4 says it should | The scan is the independent backstop; a gap in a pass is not repaired | unassigned | done (HK-55) |
+| N-002 | HK-24 | `verify.py` name lookaround still skips a name in square brackets (`[Jane]`); the names pass now handles it | A name in brackets that the pass misses would not be repaired by the scan | unassigned | done (HK-55) |
 | N-003 | HK-23 | Cities list is a 339-entry seed; the LLD assumes about 3,000 | A small town can survive anonymization | unassigned | open |
 | N-004 | HK-23 | `ID 12345` after a comma is masked as an Idaho ZIP | Harmless over-masking of an id number | unassigned | open |
 | N-005 | HK-18 to HK-26 | `ANONYMIZER_VERSION` is still 1 although patterns changed across the passes | Bump when the Worker starts persisting it; replay keys depend on it | HK-40+ (Worker run) | open |
@@ -135,3 +135,6 @@ Backfilled on 2026-10-03 from the reports of HK-17 to HK-40. Owner task numbers 
 | N-125 | HK-51 | `tests/api/test_permission_matrix.py` walks routes through FastAPI private classes (`_IncludedRouter`, `_EffectiveRouteContext`); a FastAPI upgrade can break the walker | The test also asserts 5 routes are found, so it fails loudly rather than passing empty | unassigned | open |
 | N-126 | HK-51 | `test_live_then_replayed_eval_calls_log_without_a_role` counts all `call_log` rows and failed once against the shared dev database (250 rows, expected 8); it passed on the next run | Not touched by HK-51; the test should count only its own rows | unassigned | open |
 | N-127 | HK-51 | Deactivating a user or changing a role does not end their sessions (`delete_for_user` exists but no route or job calls it) | No story asks for it yet; wire it when user admin lands | unassigned | open |
+| N-160 | HK-55 | The gendered-pronoun set lives in code twice (`gender.py` and `verify.py`); no word-list file exists for it, unlike religion terms and titles | A pronoun added to one and not the other leaves the scan broader or narrower than the pass; a `data/pronouns.txt` read by both would fix it | unassigned | open |
+| N-161 | HK-55 | The scan's "capitalised Christian before a capitalised word is a first name" rule mirrors `religion.py` without the organisation-word exception | `Christian Youth` is masked by the pass and by the scan alike today, but a change to one rule is not seen by the other | unassigned | open |
+| N-162 | HK-55 | N-003 needs a data decision: proposed source is a licensed GeoNames extract (cities1000 or cities5000, CC BY 4.0, attribution in docs), filtered to a few thousand names | A hand-typed list from memory would be unreviewable; the seed 339 entries stay until the engineer chooses | unassigned | open |

@@ -140,3 +140,59 @@ def _adversarial_input_finishes_quickly() -> None:
 def test_adversarial_input_finishes_quickly() -> None:
     """A regex runs in C and cannot be interrupted, so the proof is a subprocess with a timeout."""
     run_with_timeout(_adversarial_input_finishes_quickly, 60)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Member of the Hindu society", "Member of the [RELIGION] society"),
+        ("He is a CHRISTIAN volunteer", "[PRONOUN] is a [RELIGION] volunteer"),
+        ("Hindus and Muslims met", "[RELIGION] and [RELIGION] met"),
+        ("Mrs. Rao led the team", "[TITLE] Rao led the team"),
+        ("Contact: Mr Smith, Sales", "Contact: [TITLE] Smith, Sales"),
+        ("Madam\nchair", "[TITLE]\nchair"),
+        ("I led her team and himself", "I led [PRONOUN] team and [PRONOUN]"),
+        ("she said HIS plan", "[PRONOUN] said [PRONOUN] plan"),
+    ],
+)
+def test_the_scan_repairs_a_leftover_religion_term_title_or_pronoun(
+    raw: str, expected: str
+) -> None:
+    result = scan_only(raw)
+    assert result.text.value == expected
+    assert result.report.repaired >= 1
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "Cleaned the shell and heritage site, then the other theatre",
+        "Miss a deadline? Mister Jones, Misses and Mrsx are words",
+        "Christian Smith led the platform team",
+        "Led the [RELIGION] society; [TITLE] Rao and [PRONOUN] team, [GENDER] [NAME]",
+        "Fluent in Hindi, Urdu and Arabic; Temple University",
+    ],
+)
+def test_clean_text_and_lookalike_words_are_not_reported(raw: str) -> None:
+    result = scan_only(raw)
+    assert result.text.value == raw
+    assert result.report.repaired == 0
+
+
+def test_the_scan_sees_a_name_inside_square_brackets() -> None:
+    out, repaired = check("x", "Spoke to [Jane] and [JANE] and [NAME]", JANE)
+    assert out == "Spoke to [[NAME]] and [[NAME]] and [NAME]"
+    assert repaired == 2
+
+
+def test_a_bracketed_lowercase_pronoun_or_religion_term_is_seen() -> None:
+    assert scan_only("[her] [hindu]").text.value == "[[PRONOUN]] [[RELIGION]]"
+
+
+def test_the_seed_resumes_still_scan_clean_through_the_full_pipeline() -> None:
+    from app.anonymizer.pipeline import anonymize
+
+    seeds = sorted(Path(__file__).parents[3].joinpath("seed", "resumes").glob("*.txt"))
+    assert seeds
+    for path in seeds:
+        assert anonymize(path.read_text(encoding="utf-8")).report.repaired == 0, path.name

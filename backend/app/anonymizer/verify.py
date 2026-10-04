@@ -7,6 +7,7 @@ both. A finding is masked in place and counted; only a finding that survives its
 
 import re
 from collections import Counter
+from pathlib import Path
 
 from app.anonymizer.tokens import (
     AGE,
@@ -15,7 +16,9 @@ from app.anonymizer.tokens import (
     GENDER,
     NAME,
     PHONE,
+    PRONOUN,
     RELIGION,
+    TITLE,
     URL,
     Kind,
     NameSet,
@@ -51,6 +54,30 @@ _LABEL_TOKEN: dict[str, tuple[str, Kind]] = {
     "gender": (GENDER, "gender"),
     "religion": (RELIGION, "religion"),
 }
+
+
+def _terms(name: str) -> list[str]:
+    """The shared word lists in `data/`: read as data, so the scan imports no pass."""
+    lines = (Path(__file__).with_name("data") / name).read_text("utf-8").splitlines()
+    return [s for line in lines if (s := line.strip()) and s[0] != "#"]
+
+
+# Brackets count as a boundary here: `[Jane]` and `[her]` are leaks, `[RELIGION]` is not a word.
+_RELIGION = re.compile(
+    rf"(?<!\w)(?:{'|'.join(map(re.escape, _terms('religion_terms.txt')))})s?(?!\w)", re.IGNORECASE
+)
+# A capitalised `Christian` before another capitalised word is a first name (the name pass's call).
+_FIRST_NAME_CHRISTIAN = re.compile(r"Christian[ \t]+[A-Z][a-z]")
+_TITLE = re.compile(
+    rf"(?<!\w)(?:{'|'.join(_terms('titles.txt'))})(?!\w)\.?"
+    r"(?=\.|[ \t]+(?:[A-Z\[]|or\b)|[ \t]*(?:[,\n]|$))",
+    re.MULTILINE,
+)
+_PRONOUN = re.compile(r"(?<!\w)(?:he|him|his|himself|she|her|hers|herself)(?!\w)", re.IGNORECASE)
+_PLACEHOLDERS = frozenset(
+    {"[NAME]", "[EMAIL]", "[PHONE]", "[URL]", "[LOCATION]", "[ADDRESS]", "[PRONOUN]", "[TITLE]",
+     "[DATE]", "[AGE]", "[RELIGION]", "[GENDER]"}
+)  # fmt: skip
 _LOCAL_SPLIT = re.compile(r"[._+\d-]+")
 # ponytail: a mailbox word that is also a common word (`will.young@`) is masked everywhere here;
 # the common-word rule (name positions only) arrives with names.py, work item 3.
@@ -111,7 +138,18 @@ def _scan(text: str, variants: frozenset[str]) -> list[Replacement]:
     for m in _LABEL.finditer(text):
         token, kind = _LABEL_TOKEN[m.group("label").lower()]
         found.append(Replacement(m.start("value"), m.end("value"), token, kind))
+    found += [
+        Replacement(m.start(), m.end(), RELIGION, "religion")
+        for m in _RELIGION.finditer(text)
+        if not _FIRST_NAME_CHRISTIAN.match(text, m.start())
+    ]
+    found += [Replacement(m.start(), m.end(), TITLE, "gender") for m in _TITLE.finditer(text)]
+    found += [Replacement(m.start(), m.end(), PRONOUN, "gender") for m in _PRONOUN.finditer(text)]
     for v in sorted(variants):
-        part = re.compile(rf"(?<![\w\[]){re.escape(v)}(?![\w\]])", re.IGNORECASE)
-        found += [Replacement(m.start(), m.end(), NAME, "name") for m in part.finditer(text)]
+        part = re.compile(rf"(?<!\w){re.escape(v)}(?!\w)", re.IGNORECASE)
+        found += [
+            Replacement(m.start(), m.end(), NAME, "name")
+            for m in part.finditer(text)
+            if text[max(m.start() - 1, 0) : m.end() + 1] not in _PLACEHOLDERS
+        ]
     return found
