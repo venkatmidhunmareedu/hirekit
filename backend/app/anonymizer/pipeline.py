@@ -19,7 +19,7 @@ from app.gateway.text import AnonymizedText, mint_anonymized
 
 # Bump on every change to a pattern or word list: the replay key hashes the anonymized text, so an
 # edit re-keys recordings, and a stored text can be told from a new one (work item 10).
-ANONYMIZER_VERSION = 2
+ANONYMIZER_VERSION = 3
 MAX_INPUT_CHARS = 500_000
 
 Pass = Callable[[str, NameSet], list[Replacement]]
