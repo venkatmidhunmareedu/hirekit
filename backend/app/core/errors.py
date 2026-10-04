@@ -97,6 +97,30 @@ class IncompleteRubricError(DomainError):
     code = "incomplete_rubric"
 
 
+class RoleNotDraftError(ConflictError):
+    """Criteria can be proposed only for a Draft role."""
+
+    code = "role_not_draft"
+
+
+class JobAlreadyOpenError(ConflictError):
+    """A job of this kind is already queued or running for the target."""
+
+    code = "job_already_open"
+
+
+class JobNotCancellableError(ConflictError):
+    """The job already finished, failed, went stale or was cancelled."""
+
+    code = "job_not_cancellable"
+
+
+class BudgetReachedError(ConflictError):
+    """Live mode with no room for one more worst-case model call."""
+
+    code = "budget_reached"
+
+
 class ServiceUnavailableError(DomainError):
     """A dependency the request needs is not reachable."""
 

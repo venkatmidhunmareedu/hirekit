@@ -18,7 +18,7 @@ from app.core.auth import CurrentUser, InterviewerUser, RecruiterUser, current_s
 from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
-from tests.api.fakes import FakeCriteria, FakeRoles, FakeSessions, FakeUsers
+from tests.api.fakes import FakeCriteria, FakeJobs, FakeRoles, FakeSessions, FakeUsers
 
 # (method, path) -> roles allowed. An absent role gets 403; no sign-in gets 401.
 MATRIX: dict[tuple[str, str], frozenset[str]] = {
@@ -33,6 +33,10 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("GET", "/v1/roles/{role_id}"): frozenset({"recruiter", "interviewer"}),
     ("PUT", "/v1/roles/{role_id}/criteria"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/approve"): frozenset({"recruiter"}),
+    ("POST", "/v1/roles/{role_id}/criteria:propose"): frozenset({"recruiter"}),
+    ("GET", "/v1/roles/{role_id}/queue"): frozenset({"recruiter"}),
+    ("GET", "/v1/jobs/{job_id}"): frozenset({"recruiter"}),
+    ("POST", "/v1/jobs/{job_id}:cancel"): frozenset({"recruiter"}),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -80,13 +84,15 @@ async def test_matrix_cell(
     sessions: FakeSessions,
     roles: FakeRoles,
     criteria: FakeCriteria,
+    jobs: FakeJobs,
     method: str,
     path: str,
     who: str,
 ) -> None:
     role = roles.seed()
     criteria.seed(role.id, "Python")
-    url = path.replace("{role_id}", str(role.id))
+    job = jobs.seed(role.id, kind="generate_kit")
+    url = path.replace("{role_id}", str(role.id)).replace("{job_id}", str(job.id))
     headers: dict[str, str] = {}
     if who != "anonymous":
         user = users.add(email=f"{who}@example.com", role=who)
@@ -151,7 +157,8 @@ def test_every_route_declares_a_role_and_the_matrix_matches_the_table() -> None:
     app = create_app(Settings(_env_file=None, env="test", database_url=DB))
 
     assert unguarded(app) == set()
-    assert len(list(api_routes(app.routes))) == 10
+    real = [key for key in MATRIX if not key[1].startswith("/t/")]
+    assert len(list(api_routes(app.routes))) == len(real) + len(PUBLIC)
 
 
 def test_the_guard_flags_a_route_without_a_session_dependency() -> None:
