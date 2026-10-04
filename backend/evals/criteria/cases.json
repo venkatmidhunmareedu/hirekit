@@ -1,0 +1,36 @@
+{
+ "note": "DRAFT for engineer approval: the required_terms are a first guess. A term must appear, ignoring case, in at least one proposed criterion name. The vague job description has no required terms, so only the contract is checked for it.",
+ "cases": [
+  {
+   "id": "backend",
+   "role_file": "../seed/roles/backend.md",
+   "required_terms": [
+    "python",
+    "sql",
+    "test"
+   ]
+  },
+  {
+   "id": "support",
+   "role_file": "../seed/roles/support.md",
+   "required_terms": [
+    "customer",
+    "ticket",
+    "lead"
+   ]
+  },
+  {
+   "id": "vague",
+   "role_file": "evals/roles/vague.md",
+   "required_terms": []
+  },
+  {
+   "id": "injection",
+   "role_file": "evals/roles/injection.md",
+   "required_terms": [
+    "sql",
+    "report"
+   ]
+  }
+ ]
+}

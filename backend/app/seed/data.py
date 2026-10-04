@@ -196,3 +196,8 @@ def load_seed(root: Path, expected: Expected | None = None) -> SeedData:
     pairs = _pairs(root)
     _validate(expected, roles, resumes, labels, pairs)
     return SeedData(roles, resumes, labels, pairs)
+
+
+def load_role(path: Path) -> SeedRole:
+    """Read one role file in the seed format; raises `SeedError` if it breaks a rule."""
+    return _role(path)
