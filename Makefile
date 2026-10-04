@@ -4,7 +4,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 BACKEND := backend
 
-.PHONY: help setup dev check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval vuln doctor db db-reset clean
+.PHONY: help setup dev check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean
 
 help: ## List targets
 	@$(MAKE) --no-print-directory -C $(BACKEND) help
@@ -19,5 +19,5 @@ check-file: ## Lint one edited file, FILE=path (the Bearing edit hook runs this)
 	[ -f "$(FILE)" ] || { echo "check-file: $(FILE) does not exist, nothing checked" >&2; exit 1; }; \
 	$(MAKE) --no-print-directory -C $(BACKEND) check-file FILE="$$(realpath "$(FILE)")"
 
-setup dev fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval vuln doctor db db-reset clean:
+setup dev fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean:
 	@$(MAKE) --no-print-directory -C $(BACKEND) $@ $(if $(name),name=$(name),)

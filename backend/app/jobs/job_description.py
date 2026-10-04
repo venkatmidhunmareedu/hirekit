@@ -14,6 +14,18 @@ from app.core.errors import NotFoundError
 from app.gateway.text import JobDescriptionText, mint_job_description
 from app.worker.ports import CriterionSpec
 
+
+def job_description_text(
+    title: str, description: str, criterion: CriterionSpec | None = None
+) -> JobDescriptionText:
+    """The text the model sees for one role; the evals build it too, so recordings match."""
+    body = f"Title: {title}\n\nJob description:\n{description}"
+    if criterion is not None:
+        levels = "\n".join(f"{level}: {descriptor}" for level, descriptor in criterion.rubric)
+        body += f"\n\nCriterion: {criterion.name} ({criterion.kind})\nRubric:\n{levels}"
+    return mint_job_description(body)
+
+
 _Q1 = text("SELECT title, job_description FROM roles WHERE id = :role_id")
 
 
@@ -26,8 +38,4 @@ async def load_job_description(
         msg = "No such role."
         raise NotFoundError(msg)
     title, description = row
-    body = f"Title: {title}\n\nJob description:\n{description}"
-    if criterion is not None:
-        levels = "\n".join(f"{level}: {descriptor}" for level, descriptor in criterion.rubric)
-        body += f"\n\nCriterion: {criterion.name} ({criterion.kind})\nRubric:\n{levels}"
-    return mint_job_description(body)
+    return job_description_text(title, description, criterion)
