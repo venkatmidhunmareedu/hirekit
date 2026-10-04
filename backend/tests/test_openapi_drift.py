@@ -67,50 +67,77 @@ def test_every_schema_has_an_example() -> None:
     assert missing == []
 
 
-def _fields(schema: dict[str, object], doc: dict[str, object], prefix: str = "") -> set[str]:
+type Json = dict[str, Json] | list[Json] | str | int | float | bool | None
+
+
+def _obj(node: Json) -> dict[str, Json]:
+    return node if isinstance(node, dict) else {}
+
+
+def _list(node: Json) -> list[Json]:
+    return node if isinstance(node, list) else []
+
+
+def _fields(schema: Json, doc: Json, prefix: str = "") -> set[str]:
     """Every property path in a schema, following $ref, allOf and array items."""
-    ref = schema.get("$ref")
+    obj = _obj(schema)
+    ref = obj.get("$ref")
     if isinstance(ref, str):
-        node: object = doc
+        node = doc
         for part in ref.removeprefix("#/").split("/"):
-            node = node[part]  # type: ignore[index]  # walking a JSON document by its pointer
-        return _fields(node, doc, prefix)  # type: ignore[arg-type]  # a $ref points at a schema
+            node = _obj(node).get(part)
+        return _fields(node, doc, prefix)
     found: set[str] = set()
-    for part in schema.get("allOf", []):  # type: ignore[attr-defined]  # JSON from yaml or openapi()
-        found |= _fields(part, doc, prefix)
-    for name, sub in schema.get("properties", {}).items():  # type: ignore[attr-defined]
+    for sub_schema in _list(obj.get("allOf")):
+        found |= _fields(sub_schema, doc, prefix)
+    for name, sub in _obj(obj.get("properties")).items():
         found |= {f"{prefix}{name}"} | _fields(sub, doc, f"{prefix}{name}.")
-    items = schema.get("items")
+    items = obj.get("items")
     if isinstance(items, dict):
         found |= _fields(items, doc, prefix)
     return found
 
 
-def _response_fields(doc: dict[str, object]) -> dict[tuple[str, str], set[str]]:
+def _response_fields(doc: Json) -> dict[tuple[str, str], set[str]]:
     result: dict[tuple[str, str], set[str]] = {}
-    for path, item in doc["paths"].items():  # type: ignore[attr-defined]
-        for method, op in item.items():
+    for path, item in _obj(_obj(doc).get("paths")).items():
+        for method, op in _obj(item).items():
             if method not in METHODS:
                 continue
-            for status, response in op.get("responses", {}).items():
+            for status, response in _obj(_obj(op).get("responses")).items():
                 if not str(status).startswith("2"):
                     continue
-                body = response.get("content", {}).get("application/json", {}).get("schema")
+                content = _obj(_obj(response).get("content"))
+                body = _obj(content.get("application/json")).get("schema")
                 if body:
                     result[(method.upper(), f"{path} {status}")] = _fields(body, doc)
     return result
 
 
+def _missing_fields(served: Json, documented: Json) -> dict[tuple[str, str], list[str]]:
+    served_fields = _response_fields(served)
+    documented_fields = _response_fields(documented)
+    return {
+        key: sorted(fields - documented_fields.get(key, set()))
+        for key, fields in served_fields.items()
+        if fields - documented_fields.get(key, set())
+    }
+
+
 def test_every_response_schema_field_exists_in_openapi() -> None:
     app = create_app(Settings(_env_file=None, database_url=DB))
     spec = yaml.safe_load(SPEC.read_text(encoding="utf-8"))
-    served = _response_fields(app.openapi())
-    documented = _response_fields(spec)
+    assert _missing_fields(app.openapi(), spec) == {}
 
-    missing = {
-        key: sorted(fields - documented.get(key, set()))
-        for key, fields in served.items()
-        if fields - documented.get(key, set())
-    }
 
-    assert missing == {}
+def test_the_field_detector_flags_a_field_missing_from_the_spec() -> None:
+    app = create_app(Settings(_env_file=None, database_url=DB))
+    spec = yaml.safe_load(SPEC.read_text(encoding="utf-8"))
+    schemas = spec["components"]["schemas"]
+    ready = schemas["Ready"]["properties"]
+    assert "checks" in ready
+    del ready["checks"]
+
+    missing = _missing_fields(app.openapi(), spec)
+
+    assert any("checks" in fields for fields in missing.values())
