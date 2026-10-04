@@ -1,5 +1,6 @@
 """Sign-in and sign-out: the service owns the transactions (repositories never commit)."""
 
+import asyncio
 import secrets
 from datetime import UTC, datetime, timedelta
 
@@ -11,6 +12,10 @@ from app.core.passwords import DUMMY_HASH, verify_password
 from app.db.models import User
 from app.db.repositories.sessions import SessionRepository
 from app.db.repositories.users import UserRepository
+
+# Bounds how many argon2 verifies run at once (memory: ~64 MiB each), so a login flood
+# cannot exhaust it. It does not stop password guessing; N-118 covers that.
+_HASHING = asyncio.Semaphore(4)
 
 
 async def login(
@@ -31,7 +36,8 @@ async def login(
     user = await users.by_email(email)
     stored = user.password_hash if user is not None else DUMMY_HASH
     await db.commit()  # ends the read transaction (nothing written); rows stay loaded
-    matched = await run_in_threadpool(verify_password, stored, password)
+    async with _HASHING:
+        matched = await run_in_threadpool(verify_password, stored, password)
     if user is None or not matched:
         raise UnauthenticatedError("invalid email or password")
     token = secrets.token_urlsafe(32)
