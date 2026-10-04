@@ -4,14 +4,20 @@ Later items add a row per route. The routes below exist only here, to prove the
 dependencies; they are not part of the app.
 """
 
+from collections.abc import Iterator
 from typing import Annotated
 
 import pytest
 from fastapi import Depends, FastAPI
+from fastapi.dependencies.models import Dependant
+from fastapi.routing import APIRoute, _EffectiveRouteContext, _IncludedRouter
 from httpx import AsyncClient
+from starlette.routing import BaseRoute
 
 from app.core.auth import CurrentUser, InterviewerUser, RecruiterUser, current_session
+from app.core.config import Settings
 from app.db.models import UserSession
+from app.main import create_app
 from tests.api.fakes import FakeSessions, FakeUsers
 
 # (method, path) -> roles allowed. An absent role gets 403; no sign-in gets 401.
@@ -20,7 +26,11 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("POST", "/t/recruiter"): frozenset({"recruiter"}),
     ("GET", "/t/interviewer"): frozenset({"interviewer"}),
     ("GET", "/t/anyone"): frozenset({"recruiter", "interviewer"}),
+    ("GET", "/v1/auth/me"): frozenset({"recruiter", "interviewer"}),
+    ("POST", "/v1/auth/logout"): frozenset({"recruiter", "interviewer"}),
 }
+# Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
+PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
 CELLS = [(m, p, who) for (m, p) in MATRIX for who in ("anonymous", "recruiter", "interviewer")]
 
 
@@ -67,6 +77,67 @@ async def test_matrix_cell(
     if who == "anonymous":
         assert (response.status_code, response.json()["error"]["code"]) == (401, "unauthenticated")
     elif who in MATRIX[(method, path)]:
-        assert response.status_code == 200
+        assert response.is_success
     else:
         assert (response.status_code, response.json()["error"]["code"]) == (403, "forbidden")
+
+
+DB = "postgresql+asyncpg://postgres:postgres@localhost:5432/test"
+
+
+def api_routes(routes: list[BaseRoute]) -> Iterator[tuple[str, APIRoute]]:
+    """(path with prefixes, route) for every APIRoute, through nested includes.
+
+    FastAPI keeps included routers as private `_IncludedRouter` branches; this walks them.
+    """
+    for route in routes:
+        if isinstance(route, APIRoute):
+            yield route.path, route
+        elif isinstance(route, _IncludedRouter):
+            for candidate in _flatten(route):
+                if isinstance(candidate.original_route, APIRoute):
+                    yield candidate.path, candidate.original_route
+
+
+def _flatten(branch: _IncludedRouter) -> Iterator[_EffectiveRouteContext]:
+    for candidate in branch.effective_candidates():
+        if isinstance(candidate, _IncludedRouter):
+            yield from _flatten(candidate)
+        else:
+            yield candidate
+
+
+def calls(dependant: Dependant) -> Iterator[object]:
+    for dep in dependant.dependencies:
+        yield dep.call
+        yield from calls(dep)
+
+
+def unguarded(app: FastAPI) -> set[tuple[str, str]]:
+    """Non-public routes with no MATRIX row or no `current_session` in their dependencies."""
+    bad: set[tuple[str, str]] = set()
+    for path, route in api_routes(app.routes):
+        for method in route.methods or ():
+            key = (method, path)
+            if key in PUBLIC:
+                continue
+            if key not in MATRIX or current_session not in set(calls(route.dependant)):
+                bad.add(key)
+    return bad
+
+
+def test_every_route_declares_a_role_and_the_matrix_matches_the_table() -> None:
+    app = create_app(Settings(_env_file=None, env="test", database_url=DB))
+
+    assert unguarded(app) == set()
+    assert len(list(api_routes(app.routes))) == 5
+
+
+def test_the_guard_flags_a_route_without_a_session_dependency() -> None:
+    app = create_app(Settings(_env_file=None, env="test", database_url=DB))
+
+    @app.get("/v1/open")
+    async def open_route() -> dict[str, str]:
+        return {}
+
+    assert unguarded(app) == {("GET", "/v1/open")}
