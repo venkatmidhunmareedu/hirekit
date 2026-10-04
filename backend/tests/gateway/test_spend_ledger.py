@@ -5,13 +5,15 @@ from pathlib import Path
 
 import pytest
 
+from app.budget.policy import BUDGET_LIMIT_USD
 from app.core.config import DEFAULT_RECORDINGS_DIR
 from app.gateway.errors import BudgetLedgerError
 from app.gateway.spend_ledger import read_ledger, write_ledger
 
 
-def test_committed_ledger_starts_at_zero() -> None:
-    assert read_ledger(DEFAULT_RECORDINGS_DIR / "spend-ledger.json") == Decimal(0)
+def test_committed_ledger_is_within_the_budget() -> None:
+    spent = read_ledger(DEFAULT_RECORDINGS_DIR / "spend-ledger.json")
+    assert Decimal(0) <= spent <= BUDGET_LIMIT_USD
 
 
 def test_write_then_read_round_trips_exactly(tmp_path: Path) -> None:

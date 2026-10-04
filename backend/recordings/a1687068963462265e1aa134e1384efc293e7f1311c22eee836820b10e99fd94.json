@@ -1,0 +1,15 @@
+{
+  "input_sha256": "443de7ba1a5e92c7244befb1ddeb2a502827a6b63ca07302e189343ed5009634",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "a1687068963462265e1aa134e1384efc293e7f1311c22eee836820b10e99fd94",
+  "response": {
+    "finish_reason": "length",
+    "input_tokens": 1185,
+    "output_tokens": 1500,
+    "text": ""
+  },
+  "schema_retry": 1
+}

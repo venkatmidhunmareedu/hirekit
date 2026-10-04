@@ -1,0 +1,15 @@
+{
+  "input_sha256": "69e71abcc0c4b35e067d1de8d3dddcdfbec39e3208ca0cb56f3bef3ca3e4af21",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "5cb7127db62f3234133e2e2926f583276e72af7f7602fe9644ae755a0e486d3b",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1250,
+    "output_tokens": 1030,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":4,\"quote\":\"I am the technical owner of the appointments service, a FastAPI application with 70 endpoints and 1,200 requests per second at peak.\"},{\"criterion\":2,\"value\":4,\"quote\":\"I designed the schema for the new billing module in PostgreSQL (eight tables, row level history, partial indexes) and used EXPLAIN to cut the checkout query from 900 ms to 60 ms.\"},{\"criterion\":3,\"value\":3,\"quote\":\"The suite for the service has 2,100 tests and a CI job that gates every merge; I run a short testing clinic for new joiners twice a year.\"},{\"criterion\":4,\"value\":4,\"quote\":\"I built the ECS deployment with Terraform modules for three services, including blue-green releases, and led a cost review that cut the cloud bill by 18 percent.\"},{\"criterion\":5,\"value\":4,\"quote\":\"I added metrics, structured logs and alerts, and I led the incident review process: outages in a year went from eleven to four.\"}]}"
+  },
+  "schema_retry": 1
+}
