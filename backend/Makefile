@@ -5,7 +5,7 @@ UV ?= uv
 STATE := ../.bearing/state
 SKIPPED := $(STATE)/.skipped
 # The gates `make check` runs, in order. test-integration needs Postgres, so
-# it is a CI job and a manual target, not part of check.
+# it is a CI job (.github/workflows/ci.yml) and a manual target, not part of check.
 GATES := format-check lint typecheck test vuln
 POSTGRES_PORT ?= 5432
 DATABASE_URL ?= postgresql+asyncpg://postgres:postgres@localhost:$(POSTGRES_PORT)/hirekit

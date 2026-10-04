@@ -1,0 +1,95 @@
+# CI for HireKit. The gate is exactly `make check` from the repo root (the root
+# Makefile delegates to backend/, and to web/ when it exists). Nothing here
+# deploys, publishes or uses a secret. Actions are pinned to a major tag; see
+# docs/progress/noticed.md for the SHA pinning follow-up.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.11.20"
+
+jobs:
+  backend-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+      - name: Install Python 3.14 and locked dependencies
+        working-directory: backend
+        run: |
+          uv python install 3.14
+          uv sync --locked --all-groups
+      # The web gate joins `make check` when web/ exists; these steps then
+      # install its toolchain with no workflow change.
+      - name: Install pnpm
+        if: hashFiles('web/package.json') != ''
+        uses: pnpm/action-setup@v4
+      - name: Install Node
+        if: hashFiles('web/package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Install web dependencies
+        if: hashFiles('web/package.json') != ''
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      - name: make check
+        run: make check
+
+  backend-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: hirekit
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-retries 10
+    env:
+      # Same URL as the backend/Makefile default; a throwaway database in a
+      # service container that dies with the job.
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirekit
+      # Throwaway CI-only role passwords read by migration 0002; not secrets.
+      HIREKIT_API_PASSWORD: ci-only-api-password
+      HIREKIT_WORKER_PASSWORD: ci-only-worker-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+      - name: Install psql
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: Install Python 3.14 and locked dependencies
+        working-directory: backend
+        run: |
+          uv python install 3.14
+          uv sync --locked --all-groups
+      - name: make migrate
+        run: make migrate
+      - name: make test-integration
+        run: make test-integration
+      # Runs down, up and diff over the same database, so it goes last.
+      - name: make migrate-verify
+        run: make migrate-verify
