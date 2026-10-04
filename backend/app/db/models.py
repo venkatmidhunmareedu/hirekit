@@ -13,6 +13,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
+    DateTime,
     Enum,
     ForeignKey,
     Identity,
@@ -72,7 +73,9 @@ class User(Base):
         Enum("recruiter", "interviewer", name="user_role", create_type=False), nullable=False
     )
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class UserSession(Base):
@@ -85,5 +88,7 @@ class UserSession(Base):
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     csrf_token: Mapped[str] = mapped_column(String, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(nullable=False)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
