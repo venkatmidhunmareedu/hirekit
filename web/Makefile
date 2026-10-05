@@ -7,10 +7,13 @@ STATE := ../.bearing/state
 SKIPPED := $(STATE)/.skipped-web
 # The gates `make check` runs, in order.
 GATES := format-check lint typecheck test vuln
+# A git hook (pre-push) sets GIT_DIR; inside web/ that makes git treat this folder as the repo
+# root and list every file in the repo, so drop it and let git find the repo from here.
+GIT := env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_WORK_TREE git
 # Files each gate looks at: tracked plus untracked, minus ignored (so a fresh checkout counts).
-SRC_FILES = $$(git ls-files -co --exclude-standard -- 'src/*.ts' 'src/*.tsx' '*.config.ts')
-FMT_FILES = $$(git ls-files -co --exclude-standard -- '*.ts' '*.tsx' '*.js' '*.json' '*.css' '*.html' | grep -v '^pnpm-lock.yaml$$' || true)
-TEST_FILES = $$(git ls-files -co --exclude-standard -- 'src/*.test.ts' 'src/*.test.tsx')
+SRC_FILES = $$($(GIT) ls-files -co --exclude-standard -- 'src/*.ts' 'src/*.tsx' '*.config.ts')
+FMT_FILES = $$($(GIT) ls-files -co --exclude-standard -- '*.ts' '*.tsx' '*.js' '*.json' '*.css' '*.html' | grep -v '^pnpm-lock.yaml$$' || true)
+TEST_FILES = $$($(GIT) ls-files -co --exclude-standard -- 'src/*.test.ts' 'src/*.test.tsx')
 
 # $(call skip,gate,tool): the tool is absent. Print it, record it, and let the
 # other gates run; `check` fails on any recorded skip. Never a silent pass.
