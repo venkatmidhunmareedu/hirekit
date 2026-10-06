@@ -48,7 +48,7 @@ Backfilled on 2026-10-03 from the reports of HK-17 to HK-40. Owner task numbers 
 | N-038 | HK-33 | Subprocess-based adversarial tests carried `# noqa: S603`; 9 suppressions broke AGENTS rule 6 | Rule 6 | HK-34 | done (HK-34, shared `timeout_helper`) |
 | N-039 | HK-34 | `backend/alembic/env.py:12` still has `# noqa: F401` | Suppression under rule 6 | unassigned | open |
 | N-040 | HK-39 | ADR-0010 says pydantic is already used for the parser (verified: pinned in `pyproject.toml`) | Claim was inferred | HK-39 | done |
-| N-041 | HK-39 | ADR-0009 states the defusedxml licence (PSF) from memory | Unverified licence claim | HK-41 (extractor) | open (verify) |
+| N-041 | HK-39 | ADR-0009 states the defusedxml licence (PSF) from memory | Unverified licence claim | HK-41 (extractor) | done (HK-41: installed metadata says PSFL for defusedxml 0.7.1 and BSD-3-Clause for pypdf 6.19.0; ADR is right) |
 | N-042 | HK-40 | `prompts.lock` hash check (an active version whose content changed) is not built; ADR-0011 notes it as a gap | Active versions can change silently | unassigned | open |
 | N-043 | HK-40 | Frontmatter is parsed by a hand-written strict subset parser because PyYAML is only transitive; richer frontmatter would need PyYAML added deliberately | Dependency decision | unassigned | open |
 | N-044 | HK-40 | Closing-delimiter escaping of variable values is deferred | Needed with the first real prompt | HK-42 (plan task 3) | open |
@@ -58,3 +58,10 @@ Backfilled on 2026-10-03 from the reports of HK-17 to HK-40. Owner task numbers 
 | N-048 | HK-27 to HK-40 | Branch stack HK-27 to HK-40 is unpushed (HK-18 to HK-26 are pushed) | Pushing and merging is the engineer's step (AGENTS rule 2) | engineer | open |
 | N-049 | HK-28 to HK-40 | A local Docker Postgres container (`backend-postgres-1`) was started for integration tests | Local state, not in the repo | engineer | open |
 | N-050 | HK-40 | Worker LLD is silent on the scoring, criteria, kit and extraction designs ("later designs") | The scoring prompt text, criteria schema, counts and weight defaults are undecided | HK-42 (plan tasks 3 and 4) | open |
+| N-051 | HK-41 | defusedxml ships no type stubs or py.typed; the import carries one `# type: ignore[import-untyped]  # no stubs` | Allowed suppression with reason; `types-defusedxml` as a dev dependency would remove it but was not authorised | engineer | open |
+| N-052 | HK-41 | A PDF over 20 pages is refused (`ExtractionError`), not truncated; ADR-0009 says only "cap pages at about 20" | Truncating would hide evidence and mislead a recruiter; the engineer may prefer to read the first 20 | engineer | open |
+| N-053 | HK-41 | pypdf checks the deadline between pages only; one pathological page can still run long, and there is no process-level kill | The lease is 180 s; a hostile single page is bounded only by pypdf itself | unassigned | open |
+| N-054 | HK-41 | DOCX text in headers, footers, footnotes and comments is not read (by design); text boxes in the body are read; `mc:Fallback` copies of a text box may repeat its text | Missed or duplicated text can affect quotes | unassigned | open |
+| N-055 | HK-41 | Plain text is accepted for `text/*` declared types, but the `resume_files` schema CHECK allows only PDF and DOCX media types | Text path is unreachable from uploads until the schema and upload route allow it | unassigned | open |
+| N-056 | HK-41 | `ResumeExtractor` is not wired into `__main__` or `build_handlers` | Engine gate still blocked | HK-45 | open |
+| N-057 | HK-41 | pyproject pins are `pypdf>=6.19,<7` and `defusedxml>=0.7,<1` (existing range style); `uv lock` re-resolved with no other change | Visibility | engineer | open |
