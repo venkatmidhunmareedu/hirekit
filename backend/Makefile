@@ -124,8 +124,8 @@ migrate-verify: ## Every Down runs and restores the schema: up, snapshot, down, 
 	diff -u $(STATE)/schema-up.txt $(STATE)/schema-all.txt || { echo "migrate-verify: running every downgrade and every upgrade again changed the schema" >&2; exit 1; }; \
 	echo "migrate-verify: $$n migrations, every downgrade ran, $$o schema objects identical after down and up"
 
-seed: ## Load the seed roles and resumes into the database (idempotent; needs make migrate)
-	DATABASE_URL=$(DATABASE_URL) $(UV) run python -m app.seed
+seed: ## Load the seed roles, resumes and sign-in users (idempotent; needs make migrate): make seed SEED_ARGS=--reset-passwords
+	@DATABASE_URL=$(DATABASE_URL) $(UV) run python -m app.seed $(SEED_ARGS)
 
 eval: ## Run the agreement and name-swap evals on recordings (replay only, never live): make eval EVAL_ARGS="--out DIR --label x"
 	DATABASE_URL=$(DATABASE_URL) $(UV) run python -m app.evals $(EVAL_ARGS)
