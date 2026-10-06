@@ -1,0 +1,15 @@
+{
+  "input_sha256": "a76d2f3a62cae7426f82a17a451ada4e2cb5933889ecd4b2c70309a91bd1258c",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "8e9160711b102c93b5ec4beabaef1a4c58139e9b2c9aa9c9c1fbade1b0911c2a",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1226,
+    "output_tokens": 681,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":3,\"quote\":\"I have calmed customers who threatened bad reviews and several of them wrote back to thank me.\"},{\"criterion\":2,\"value\":1,\"quote\":\"We use a shared inbox, not a ticketing system, so I keep a spreadsheet of open cases and mark them by hand.\"},{\"criterion\":3,\"value\":1,\"quote\":\"When a new agent starts I sit with them for a few days.\"},{\"criterion\":4,\"value\":2,\"quote\":\"I count the day's cases in the spreadsheet and send the total to my manager.\"},{\"criterion\":5,\"value\":1,\"quote\":\"I also fixed typos on five help pages when I noticed them.\"}]}"
+  },
+  "schema_retry": 0
+}

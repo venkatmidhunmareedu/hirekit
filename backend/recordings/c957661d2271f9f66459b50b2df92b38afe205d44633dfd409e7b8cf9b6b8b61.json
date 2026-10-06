@@ -1,0 +1,15 @@
+{
+  "input_sha256": "69358f5f923c959bc70e4f6f2d9646a2018419e2ff9fcd359a5a0d993b17c85d",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "c957661d2271f9f66459b50b2df92b38afe205d44633dfd409e7b8cf9b6b8b61",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1145,
+    "output_tokens": 988,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":3,\"quote\":\"I add endpoints, validate requests and map errors to clear responses.\"},{\"criterion\":2,\"value\":3,\"quote\":\"indexes for the billing tables after a slow month-end report and brought it from 40 seconds to 6 seconds.\"},{\"criterion\":3,\"value\":2,\"quote\":\"write unit tests for my own changes and review pull requests on the team.\"},{\"criterion\":4,\"value\":2,\"quote\":\"Deployed a staging stack with a teammate\"},{\"criterion\":5,\"value\":2,\"quote\":\"I take one on-call week in five.\"}]}"
+  },
+  "schema_retry": 1
+}

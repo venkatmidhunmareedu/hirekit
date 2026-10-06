@@ -1,0 +1,15 @@
+{
+  "input_sha256": "97be1c7f89d796e3a89c0d7a1482f1ad94a1927fe92251afd966a016a654bd8c",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "eb11361f3a955d81a42dc81ff2de49cfe84eff64f87ff825587610f8528dd257",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1085,
+    "output_tokens": 1224,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":2,\"quote\":\"used the printed list of answers and asked a staff member when I did not know.\"},{\"criterion\":2,\"value\":0,\"quote\":null},{\"criterion\":3,\"value\":0,\"quote\":null},{\"criterion\":4,\"value\":0,\"quote\":null},{\"criterion\":5,\"value\":0,\"quote\":null}]}"
+  },
+  "schema_retry": 0
+}

@@ -19,7 +19,7 @@ from app.gateway.errors import (
     ProviderUnavailableError,
     RateLimitedError,
 )
-from app.gateway.transport import OpenRouterTransport, TransportRequest
+from app.gateway.transport import BASE_URL, OpenRouterTransport, TransportRequest
 
 KEY = "sk-or-secret-key-value"
 BODY_LEAK = "the-prompt-text-the-provider-echoed"
@@ -263,3 +263,60 @@ async def test_from_settings_reads_key_timeout_and_ci() -> None:
                 _env_file=None, database_url="postgresql+asyncpg://u:p@localhost:5432/t", ci=True
             )
         )
+
+
+async def test_from_settings_uses_the_configured_base_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.core.config import Settings
+
+    seen: dict[str, object] = {}
+    real_client = httpx.AsyncClient
+
+    def spy(
+        *, base_url: str, timeout: httpx.Timeout, transport: httpx.AsyncBaseTransport | None
+    ) -> httpx.AsyncClient:
+        seen["base_url"] = base_url
+        return real_client(base_url=base_url, timeout=timeout, transport=transport)
+
+    monkeypatch.setattr(httpx, "AsyncClient", spy)
+    live = OpenRouterTransport.from_settings(
+        Settings(
+            _env_file=None,
+            database_url="postgresql+asyncpg://u:p@localhost:5432/t",
+            model_mode="live",
+            openrouter_api_key=KEY,
+            model_base_url="https://proxy.example.com/v1/",
+        )
+    )
+    await live.aclose()
+
+    assert seen["base_url"] == "https://proxy.example.com/v1"
+
+
+async def test_from_settings_defaults_to_the_openrouter_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.core.config import Settings
+
+    seen: dict[str, object] = {}
+    real_client = httpx.AsyncClient
+
+    def spy(
+        *, base_url: str, timeout: httpx.Timeout, transport: httpx.AsyncBaseTransport | None
+    ) -> httpx.AsyncClient:
+        seen["base_url"] = base_url
+        return real_client(base_url=base_url, timeout=timeout, transport=transport)
+
+    monkeypatch.setattr(httpx, "AsyncClient", spy)
+    live = OpenRouterTransport.from_settings(
+        Settings(
+            _env_file=None,
+            database_url="postgresql+asyncpg://u:p@localhost:5432/t",
+            model_mode="live",
+            openrouter_api_key=KEY,
+        )
+    )
+    await live.aclose()
+
+    assert seen["base_url"] == BASE_URL == "https://openrouter.ai/api/v1"

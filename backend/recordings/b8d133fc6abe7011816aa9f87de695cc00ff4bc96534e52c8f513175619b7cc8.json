@@ -1,0 +1,15 @@
+{
+  "input_sha256": "1e9be7331bd5de0437a453937f87e63c57b2b60ed7e9b75623d9b6032c32c252",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "b8d133fc6abe7011816aa9f87de695cc00ff4bc96534e52c8f513175619b7cc8",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1233,
+    "output_tokens": 1299,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":2,\"quote\":\"Answered email and chat for subscribers.\"},{\"criterion\":2,\"value\":2,\"quote\":\"On the helpdesk I maintain the group assignments and a few rules, but larger changes go through the tools team.\"},{\"criterion\":3,\"value\":3,\"quote\":\"I lead six agents on a subscription product. I schedule the shifts, hold fortnightly one-to-ones, review five tickets per agent per month and help agents plan their growth; two have moved into senior roles.\"},{\"criterion\":4,\"value\":2,\"quote\":\"I send a weekly report of volume, first response and backlog and keep two dashboards.\"},{\"criterion\":5,\"value\":2,\"quote\":\"I update the internal guides when product changes land, and I added 25 articles to the help center last year.\"}]}"
+  },
+  "schema_retry": 1
+}

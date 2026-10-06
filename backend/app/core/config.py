@@ -8,6 +8,7 @@ from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Self
+from urllib.parse import urlsplit
 
 from pydantic import PostgresDsn, SecretStr, field_validator, model_validator
 from pydantic.fields import FieldInfo
@@ -24,6 +25,7 @@ ModelMode = Literal["replay", "live"]
 DEFAULT_RECORDINGS_DIR = Path(__file__).resolve().parents[2] / "recordings"
 LogLevel = Literal["debug", "info", "warning", "error"]
 LogFormat = Literal["json", "console"]
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
 class _DotenvWithoutMode(PydanticBaseSettingsSource):
@@ -46,7 +48,13 @@ class _DotenvWithoutMode(PydanticBaseSettingsSource):
 class Settings(BaseSettings):
     """Validated process configuration, read from the environment and .env."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        # A rejected URL or DSN can carry a secret; errors name the rule, never the value.
+        hide_input_in_errors=True,
+    )
 
     app_name: str = "HireKitApp"
     env: Env = "development"
@@ -62,6 +70,7 @@ class Settings(BaseSettings):
     model_mode: ModelMode = "replay"
     ci: bool = False
     openrouter_api_key: SecretStr | None = None
+    model_base_url: str | None = None  # unset: the gateway transport uses its own default
     model_id: str = "anthropic/claude-haiku-4.5"
     gateway_timeout_seconds: float = 60.0
     price_input_usd_per_mtok: Decimal = Decimal(1)
@@ -99,6 +108,27 @@ class Settings(BaseSettings):
             msg = f"DATABASE_URL must use postgresql+asyncpg://, got {value.scheme}://"
             raise ValueError(msg)
         return value
+
+    @field_validator("model_base_url")
+    @classmethod
+    def _safe_base_url(cls, value: str | None) -> str | None:
+        """The API key is sent here: https unless loopback, no credentials in the URL."""
+        if value is None:
+            return None
+        parts = urlsplit(value)
+        if parts.scheme not in {"http", "https"}:
+            msg = "MODEL_BASE_URL must be an http or https URL"
+            raise ValueError(msg)
+        if not parts.hostname:
+            msg = "MODEL_BASE_URL must include a host"
+            raise ValueError(msg)
+        if parts.username is not None or parts.password is not None:
+            msg = "MODEL_BASE_URL must not contain credentials"
+            raise ValueError(msg)
+        if parts.scheme == "http" and parts.hostname not in _LOOPBACK_HOSTS:
+            msg = "MODEL_BASE_URL must use https unless the host is localhost, 127.0.0.1 or ::1"
+            raise ValueError(msg)
+        return value.rstrip("/")
 
     @field_validator("gateway_timeout_seconds")
     @classmethod
