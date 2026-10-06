@@ -1,12 +1,15 @@
 """In-memory stand-ins for the user and session repositories."""
 
 import uuid
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
+from app.core.errors import FeedbackLockedError
 from app.db.models import Criterion, Role, RubricLevel, User, UserSession
 from app.db.repositories.cost import CallRow
+from app.db.repositories.feedback import StoredFeedback
 from app.db.repositories.kit import QuestionRef
 from app.db.repositories.scoring_jobs import CandidateState, RescoreTarget
 from app.db.repositories.sessions import hash_token
@@ -402,3 +405,91 @@ class FakeKit:
             return None
         self.jobs.append(("regenerate_question", role_id, question_id, version))
         return len(self.jobs)
+
+
+class FakeFeedback:
+    """Feedback rows, assignments and audit events in memory."""
+
+    def __init__(self) -> None:
+        self.role_of: dict[uuid.UUID, uuid.UUID] = {}  # candidate -> role
+        self.assigned: set[tuple[uuid.UUID, uuid.UUID]] = set()  # (candidate, user)
+        self.stored: list[tuple[uuid.UUID, StoredFeedback]] = []  # (candidate, row)
+        self.audit: list[dict[str, object]] = []
+
+    def candidate(self, role_id: uuid.UUID, *assign: uuid.UUID) -> uuid.UUID:
+        candidate_id = uuid.uuid4()
+        self.role_of[candidate_id] = role_id
+        self.assigned |= {(candidate_id, u) for u in assign}
+        return candidate_id
+
+    def seed(
+        self,
+        candidate_id: uuid.UUID,
+        interviewer_id: uuid.UUID,
+        criterion_id: uuid.UUID,
+        *,
+        score: int = 3,
+        comment: str = "Solid",
+        locked: bool = True,
+    ) -> None:
+        row = StoredFeedback(interviewer_id, criterion_id, score, comment, locked, "Python")
+        self.stored.append((candidate_id, row))
+
+    async def candidate_role(self, candidate_id: uuid.UUID) -> uuid.UUID | None:
+        return self.role_of.get(candidate_id)
+
+    async def is_assigned(self, candidate_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        return (candidate_id, user_id) in self.assigned
+
+    async def rows(
+        self, candidate_id: uuid.UUID, interviewer_id: uuid.UUID | None
+    ) -> list[StoredFeedback]:
+        return [
+            r
+            for c, r in self.stored
+            if c == candidate_id and interviewer_id in (None, r.interviewer_id)
+        ]
+
+    async def insert_all(
+        self,
+        candidate_id: uuid.UUID,
+        interviewer_id: uuid.UUID,
+        items: list[tuple[uuid.UUID, int, str]],
+    ) -> bool:
+        if (candidate_id, interviewer_id) not in self.assigned:
+            return False
+        if await self.rows(candidate_id, interviewer_id):
+            raise FeedbackLockedError("feedback is already submitted")
+        for criterion_id, score, comment in items:
+            self.seed(candidate_id, interviewer_id, criterion_id, score=score, comment=comment)
+        return True
+
+    async def save_edit(
+        self,
+        candidate_id: uuid.UUID,
+        interviewer_id: uuid.UUID,
+        before: list[StoredFeedback],
+        items: dict[uuid.UUID, tuple[int, str]],
+    ) -> None:
+        for old in before:
+            score, comment = items[old.criterion_id]
+            self.stored.remove((candidate_id, old))
+            self.seed(candidate_id, interviewer_id, old.criterion_id, score=score, comment=comment)
+            if (score, comment) != (old.score, old.comment):
+                self.audit.append(
+                    {"kind": "feedback_edited", "old_score": old.score, "old_comment": old.comment}
+                )
+
+    async def unlock(
+        self, candidate_id: uuid.UUID, interviewer_id: uuid.UUID, actor_id: uuid.UUID
+    ) -> None:
+        rows = [
+            (c, r)
+            for c, r in self.stored
+            if c == candidate_id and r.interviewer_id == interviewer_id
+        ]
+        if any(r.locked for _, r in rows):
+            for entry in rows:
+                self.stored.remove(entry)
+                self.stored.append((entry[0], replace(entry[1], locked=False)))
+            self.audit.append({"kind": "feedback_edit_approved", "actor": actor_id})

@@ -22,6 +22,7 @@ from tests.api.fake_decisions import FakeAudit, FakeDecisions
 from tests.api.fakes import (
     FakeCost,
     FakeCriteria,
+    FakeFeedback,
     FakeKit,
     FakeRoles,
     FakeScoringJobs,
@@ -45,6 +46,12 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("PUT", "/v1/roles/{role_id}/criteria"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/approve"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/resumes"): frozenset({"recruiter"}),
+    ("POST", "/v1/candidates/{candidate_id}/feedback"): frozenset({"interviewer"}),
+    ("GET", "/v1/candidates/{candidate_id}/feedback"): frozenset({"recruiter", "interviewer"}),
+    ("PUT", "/v1/candidates/{candidate_id}/feedback"): frozenset({"interviewer"}),
+    ("POST", "/v1/candidates/{candidate_id}/feedback/{interviewer_id}:approve-edit"): frozenset(
+        {"recruiter"}
+    ),
     ("POST", "/v1/roles/{role_id}/kit:generate"): frozenset({"recruiter"}),
     ("GET", "/v1/roles/{role_id}/kit"): frozenset({"recruiter", "interviewer"}),
     ("PUT", "/v1/kit/questions/{question_id}"): frozenset({"recruiter"}),
@@ -118,6 +125,7 @@ async def test_matrix_cell(
     roles: FakeRoles,
     criteria: FakeCriteria,
     uploads: FakeUploads,
+    feedback: FakeFeedback,
     kit: FakeKit,
     scoring_jobs: FakeScoringJobs,
     costs: FakeCost,
@@ -128,7 +136,7 @@ async def test_matrix_cell(
     who: str,
 ) -> None:
     role = roles.seed(status="approved")
-    criteria.seed(role.id, "Python")
+    criterion = criteria.seed(role.id, "Python")
     question_id = kit.seed_question(role.id)
     _, candidate_id, criterion_id = decisions.seed()
     # One candidate id that both the decisions and the scoring fakes know.
@@ -145,12 +153,23 @@ async def test_matrix_cell(
         user = users.add(email=f"{who}@example.com", role=who)
         headers = (await sessions.sign_in(user)).unsafe_headers
         roles.assigned.add((role.id, user.id))  # lets an interviewer read the role
+    # Feedback routes: the same candidate, assigned to the caller, and the rows each route expects.
+    feedback.role_of[candidate_id] = role.id
+    feedback.assigned |= {(candidate_id, u.id) for u in users.rows}
+    submitted_by = users.add(email="submitted@example.com", role="interviewer")
+    caller = next((u for u in users.rows if u.email == f"{who}@example.com"), submitted_by)
+    feedback.assigned.add((candidate_id, submitted_by.id))
+    feedback_owner = submitted_by.id if "approve-edit" in path else caller.id
+    if method != "POST" or "approve-edit" in path:
+        feedback.seed(candidate_id, feedback_owner, criterion.id, locked="approve-edit" in path)
+    url = url.replace("{interviewer_id}", str(submitted_by.id))
+    item = {"criterion_id": str(criterion.id), "score": 3, "comment": "Solid"}
 
     response = await client.request(
         method,
         url,
         headers=headers,
-        json=BODIES.get((method, path)),
+        json={"items": [item]} if "/feedback" in path else BODIES.get((method, path)),
         files=FILES.get((method, path)),
     )
 
