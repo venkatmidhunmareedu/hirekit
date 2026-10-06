@@ -109,4 +109,4 @@ def test_many_matches_are_applied_quickly() -> None:
     raw = "a@b.co " * 14_000
     result = anonymize(raw)
     assert result.text.value == "[EMAIL] " * 14_000
-    assert result.report.repaired == 14_000
+    assert result.report.repaired == 0  # the contact pass got them all, the scan had none
