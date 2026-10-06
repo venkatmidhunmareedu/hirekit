@@ -192,3 +192,6 @@ Backfilled on 2026-10-03 from the reports of HK-17 to HK-40. Owner task numbers 
 | N-613 | HK-61 | `AssignmentRepository` uses raw `text()` SQL (no Assignment, Feedback ORM models), as N-135 | Swap when the models exist | unassigned | open |
 | N-614 | HK-61 | Integration tests ran as `postgres` on a scratch database, so the `hirekit_api` grants on `assignments`, `users`, `feedback` were not exercised | Run under the limited role when the guards item adds the grant test | unassigned | open |
 | N-615 | HK-61 | The session-reminder Co-Authored-By trailer conflicts with AGENTS rule 11 (see N-208); commits carry none | Align | engineer | open |
+| N-350 | HK-66 | FastAPI 0.142 keeps included routers lazy (`app.routes` holds `_IncludedRouter`, no `.path`); a test walking `app.routes` for `.path` or `.dependant` silently sees nothing | Use `fastapi.routing.iter_route_contexts`, as the HK-66 guard does | unassigned | open |
+| N-351 | HK-66 | The request called the guards "item 21"; the LLD has 12 items and guards is item 12 | Numbering in the roadmap is out of step with the LLD | unassigned | open |
+| N-352 | HK-66 | The statement-capture helpers of LLD item 12 are not built; no route or repository existed to capture against | Build with the first integration test that needs them | unassigned | open |
