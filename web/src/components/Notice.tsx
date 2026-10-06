@@ -21,10 +21,12 @@ const TONE = {
 export function Notice({
   tone = "info",
   role,
+  id,
   action,
   children,
 }: {
   tone?: Tone;
+  id?: string;
   role?: "alert" | "status";
   action?: ReactNode;
   children: ReactNode;
@@ -32,6 +34,7 @@ export function Notice({
   const { icon: ToneIcon, box, glyph } = TONE[tone];
   return (
     <Alert
+      id={id}
       role={role ?? (tone === "danger" ? "alert" : "status")}
       className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5", box)}
     >

@@ -161,36 +161,51 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
     const submitted = mine.data?.find((m) => m.candidate_id === c.id)?.has_submitted ?? false;
     const nextToReview = mine.data?.find((m) => !m.has_submitted && m.candidate_id !== c.id);
     return (
-      <div className="stack">
+      <div className="flex flex-col gap-8">
         <PageHeader
           title={`Candidate ${candidateLabel(c.candidate_no)}`}
           purpose="Use the interview kit, then score each criterion with a comment."
-          breadcrumb={<Link to="/me/candidates">Back to My candidates</Link>}
+          breadcrumb={
+            <Link
+              to="/me/candidates"
+              className="inline-flex items-center gap-1 hover:text-foreground"
+            >
+              <ChevronLeft aria-hidden="true" className="size-4" />
+              Back to My candidates
+            </Link>
+          }
         />
         {submitted && (
-          <div role="status" className="notice notice-success">
-            <span>Feedback submitted. Thank you.</span>
-            {nextToReview ? (
-              <Link
-                to="/candidates/$candidateId"
-                params={{ candidateId: nextToReview.candidate_id }}
-                className="btn btn-primary"
-              >
-                Next candidate to review
-              </Link>
-            ) : (
-              <Link to="/me/candidates" className="btn btn-secondary">
-                Back to My candidates
-              </Link>
-            )}
-          </div>
+          <Notice
+            tone="success"
+            action={
+              nextToReview ? (
+                <Button asChild className="h-10 px-4">
+                  <Link
+                    to="/candidates/$candidateId"
+                    params={{ candidateId: nextToReview.candidate_id }}
+                  >
+                    Next candidate to review
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild variant="outline" className="h-10 px-4">
+                  <Link to="/me/candidates">Back to My candidates</Link>
+                </Button>
+              )
+            }
+          >
+            Feedback submitted. Thank you.
+          </Notice>
         )}
-        <div className="detail-grid">
-          <div className="stack">
+        <div className="grid gap-x-10 gap-y-8 lg:grid-cols-5">
+          <div className="flex min-w-0 flex-col gap-8 lg:col-span-3">
             <FeedbackPanel key={c.id} candidateId={c.id} roleId={c.role_id} viewer="interviewer" />
             {scores}
           </div>
-          <KitQuestions roleId={c.role_id} />
+          <div className="min-w-0 lg:col-span-2">
+            <KitQuestions roleId={c.role_id} />
+          </div>
         </div>
       </div>
     );
