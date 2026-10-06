@@ -360,7 +360,7 @@ Read once in `app/core/config.py` (`pydantic-settings`, fails fast). `DATABASE_U
 
 | Variable | Default | When missing |
 | --- | --- | --- |
-| `SESSION_COOKIE_SECURE` | `true` when `ENV=production`, else `false` | the default applies; local `http` needs `false` (HLD section 9) |
+| `SESSION_COOKIE_SECURE` | `true` unless `ENV` is explicitly `development` or `test` (an unset `ENV` gives `true`) | the default applies; local `http` needs `ENV=development` or `false` (HLD section 9) |
 | `SESSION_TTL_HOURS` | `12` (assumption: the lifetime is UNDEFINED, data-model open concern 5) | the default applies |
 | `MAX_UPLOAD_BYTES` | `5000000` (assumption: files are about 200 KB, HLD section 17) | the default applies |
 | `MAX_FILES_PER_UPLOAD` | `100` (REQ-050) | the default applies |
