@@ -14,6 +14,7 @@ from tests.worker.fakes import (
     FakeResumeWrites,
     make_criteria_deps,
     make_job,
+    make_kit_deps,
     reply,
 )
 from tests.worker.test_scoring import rig, scores
@@ -53,7 +54,12 @@ async def test_a_failed_rescore_leaves_the_candidate_done() -> None:
         sessions=r.sessions.begin,
         jobs=r.jobs,
         writes=r.jobs,
-        handlers=build_handlers(r.deps, resume, make_criteria_deps(r.sessions, r.jobs)[0]),
+        handlers=build_handlers(
+            r.deps,
+            resume,
+            make_criteria_deps(r.sessions, r.jobs)[0],
+            make_kit_deps(r.sessions, r.jobs)[0],
+        ),
         stop=stop,
         now=r.jobs.clock.now,
         sleep=r.jobs.clock.sleep,

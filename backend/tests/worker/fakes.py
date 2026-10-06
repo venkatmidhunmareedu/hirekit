@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.anonymizer import Anonymized
 from app.anonymizer.pipeline import AnonymizationReport
 from app.db.repositories.jobs import Job
-from app.db.repositories.worker_writes import RoleState, ScoreRow, StoredFile
+from app.db.repositories.worker_writes import NewQuestion, RoleState, ScoreRow, StoredFile
 from app.gateway import GatewayRequest, GatewayResponse
 from app.gateway.text import (
     AnonymizedText,
@@ -30,8 +30,9 @@ from app.gateway.text import (
     mint_prompt,
 )
 from app.worker.errors import LeaseLostError
+from app.worker.handlers.kit import KitDeps
 from app.worker.handlers.propose_criteria import CriteriaDeps
-from app.worker.ports import CriterionSpec, ParsedScore, ProposedCriterion
+from app.worker.ports import CriterionSpec, ParsedScore, ProposedCriterion, ProposedQuestion
 
 START = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
 
@@ -102,6 +103,7 @@ class FakeJobs:
     fail_session: AsyncSession | None = None
     status_sessions: list[AsyncSession] = field(default_factory=list)
     fence_exclusive: list[bool] = field(default_factory=list)
+    fence_open_jobs: list[bool] = field(default_factory=list)
 
     async def claim(self, session: AsyncSession, *, lease_seconds: int) -> Job | None:
         self.calls.append(("claim", lease_seconds))
@@ -110,10 +112,17 @@ class FakeJobs:
         return self.queue.pop(0) if self.queue else None
 
     async def fence(
-        self, session: AsyncSession, job_id: int, lease_token: UUID, *, exclusive: bool = False
+        self,
+        session: AsyncSession,
+        job_id: int,
+        lease_token: UUID,
+        *,
+        exclusive: bool = False,
+        lock_open_jobs: bool = False,
     ) -> None:
         self.calls.append(("fence", job_id, lease_token))
         self.fence_exclusive.append(exclusive)
+        self.fence_open_jobs.append(lock_open_jobs)
         if self.lease_gone:
             raise LeaseLostError("The job lease is gone")
 
@@ -459,3 +468,90 @@ def make_criteria_deps(
         prompt,
         writes,
     )
+
+
+@dataclass
+class FakeKitPrompt:
+    """One parse result per call: questions, or an exception to raise."""
+
+    results: list[list[ProposedQuestion] | Exception] = field(default_factory=list)
+    built_for: list[CriterionSpec] = field(default_factory=list)
+    parsed: list[str] = field(default_factory=list)
+
+    def build(self, criterion: CriterionSpec) -> PromptText:
+        self.built_for.append(criterion)
+        return mint_prompt("write interview questions")
+
+    def parse(self, reply: str) -> list[ProposedQuestion]:
+        self.parsed.append(reply)
+        result = self.results.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
+@dataclass
+class FakeKitWrites:
+    """Stands in for `worker_writes` (Q5, Q6, Q11); `accept` False refuses the write."""
+
+    jobs: FakeJobs
+    criteria: list[CriterionSpec] = field(default_factory=list)
+    role: RoleState | None = field(default_factory=lambda: RoleState("approved", 1))
+    probed: UUID | None = None
+    accept: bool = True
+    kit: list[NewQuestion] = field(default_factory=list)
+    replaced: list[tuple[UUID, str, str, str]] = field(default_factory=list)
+
+    async def read_role(
+        self, session: AsyncSession, role_id: UUID, *, exclusive: bool = False
+    ) -> RoleState | None:
+        self.jobs.calls.append(("read_role", exclusive))
+        return self.role
+
+    async def read_criteria(self, session: AsyncSession, role_id: UUID) -> list[CriterionSpec]:
+        return self.criteria
+
+    async def read_question(
+        self, session: AsyncSession, role_id: UUID, question_id: UUID
+    ) -> UUID | None:
+        return self.probed
+
+    async def replace_kit(
+        self,
+        session: AsyncSession,
+        *,
+        role_id: UUID,
+        criteria_version: int,
+        questions: list[NewQuestion],
+    ) -> bool:
+        self.jobs.calls.append(("replace_kit", criteria_version))
+        if self.accept:
+            self.kit = list(questions)
+        return self.accept
+
+    async def replace_question(
+        self,
+        session: AsyncSession,
+        *,
+        role_id: UUID,
+        criteria_version: int,
+        question_id: UUID,
+        question_text: str,
+        strong_answer: str,
+        weak_answer: str,
+    ) -> bool:
+        self.jobs.calls.append(("replace_question", criteria_version))
+        if self.accept:
+            self.replaced.append((question_id, question_text, strong_answer, weak_answer))
+        return self.accept
+
+
+def make_kit_deps(
+    sessions: FakeSessions, jobs: FakeJobs, role_id: UUID | None = None
+) -> tuple[KitDeps, FakeGateway, FakeKitPrompt, FakeKitWrites]:
+    """A `KitDeps` over fakes, with the pieces a test scripts or inspects."""
+    gateway, prompt, writes = FakeGateway(sessions), FakeKitPrompt(), FakeKitWrites(jobs)
+    loader = FakeJobDescriptionLoader(
+        {} if role_id is None else {role_id: "Senior Go engineer for billing."}
+    )
+    return KitDeps(gateway, writes, jobs, loader, prompt, "kit-v1"), gateway, prompt, writes

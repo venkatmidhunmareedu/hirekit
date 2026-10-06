@@ -25,6 +25,10 @@ LEASE_LOST: Final = "The job lease is gone"
 _HELD = "FROM jobs WHERE id = :id AND lease_token = :token AND status = 'running'"
 _HELD_ROLE: Final = text("SELECT role_id " + _HELD)
 _HELD_LOCK: Final = text("SELECT id " + _HELD + " FOR UPDATE")
+_OPEN_JOBS_LOCK: Final = text(
+    "SELECT id, COALESCE(lease_token = :token AND status = 'running', false) AS mine FROM jobs "
+    "WHERE role_id = :role AND status IN ('queued', 'running') ORDER BY id FOR UPDATE"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,21 +112,33 @@ async def _fail_exhausted(
 
 
 async def fence(
-    session: AsyncSession, job_id: int, lease_token: UUID, *, exclusive: bool = False
+    session: AsyncSession,
+    job_id: int,
+    lease_token: UUID,
+    *,
+    exclusive: bool = False,
+    lock_open_jobs: bool = False,
 ) -> None:
     """Q5 then Q3: lock the job's role, then the job row, if this Worker still holds the job.
 
     The role lock comes first (LLD section 5 lock order), `FOR SHARE` or `FOR UPDATE` when the
     write changes the role. The unlocked read finds the role id (it never changes); the locked
-    read repeats the lease predicate. Raises `LeaseLostError` when the lease is gone.
+    read repeats the lease predicate. `lock_open_jobs` (`generate_kit`) instead locks every open
+    job of the role in ascending id, this one included, and then checks its own lease among
+    them, so it never holds its own row while it waits for a lower one. Raises `LeaseLostError`
+    when the lease is gone.
     """
     params = {"id": job_id, "token": lease_token}
     role_id = await session.scalar(_HELD_ROLE, params)
     if role_id is None:
         raise LeaseLostError(LEASE_LOST)
     await read_role(session, role_id, exclusive=exclusive)
-    found = await session.scalar(_HELD_LOCK, params)
-    if found is None:
+    if lock_open_jobs:
+        rows = await session.execute(_OPEN_JOBS_LOCK, {"role": role_id, "token": lease_token})
+        held = any(r.id == job_id and r.mine for r in rows)
+    else:
+        held = await session.scalar(_HELD_LOCK, params) is not None
+    if not held:
         raise LeaseLostError(LEASE_LOST)
 
 
