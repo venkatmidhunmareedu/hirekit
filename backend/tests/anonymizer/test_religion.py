@@ -46,7 +46,7 @@ def test_stated_religion_and_affiliations_are_masked(raw: str, expected: str) ->
 def test_languages_cultural_skills_and_look_alike_words_are_kept() -> None:
     raw = (
         "Languages: Hindi, Urdu, Arabic, Hebrew, Sanskrit. Temple University, Church & Dwight, "
-        "Jainsen Corp, Christians. Wrote the Sunnyvale plan.\nChristian Weber referred me."
+        "Jainsen Corp, Christians. Wrote the Sunnyside plan.\nChristian Weber referred me."
     )
     expected = raw.replace("Christians", "[RELIGION]")
     assert out(raw) == expected

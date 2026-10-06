@@ -1,0 +1,339 @@
+# Cities. A seed list, not complete: a small town or a misspelling can survive (the LLD assumption). Lowercase, one per line.
+mumbai
+delhi
+new delhi
+bengaluru
+bangalore
+hyderabad
+chennai
+kolkata
+pune
+ahmedabad
+jaipur
+surat
+lucknow
+kanpur
+nagpur
+indore
+bhopal
+visakhapatnam
+patna
+vadodara
+ghaziabad
+ludhiana
+agra
+nashik
+faridabad
+meerut
+rajkot
+varanasi
+srinagar
+aurangabad
+dhanbad
+amritsar
+allahabad
+prayagraj
+ranchi
+coimbatore
+jabalpur
+gwalior
+vijayawada
+jodhpur
+madurai
+raipur
+kota
+guwahati
+chandigarh
+thiruvananthapuram
+kochi
+cochin
+mysore
+mysuru
+noida
+gurgaon
+gurugram
+mangalore
+madras
+bombay
+calcutta
+trivandrum
+bhubaneswar
+dehradun
+panaji
+udaipur
+vellore
+salem
+tiruchirappalli
+trichy
+hubli
+belgaum
+warangal
+guntur
+nellore
+kozhikode
+calicut
+thrissur
+new york city
+los angeles
+chicago
+houston
+phoenix
+philadelphia
+san antonio
+san diego
+dallas
+san jose
+austin
+jacksonville
+fort worth
+columbus
+charlotte
+san francisco
+indianapolis
+seattle
+denver
+boston
+el paso
+nashville
+detroit
+oklahoma city
+portland
+las vegas
+memphis
+louisville
+baltimore
+milwaukee
+albuquerque
+tucson
+fresno
+sacramento
+kansas city
+atlanta
+omaha
+raleigh
+miami
+cleveland
+tulsa
+oakland
+minneapolis
+wichita
+arlington
+tampa
+new orleans
+honolulu
+anaheim
+pittsburgh
+cincinnati
+st. louis
+saint louis
+orlando
+irvine
+palo alto
+mountain view
+sunnyvale
+santa clara
+cupertino
+redmond
+bellevue
+menlo park
+boulder
+salt lake city
+madison
+ann arbor
+cambridge
+san mateo
+fremont
+santa monica
+pasadena
+berkeley
+plano
+scottsdale
+mobile
+orange
+buffalo
+london
+birmingham
+manchester
+glasgow
+liverpool
+leeds
+sheffield
+edinburgh
+bristol
+cardiff
+belfast
+leicester
+coventry
+nottingham
+newcastle
+southampton
+brighton
+oxford
+aberdeen
+dundee
+swansea
+york
+milton keynes
+reading
+bath
+toronto
+montreal
+vancouver
+calgary
+edmonton
+ottawa
+winnipeg
+quebec city
+hamilton
+kitchener
+waterloo
+halifax
+sydney
+melbourne
+brisbane
+perth
+adelaide
+canberra
+gold coast
+hobart
+darwin
+auckland
+wellington
+christchurch
+paris
+lyon
+marseille
+toulouse
+nice
+berlin
+munich
+hamburg
+frankfurt
+cologne
+stuttgart
+dusseldorf
+amsterdam
+rotterdam
+the hague
+utrecht
+eindhoven
+brussels
+antwerp
+vienna
+zurich
+geneva
+basel
+madrid
+barcelona
+valencia
+seville
+lisbon
+porto
+rome
+milan
+turin
+naples
+florence
+venice
+dublin
+cork
+stockholm
+gothenburg
+oslo
+copenhagen
+helsinki
+warsaw
+krakow
+prague
+budapest
+bucharest
+sofia
+athens
+istanbul
+ankara
+kyiv
+kiev
+moscow
+saint petersburg
+st. petersburg
+tallinn
+riga
+vilnius
+split
+zagreb
+belgrade
+singapore
+hong kong
+tokyo
+osaka
+kyoto
+yokohama
+seoul
+busan
+beijing
+shanghai
+shenzhen
+guangzhou
+chengdu
+hangzhou
+taipei
+bangkok
+hanoi
+ho chi minh city
+saigon
+kuala lumpur
+manila
+jakarta
+surabaya
+dhaka
+karachi
+lahore
+islamabad
+colombo
+kathmandu
+dubai
+abu dhabi
+sharjah
+doha
+riyadh
+jeddah
+muscat
+kuwait city
+manama
+tel aviv
+jerusalem
+amman
+beirut
+cairo
+lagos
+abuja
+nairobi
+accra
+johannesburg
+cape town
+durban
+pretoria
+casablanca
+addis ababa
+tunis
+algiers
+kampala
+dar es salaam
+mexico city
+guadalajara
+monterrey
+sao paulo
+rio de janeiro
+brasilia
+buenos aires
+santiago
+lima
+bogota
+medellin
+caracas
+quito
+montevideo
+panama city
+san juan
+havana
+kingston
