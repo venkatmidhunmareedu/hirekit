@@ -26,6 +26,56 @@ function renderApp(path: string) {
   return router;
 }
 
+describe("budget pill", () => {
+  const costLog =
+    (spent: string, allowed = true) =>
+    () =>
+      json(200, {
+        budget: {
+          spent_usd: spent,
+          limit_usd: "8.00",
+          mode: "live",
+          model_actions_allowed: allowed,
+        },
+        data: [],
+        page: { next_cursor: null, has_more: false },
+      });
+  const routes = {
+    "GET /v1/auth/me": () => json(200, session),
+    "GET /v1/roles": () => json(200, { data: [] }),
+  };
+
+  it("shows spend against the limit", async () => {
+    stubFetch({ ...routes, "GET /v1/cost-log?limit=1": costLog("2.00") });
+    renderApp("/");
+    expect(await screen.findByText("Budget USD 2.00 of 8.00")).toBeInTheDocument();
+  });
+
+  it("warns from 75 percent", async () => {
+    stubFetch({ ...routes, "GET /v1/cost-log?limit=1": costLog("6.00") });
+    renderApp("/");
+    expect(await screen.findByText("Budget USD 6.00 of 8.00, nearly used")).toBeInTheDocument();
+  });
+
+  it("says when the budget is reached", async () => {
+    stubFetch({ ...routes, "GET /v1/cost-log?limit=1": costLog("8.00", false) });
+    renderApp("/");
+    expect(await screen.findByText("Budget reached")).toBeInTheDocument();
+  });
+
+  it("is not shown to interviewers and makes no cost call", async () => {
+    const { calls } = stubFetch({
+      "GET /v1/auth/me": () =>
+        json(200, { ...session, user: { ...session.user, role: "interviewer" } }),
+      "GET /v1/me/candidates": () => json(200, { data: [] }),
+    });
+    renderApp("/me/candidates");
+    await screen.findByText("interviewer");
+    expect(screen.queryByText(/Budget/)).not.toBeInTheDocument();
+    expect(calls.some((c) => c.path.includes("cost-log"))).toBe(false);
+  });
+});
+
 describe("route guard", () => {
   it("redirects to sign-in when /v1/auth/me answers 401", async () => {
     stubFetch({ "GET /v1/auth/me": unauthenticated });

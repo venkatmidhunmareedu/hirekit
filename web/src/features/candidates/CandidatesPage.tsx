@@ -1,16 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { AlertIcon } from "../../components/AlertIcon";
 import { errorMessage } from "../../lib/errors";
 import { RoleTabs } from "../roles/RoleTabs";
+import { budgetQueryOptions } from "../cost/hooks";
 import { roleQueryOptions } from "../roles/hooks";
 
 import { RankedTable } from "./RankedTable";
 import { UploadZone } from "./UploadZone";
 import { PAGE_SIZE, STAGES, type RankedPage, type Stage } from "./api";
-import { queueQueryOptions, rankedQueryOptions } from "./hooks";
+import { queueQueryOptions, rankedQueryOptions, useRescore } from "./hooks";
 
 /** Candidates: upload and ranked list (Design.md 8.3, PRD steps 4 and 6). */
 export function CandidatesPage() {
@@ -58,6 +59,9 @@ function Candidates({ roleId }: { roleId: string }) {
 function RankedList({ roleId }: { roleId: string }) {
   const [stage, setStage] = useState<Stage | null>(null);
   const [offset, setOffset] = useState(0);
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [overridesOnly, setOverridesOnly] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
   const queue = useQuery(queueQueryOptions(roleId));
   const working = (queue.data?.waiting ?? 0) + (queue.data?.running ?? 0) > 0;
   const ranked = useQuery(rankedQueryOptions(roleId, stage, offset, working));
@@ -88,6 +92,28 @@ function RankedList({ roleId }: { roleId: string }) {
           ))}
         </select>
       </div>
+      <div className="field filter">
+        <label>
+          <input
+            type="checkbox"
+            checked={flaggedOnly}
+            onChange={(e) => {
+              setFlaggedOnly(e.target.checked);
+            }}
+          />{" "}
+          Flagged only
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={overridesOnly}
+            onChange={(e) => {
+              setOverridesOnly(e.target.checked);
+            }}
+          />{" "}
+          Has overrides
+        </label>
+      </div>
       {working && (
         <p role="status">
           Processing resumes: {queue.data?.waiting ?? 0} waiting, {queue.data?.running ?? 0}{" "}
@@ -105,19 +131,75 @@ function RankedList({ roleId }: { roleId: string }) {
         </p>
       )}
       {ranked.data && (
-        <RankedBody page={ranked.data} filtered={stage !== null} onOffset={setOffset} />
+        <RankedBody
+          roleId={roleId}
+          page={ranked.data}
+          filtered={stage !== null}
+          flaggedOnly={flaggedOnly}
+          overridesOnly={overridesOnly}
+          selected={selected}
+          onToggle={(id) => {
+            setSelected((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
+          }}
+          onOffset={setOffset}
+        />
       )}
     </section>
   );
 }
 
+/** Stale-score banner with the re-run action (Design.md section 11). */
+function StaleBanner({ roleId }: { roleId: string }) {
+  const rescore = useRescore(roleId);
+  const budget = useQuery(budgetQueryOptions);
+  const blocked = budget.data?.model_actions_allowed === false;
+  return (
+    <div role="status" className="notice notice-warning">
+      <span>
+        The criteria changed after some resumes were scored. Those scores are marked stale and still
+        show the older results.
+      </span>
+      <button
+        type="button"
+        className="btn btn-secondary"
+        disabled={rescore.isPending || blocked}
+        onClick={() => {
+          rescore.mutate();
+        }}
+      >
+        Re-run scoring
+      </button>
+      {rescore.isSuccess && (
+        <span role="status">
+          Re-scoring {rescore.data.queued} candidates; {rescore.data.skipped} skipped
+        </span>
+      )}
+      {rescore.isError && (
+        <span role="alert">
+          <AlertIcon /> {errorMessage(rescore.error)}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function RankedBody({
+  roleId,
   page,
   filtered,
+  flaggedOnly,
+  overridesOnly,
+  selected,
+  onToggle,
   onOffset,
 }: {
+  roleId: string;
   page: RankedPage;
   filtered: boolean;
+  flaggedOnly: boolean;
+  overridesOnly: boolean;
+  selected: string[];
+  onToggle: (id: string) => void;
   onOffset: (offset: number) => void;
 }) {
   if (page.total === 0 && page.data.length === 0) {
@@ -130,19 +212,36 @@ function RankedBody({
     );
   }
   const anyStale = page.data.some((c) => c.stale);
+  // Client-side, on the loaded page only: the API has no such filters.
+  const shown = page.data.filter(
+    (c) =>
+      (!flaggedOnly || c.scores.some((s) => s.flag_reason !== null)) &&
+      (!overridesOnly || c.scores.some((s) => s.override_score !== null)),
+  );
+  const canCompare = selected.length >= 2 && selected.length <= 4;
   const last = page.offset + page.data.length;
   return (
     <>
-      {anyStale && (
-        <p role="status" className="notice notice-warning">
-          The criteria changed after some resumes were scored. Those scores are marked stale and
-          still show the older results.
-        </p>
-      )}
+      {anyStale && <StaleBanner roleId={roleId} />}
+      <Link
+        to="/compare"
+        search={{ ids: selected.join(",") }}
+        className="btn btn-secondary"
+        disabled={!canCompare}
+      >
+        Compare
+      </Link>
       {page.data.length === 0 ? (
         <p className="muted">This page is past the last candidate. Go back to the previous page.</p>
+      ) : shown.length === 0 ? (
+        <p className="muted">No candidates on this page match the filters.</p>
       ) : (
-        <RankedTable candidates={page.data} offset={page.offset} />
+        <RankedTable
+          candidates={shown}
+          offset={page.offset}
+          selected={selected}
+          onToggle={onToggle}
+        />
       )}
       <nav aria-label="Pages" className="actions">
         <button

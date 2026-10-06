@@ -189,6 +189,20 @@ export async function getQueue(roleId: string): Promise<QueueSummary> {
   return { waiting: num(body, "waiting"), running: num(body, "running") };
 }
 
+export interface RescoreResult {
+  queued: number;
+  skipped: number;
+}
+
+/** POST /v1/roles/{id}:rescore: one job per candidate that needs it; open ones are skipped. */
+export async function rescoreRole(roleId: string): Promise<RescoreResult> {
+  const body = rec(await request("POST", `/v1/roles/${roleId}:rescore`));
+  return {
+    queued: guardList(body, "job_ids").length,
+    skipped: guardList(body, "skipped_candidate_nos").length,
+  };
+}
+
 export const PAGE_SIZE = 100;
 
 /** GET /v1/roles/{id}/candidates: one page of the ranked list, optionally one stage. */
