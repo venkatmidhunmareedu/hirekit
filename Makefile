@@ -5,7 +5,7 @@ SHELL := /bin/bash
 BACKEND := backend
 WEB := web
 
-.PHONY: help dev-web build-web setup dev check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean
+.PHONY: help dev-web build-web setup dev worker worker-live check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean
 
 help: ## List targets
 	@$(MAKE) --no-print-directory -C $(BACKEND) help
@@ -36,5 +36,5 @@ dev-web: ## Run the web dev server (proxies /v1 to the API on :8080)
 build-web: ## Typecheck and build the web app into web/dist
 	@$(MAKE) --no-print-directory -C $(WEB) build
 
-dev test-integration record migrate migrate-verify migrate-down migrate-new seed eval eval-prompts db db-reset:
+dev worker worker-live test-integration record migrate migrate-verify migrate-down migrate-new seed eval eval-prompts db db-reset:
 	@$(MAKE) --no-print-directory -C $(BACKEND) $@ $(if $(name),name=$(name),)

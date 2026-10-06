@@ -22,7 +22,7 @@ define need_tool
 command -v $(UV) >/dev/null || $(call skip,$(1),uv); $(UV) run --quiet $(2) --version >/dev/null 2>&1 || $(call skip,$(1),$(2))
 endef
 
-.PHONY: help setup dev check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean
+.PHONY: help setup dev worker worker-live check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
@@ -36,6 +36,12 @@ setup: ## Install Python 3.14, dependencies (writes uv.lock) and git hooks
 
 dev: ## Run the API locally with reload (reads .env if present)
 	@set -a; [ -f .env ] && . ./.env; set +a; $(UV) run uvicorn app.main:create_app --factory --reload --host 0.0.0.0 --port "$${PORT:-8080}"
+
+worker: ## Run the Worker in replay mode (reads .env if present); it claims queued jobs from Postgres
+	@set -a; [ -f .env ] && . ./.env; set +a; export DATABASE_URL="$${DATABASE_URL:-$(DATABASE_URL)}"; $(UV) run python -m app.worker
+
+worker-live: ## Run the Worker against the LIVE model (needs OPENROUTER_API_KEY in .env; spends real money, capped at USD 8)
+	@set -a; [ -f .env ] && . ./.env; set +a; export DATABASE_URL="$${DATABASE_URL:-$(DATABASE_URL)}"; MODEL_MODE=live $(UV) run python -m app.worker
 
 format: ## Format
 	$(UV) run ruff format .
