@@ -25,7 +25,7 @@ A recruiter defines a role. The model proposes must-have and nice-to-have criter
 ### 2.1 Goals
 
 1. Every criterion score is backed by a verified quote from the resume, or explicitly marked "no evidence found".
-2. The model never sees name, gender, age, photo, religion or location. This is enforced in code and covered by tests.
+2. The model sees only anonymized text: anonymization removes the name, gender, age, photo, religion and location signals that code can find, and is enforced in code and covered by tests. It is a floor, not proof of fairness: proxy signals (schools, clubs, gendered wording, career gaps) can remain.
 3. Humans stay in control. Criteria need recruiter approval, scores can be overridden, and only a recruiter can reject.
 4. All model usage flows through one gateway that enforces a token cap, logs cost, and stops at a hard USD 8 budget.
 5. Quality is measured, not assumed: an agreement eval and a name-swap eval run in CI from recorded responses.

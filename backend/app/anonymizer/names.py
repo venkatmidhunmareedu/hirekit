@@ -39,7 +39,7 @@ _SIGNOFF = re.compile(
 )
 _LETTERS = re.compile(r"[^\W\d_]+")
 _NICK_WORD = r"[A-Z][a-z]{1,11}"
-_NICK_SUFFIX = re.compile(rf"[ \t]*[(\"\u201c']{_NICK_WORD}[)\"\u201d']\s*$")
+_NICK_SUFFIX = re.compile(rf"(?<![ \t])[ \t]*[(\"\u201c']{_NICK_WORD}[)\"\u201d']\s*$")
 _NICK_PHRASE = re.compile(
     r"(?:\b(?:is|am|was|also|usually|often|commonly)[ \t]+called|\b[Kk]nown[ \t]+as|\b[Nn]icknamed"
     r"|\bgo(?:es)?[ \t]+by|\bcalls?[ \t]+(?:me|her|him|them)"

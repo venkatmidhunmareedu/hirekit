@@ -36,6 +36,9 @@ jainism
 parsi
 zoroastrian
 baha'i
+baha’i
+bahá'í
+bahá’í
 bahai
 shia
 sunni
@@ -46,6 +49,5 @@ shinto
 rastafarian
 atheist
 atheism
-agnostic
 iskcon
 hare krishna

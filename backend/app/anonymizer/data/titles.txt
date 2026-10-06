@@ -1,5 +1,8 @@
 # Gendered titles. Masked as `[TITLE]` when written with a capital and followed by a dot, a capital
 # letter, a placeholder, `or`, a comma or the end of the line (so "Miss a deadline" is kept).
+# The passes and the scan also take ALL CAPS for the unambiguous ones (MRS, MISS, MADAM, SMT, SHRI,
+# KUMARI, MME, MLLE, MISTER); Mr, Ms, Mx, Sir, Sri stay capital-first only (MS the degree, MX the
+# DNS record, SRI the institute). Lord and Lady count only before a capitalised word or `[NAME]`.
 # Neutral titles (Dr, Prof) are not here. One per line.
 Mr
 Mrs
@@ -8,3 +11,12 @@ Mx
 Miss
 Sir
 Madam
+Smt
+Shri
+Sri
+Kumari
+Mme
+Mlle
+Mister
+Lady
+Lord
