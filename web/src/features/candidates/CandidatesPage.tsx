@@ -15,6 +15,7 @@ import { roleQueryOptions } from "../roles/hooks";
 import { RankedTable } from "./RankedTable";
 import { UploadZone } from "./UploadZone";
 import { PAGE_SIZE, STAGES, type RankedPage, type Stage } from "./api";
+import { STAGE_LABEL } from "./labels";
 import { queueQueryOptions, rankedQueryOptions, useRescore } from "./hooks";
 
 /** Candidates: upload and ranked list (Design.md 8.3, PRD steps 4 and 6). */
@@ -78,16 +79,12 @@ function RankedList({ roleId }: { roleId: string }) {
     <section aria-labelledby="ranked-heading" className="section">
       <h2 id="ranked-heading">Ranked candidates</h2>
       <p className="muted">
-        Scores are model suggestions until a recruiter overrides them. Names are hidden. Hiding
-        names reduces some bias but does not remove it: schools, clubs, wording and career gaps can
-        still point to who someone is. A person decides, not the ranking.
-      </p>
-      <p className="muted">
-        The stage filter asks the server. Flagged only and Has overrides filter the loaded page
-        only.
+        Scores are AI suggestions that a person decides on. Hiding names reduces some bias but does
+        not remove it: schools, clubs, wording and career gaps can still show. The hiring stage
+        filter covers every candidate; the two checkboxes cover this page only.
       </p>
       <div className="field filter">
-        <label htmlFor="stage-filter">Stage</label>
+        <label htmlFor="stage-filter">Hiring stage</label>
         <select
           id="stage-filter"
           value={stage ?? ""}
@@ -96,10 +93,10 @@ function RankedList({ roleId }: { roleId: string }) {
             setOffset(0);
           }}
         >
-          <option value="">All stages</option>
+          <option value="">All hiring stages</option>
           {STAGES.map((s) => (
             <option key={s} value={s}>
-              {s.charAt(0).toUpperCase() + s.slice(1)}
+              {STAGE_LABEL[s]}
             </option>
           ))}
         </select>
@@ -113,7 +110,7 @@ function RankedList({ roleId }: { roleId: string }) {
               setFlaggedOnly(e.target.checked);
             }}
           />{" "}
-          Flagged only
+          Needs a look only
         </label>
         <label>
           <input
@@ -123,7 +120,7 @@ function RankedList({ roleId }: { roleId: string }) {
               setOverridesOnly(e.target.checked);
             }}
           />{" "}
-          Has overrides
+          Changed by recruiter
         </label>
       </div>
       {working && (
@@ -159,7 +156,7 @@ function RankedList({ roleId }: { roleId: string }) {
   );
 }
 
-/** Stale-score banner with the re-run action (Design.md section 11). */
+/** Out-of-date scores banner with the re-score action (Design.md section 11). */
 function StaleBanner({ roleId }: { roleId: string }) {
   const rescore = useRescore(roleId);
   const budget = useQuery(budgetQueryOptions);
@@ -167,7 +164,7 @@ function StaleBanner({ roleId }: { roleId: string }) {
   return (
     <div role="status" className="notice notice-warning">
       <span>
-        The criteria changed after some resumes were scored. Those scores are marked stale and still
+        Scores are out of date. The criteria changed after some resumes were scored, so those still
         show the older results.
       </span>
       <button
@@ -178,7 +175,7 @@ function StaleBanner({ roleId }: { roleId: string }) {
           rescore.mutate();
         }}
       >
-        Re-run scoring
+        Re-score
       </button>
       {rescore.isSuccess && (
         <span role="status">
@@ -219,7 +216,7 @@ function RankedBody({
       <EmptyState
         message={
           filtered
-            ? "No candidates are in this stage."
+            ? "No candidates are in this hiring stage."
             : "No resumes yet. Upload PDF or DOCX files to see a ranked list."
         }
       />

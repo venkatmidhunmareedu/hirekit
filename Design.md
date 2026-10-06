@@ -164,7 +164,7 @@ Reject is never a primary button, is never in a row hover shortcut, and always o
 A compact chip showing a score on the rubric scale, for example `3 / 4`.
 
 - Neutral gray fill, `--ink` text, mono numerals.
-- Overridden scores show the new value with a small pencil icon, and the original model value as a smaller struck-through number beside it.
+- Scores changed by a recruiter show the new value with a small pencil icon, and the original AI value as a smaller struck-through number beside it.
 - No red or green fills. Optional subtle bar length to show the value.
 
 ### 7.3 Evidence block
@@ -175,24 +175,24 @@ The signature component of the product.
 - Status tag on the right:
   - **Verified** (check icon, `--success`): quote found in the resume text.
   - **No evidence found** (dash icon, `--gray-500`): shown in plain text, no quote box.
-  - **Flagged** (triangle icon, `--warning`): the model's quote failed the check and was downgraded. Shows a "why" line.
+  - **Needs a look** (triangle icon, `--warning`): the AI's quote failed the check and was downgraded. Shows a "why" line.
 - Long quotes are truncated after 3 lines with a "Show more" control.
 
 ### 7.4 Criterion row
 
-Criterion name, type tag (`Must-have` or `Nice-to-have`), weight, rubric summary, score chip, evidence block, and an override control. Must-have and nice-to-have criteria are grouped under separate headers.
+Criterion name, type tag (`Must-have` or `Nice-to-have`), weight, rubric summary, score chip, evidence block, and a "Change score" control. Must-have and nice-to-have criteria are grouped under separate headers.
 
 ### 7.5 Rubric editor
 
 A table of criteria with inline-editable fields. Each criterion expands to show rubric descriptors per score level. A sticky footer holds "Save draft" and "Approve criteria". Approving opens a confirmation summarizing what will unlock (upload, scoring, kit).
 
-### 7.6 Override dialog
+### 7.6 Change score dialog
 
-Fields: new score, required note (minimum 10 characters). Shows the model value and its evidence for reference. The save button is disabled until the note is filled. On save, the row shows the override state immediately.
+Fields: new score, required note (minimum 10 characters). Shows the AI suggestion and its evidence for reference. The save button is disabled until the note is filled. On save, the row shows "Changed by recruiter" immediately.
 
-### 7.7 Stage control
+### 7.7 Hiring stage control
 
-A segmented control or dropdown per candidate showing the current stage. Changing the stage writes to the history immediately. The `Rejected` option is grouped separately at the bottom and needs a confirmation dialog with an optional reason.
+A dropdown per candidate, labelled "Hiring stage", showing the current stage with the same capitalised names as the filter, table and history. Changing the stage writes to the history immediately. The `Rejected` option is grouped separately at the bottom and needs a confirmation dialog with an optional reason.
 
 ### 7.8 Upload zone
 
@@ -216,7 +216,7 @@ A small persistent pill in the top bar for recruiters: `$3.42 of $8.00`.
 ### 7.11 Toasts and banners
 
 - Toasts for confirmations (saved, uploaded). Auto-dismiss after 5 seconds and pause on hover.
-- Banners for persistent states: role is `Draft`, scores are stale, budget blocked.
+- Banners for persistent states: role is `Draft`, scores are out of date, budget blocked.
 
 ---
 
@@ -236,17 +236,17 @@ Cards or rows per role with title, status (`Draft` or `Approved`), candidate cou
 ### 8.3 Candidates: upload and ranked list
 
 - Top: upload zone (collapsible once files are processed).
-- Below: ranked table with columns: rank, candidate ID (see 9), weighted score, must-have coverage, one chip per criterion, flags count, stage.
+- Below: ranked table with columns: rank, candidate ID (see 9), weighted score, must-have coverage, one chip per criterion, "Needs a look" count, hiring stage.
 - Row click opens the candidate detail panel.
-- Filter bar: stage, flagged only, has overrides.
+- Filter bar: hiring stage, needs a look only, changed by recruiter. One helper line states what each filter covers.
 - A must-have coverage indicator shows how many must-haves have verified evidence, so a high total cannot hide a gap.
 
 ### 8.4 Candidate detail (side panel or page)
 
-- Header: candidate ID, stage control, total score.
-- Criterion rows (7.4) with evidence blocks and override controls.
+- Header: candidate ID, hiring stage control, total score.
+- Criterion rows (7.4) with evidence blocks and "Change score" controls.
 - Anonymized resume text on the right, with matched quotes highlighted when a criterion is selected.
-- Stage history and override history at the bottom.
+- Hiring stage and score change history at the bottom.
 
 ### 8.5 Interview kit
 
@@ -265,7 +265,7 @@ Cards or rows per role with title, status (`Draft` or `Approved`), candidate cou
 
 - Columns are candidates (2 to 4). Rows are criteria, grouped by must-have and nice-to-have.
 - Each cell shows resume score chip, override if any, interviewer scores and a spread indicator.
-- Disagreement between interviewers on a criterion is marked with a warning icon and a tooltip.
+- Disagreement between interviewers on a criterion is marked with a warning tag in the cell, not a tooltip.
 - A pinned top row shows weighted totals. The candidate column headers hold stage controls.
 - Cells expand to show evidence quotes and comments.
 
@@ -279,11 +279,11 @@ A table of calls: time, purpose, model, input tokens, output tokens, cost, runni
 
 These rules exist because the product's purpose is fairness.
 
-- **Anonymous by default.** Lists and comparison headers show candidate IDs (for example `C-014`) instead of names. A recruiter can use an explicit "Reveal identity" action on the detail view, which is logged. This is a recommendation and is listed as an open question in the PRD.
+- **Anonymous by default.** Lists and comparison headers show candidate IDs (for example `C-014`) instead of names. A recruiter can use an explicit "Show candidate name" action on the detail view, which is logged. This is a recommendation and is listed as an open question in the PRD.
 - **No photos** anywhere in the UI.
 - **No score-based coloring** of candidate rows or names.
 - **Low-ranked candidates stay visible.** The list never hides or collapses candidates below a cutoff.
-- **Model output is labelled.** Use the label "Model suggestion" beside model scores, and "Recruiter override" beside overrides.
+- **Model output is labelled.** Use the label "AI suggestion" beside AI scores, and "Changed by recruiter" beside changed scores.
 - **Ranking rationale is inspectable.** Every total links to the per-criterion scores and evidence that produced it.
 
 ---
@@ -294,17 +294,34 @@ These rules exist because the product's purpose is fairness.
 - Explain limits honestly: "This quote could not be found in the resume, so it was marked as no evidence found."
 - Buttons use verbs: "Approve criteria", "Upload resumes", "Submit feedback", "Move to interview".
 - Errors say what happened and what to do next.
-- Avoid words that imply automated judgment, such as "rejected by AI", "best candidate" or "top talent". Use "highest ranked" and "model suggestion".
+- Avoid words that imply automated judgment, such as "rejected by AI", "best candidate" or "top talent". Use "highest ranked" and "AI suggestion".
 
 ### 10.1 Example copy
 
 | Situation | Copy |
 |---|---|
 | Role is draft | "Approve the criteria to start uploading and scoring resumes." |
-| Flagged quote | "The model's quote was not found in the resume. It was replaced with no evidence found." |
+| Needs a look | "The AI's quote was not found in the resume. It was replaced with no evidence found." |
 | Reject confirm | "Reject this candidate? This is recorded under your name and can be reversed by a recruiter." |
-| Budget reached | "The model budget of $8.00 has been reached. No new model calls can be made." |
+| Budget reached | "The AI budget of $8.00 has been reached. No new AI calls can be made." |
 | Empty state | "No resumes yet. Upload PDF or DOCX files to see a ranked list." |
+
+### 10.2 Glossary
+
+One word per idea, used in labels, headings, buttons, notices, aria labels, history text and tests. Each screen gets one short helper line, not tooltips or stacked disclaimers.
+
+| Use | Not |
+|---|---|
+| Hiring stage (values capitalised: New, Screened, Interview, Offer, Hired, Rejected, Withdrawn) | Stage, lowercase values |
+| Show candidate name (logged in the history) | Reveal identity |
+| Scores are out of date, Re-score | Stale, Re-run scoring |
+| Change score (a note is required), Changed by recruiter | Override, Recruiter override |
+| Needs a look | Flagged |
+| AI suggestion, AI | Model suggestion, model |
+| Interview kit | Kit |
+| Readable processing steps (Waiting to start, Reading the resume, Removing identity details, Scoring, Ready, Could not process) and numbered interviewers | Raw status values, id slices |
+
+Product-rule copy is never softened by this glossary: a score points to a checked quote or says "No evidence found", a verified quote proves the text exists and not that it supports the score, anonymization is a floor and not proof of fairness, and nothing is rejected or hidden except by a recruiter action.
 
 ---
 
@@ -316,7 +333,7 @@ Every screen and component needs these states designed:
 - **Empty:** short explanation and a single next action.
 - **Error:** plain message, cause if known, retry action.
 - **Partial:** batch uploads where some files failed.
-- **Stale:** criteria changed after scoring. Banner plus a "Re-run scoring" action.
+- **Out of date:** criteria changed after scoring. Banner "Scores are out of date" plus a "Re-score" action.
 - **Blocked:** role in draft, or budget reached. Explain why and what unlocks it.
 - **Read-only:** submitted feedback, and any view for an interviewer where editing is not allowed.
 

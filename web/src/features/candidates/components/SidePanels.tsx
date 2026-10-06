@@ -5,6 +5,7 @@ import { ErrorNotice } from "../../../components/ErrorNotice";
 import { Icon } from "../../../components/Icon";
 import { Modal } from "../../../components/Modal";
 import { type AuditEvent, type Identity } from "../api";
+import { STAGE_LABEL } from "../labels";
 import { anonymizedTextQueryOptions, useAssign, useReveal, useUnassign } from "../hooks";
 
 /** Split text around the quote, matching on whitespace-normalized words only (PRD: no fuzzy match). */
@@ -45,7 +46,7 @@ export function ResumeText({ candidateId, quote }: { candidateId: string; quote:
   );
 }
 
-/** Reveal identity (Design.md section 9): an explicit, logged action behind a confirmation. */
+/** Show candidate name (Design.md section 9): an explicit, logged action behind a confirmation. */
 export function RevealIdentity({ candidateId }: { candidateId: string }) {
   const reveal = useReveal(candidateId);
   const [asking, setAsking] = useState(false);
@@ -54,7 +55,7 @@ export function RevealIdentity({ candidateId }: { candidateId: string }) {
   if (identity) {
     return (
       <p>
-        <span className="muted">Identity (revealed, logged): </span>
+        <span className="muted">Candidate name (shown, logged): </span>
         <strong>{identity.identity_name ?? "No name found"}</strong>
         <span className="muted"> from {identity.file_name}</span>
       </p>
@@ -69,16 +70,16 @@ export function RevealIdentity({ candidateId }: { candidateId: string }) {
           setAsking(true);
         }}
       >
-        <Icon name="eye" /> Reveal identity
+        <Icon name="eye" /> Show candidate name
       </button>
       {asking && (
         <Modal
-          title="Reveal identity?"
+          title="Show candidate name?"
           onClose={() => {
             setAsking(false);
           }}
         >
-          <p>Revealing the name is recorded in the audit history under your name.</p>
+          <p>Showing the name is recorded in the history under your name.</p>
           {reveal.error && <ErrorNotice error={reveal.error} />}
           <div className="actions">
             <button
@@ -102,7 +103,7 @@ export function RevealIdentity({ candidateId }: { candidateId: string }) {
                 });
               }}
             >
-              Reveal identity
+              Show candidate name
             </button>
           </div>
         </Modal>
@@ -188,23 +189,23 @@ export function Assignments({ candidateId }: { candidateId: string }) {
 function describe(event: AuditEvent): string {
   switch (event.kind) {
     case "score_override":
-      return `Override on ${event.criterion_name ?? "a criterion"}: ${event.old_score ?? "none"} to ${event.new_score ?? "none"}`;
+      return `Score changed on ${event.criterion_name ?? "a criterion"}: ${event.old_score ?? "none"} to ${event.new_score ?? "none"}`;
     case "stage_change":
-      return `Stage ${event.from_stage ?? "none"} to ${event.to_stage ?? "none"}`;
+      return `Hiring stage ${event.from_stage ? STAGE_LABEL[event.from_stage] : "none"} to ${event.to_stage ? STAGE_LABEL[event.to_stage] : "none"}`;
     case "identity_reveal":
-      return "Identity revealed";
+      return "Candidate name shown";
     default:
       return event.kind.replaceAll("_", " ");
   }
 }
 
-/** Stage history and override history (Design.md 8.4), newest first, as the API sends it. */
+/** Hiring stage and score change history (Design.md 8.4), newest first, as the API sends it. */
 export function AuditHistory({ events }: { events: AuditEvent[] }) {
   return (
     <section aria-labelledby="history-heading" className="section">
       <h2 id="history-heading">History</h2>
       {events.length === 0 ? (
-        <p className="muted">No stage moves or overrides yet.</p>
+        <p className="muted">No hiring stage moves or score changes yet.</p>
       ) : (
         <ul className="plain-list">
           {events.map((e) => (

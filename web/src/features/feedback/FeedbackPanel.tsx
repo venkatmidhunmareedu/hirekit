@@ -157,19 +157,17 @@ function RecruiterFeedback({
   return (
     <div className="stack">
       {approve.error && <ErrorNotice error={approve.error} />}
-      {interviewers.map((id) => {
+      {interviewers.map((id, index) => {
         const mine = rows.filter((r) => r.interviewer_id === id);
         const locked = mine.every((r) => r.locked);
         return (
           <section
             key={id}
             className="criterion-box"
-            aria-label={`Feedback from interviewer ${id}`}
+            aria-label={`Feedback from interviewer ${index + 1}`}
           >
             <div className="row-between">
-              <h3>
-                Interviewer <span className="mono">{id.slice(0, 8)}</span>
-              </h3>
+              <h3>Interviewer {index + 1}</h3>
               {locked ? (
                 <button
                   type="button"
@@ -179,7 +177,7 @@ function RecruiterFeedback({
                     approve.mutate(id);
                   }}
                 >
-                  Approve edit for {id.slice(0, 8)}
+                  Approve edit for interviewer {index + 1}
                 </button>
               ) : (
                 <span className="tag muted">Unlocked for an edit</span>

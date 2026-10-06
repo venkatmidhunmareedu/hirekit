@@ -91,7 +91,7 @@ function Proposal({ role }: { role: RoleDetail }) {
     <section className="section">
       <h2>Proposed criteria</h2>
       <p className="muted">
-        The model suggests criteria from the job description. Review and edit every one before you
+        The AI suggests criteria from the job description. Review and edit every one before you
         approve.
       </p>
       <div className="actions">

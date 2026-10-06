@@ -38,7 +38,9 @@ describe("Reader", () => {
 
 describe("errorMessage", () => {
   it("maps known codes, network failures and the rest", () => {
-    expect(errorMessage(new ApiError(409, "same_stage", "x"))).toContain("already in that stage");
+    expect(errorMessage(new ApiError(409, "same_stage", "x"))).toContain(
+      "already in that hiring stage",
+    );
     expect(errorMessage(new ApiError(0, "network", "x"))).toContain("Could not reach");
     expect(errorMessage(new ApiError(500, "internal", "x"))).toContain("Something went wrong");
     expect(errorMessage(new Error("x"))).toContain("Something went wrong");

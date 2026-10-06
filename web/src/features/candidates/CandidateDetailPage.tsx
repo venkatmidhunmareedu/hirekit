@@ -15,6 +15,7 @@ import { OverrideDialog } from "./components/OverrideDialog";
 import { EvidenceBlock, ScoreChip, sourceLabel } from "./components/ScoreParts";
 import { Assignments, AuditHistory, ResumeText, RevealIdentity } from "./components/SidePanels";
 import { StageControl } from "./components/StageControl";
+import { processingLabel } from "./labels";
 import { candidateQueryOptions, myCandidatesQueryOptions, rankedQueryOptions } from "./hooks";
 
 const GROUPS: { kind: Kind; title: string }[] = [
@@ -43,10 +44,10 @@ function CriterionRow({
       </div>
       <p className="muted">
         {sourceLabel(cell)}
-        {cell.stale && " (older criteria version)"}
+        {cell.stale && " (scores are out of date)"}
       </p>
       {recruiter && <EvidenceBlock cell={cell} />}
-      {cell.override_note && <p>Override note: {cell.override_note}</p>}
+      {cell.override_note && <p>Note on the changed score: {cell.override_note}</p>}
       {recruiter && (
         <div className="actions">
           <button
@@ -61,10 +62,10 @@ function CriterionRow({
           <button
             type="button"
             className="btn btn-secondary"
-            aria-label={`Override ${cell.criterion_name}`}
+            aria-label={`Change score for ${cell.criterion_name}`}
             onClick={onOverride}
           >
-            <Icon name="pencil" /> Override
+            <Icon name="pencil" /> Change score
           </button>
         </div>
       )}
@@ -72,7 +73,7 @@ function CriterionRow({
   );
 }
 
-/** Candidate detail (Design.md 8.4): evidence per criterion, overrides, stage, history, feedback. */
+/** Candidate detail (Design.md 8.4): evidence per criterion, changed scores, hiring stage, history, feedback. */
 export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
   const { data: session } = useSuspenseQuery(sessionQueryOptions);
   const recruiter = session.user.role === "recruiter";
@@ -109,7 +110,7 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
         <p className="muted">
           {recruiter
             ? "No scores yet."
-            : "Model scores stay hidden until you submit your feedback, so they do not anchor your view."}
+            : "AI scores stay hidden until you submit your feedback, so they do not anchor your view."}
         </p>
       ) : (
         GROUPS.map(({ kind, title }) => {
@@ -213,13 +214,16 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
       />
       {c.processing_status && c.processing_status !== "done" && (
         <p role="status" className="notice notice-info">
-          Processing status: {c.processing_status}. Scores appear when processing is done.
+          Processing: {processingLabel(c.processing_status).toLowerCase()}. Scores appear when
+          processing is finished.
         </p>
       )}
       {c.scores.some((s) => s.stale) && (
         <p role="status" className="notice notice-warning">
           <Icon name="triangle" color="var(--warning)" />
-          <span>Some scores come from older criteria. Re-run scoring from the ranked list.</span>
+          <span>
+            Scores are out of date because the criteria changed. Re-score from the ranked list.
+          </span>
         </p>
       )}
       <section className="section" aria-label="Decision">

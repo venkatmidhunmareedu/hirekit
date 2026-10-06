@@ -9,7 +9,7 @@ import { EvidenceBlock, ScoreChip } from "./ScoreParts";
 
 const MIN_NOTE = 10;
 
-/** Override dialog (Design.md 7.6): new score, required note, the model value for reference. */
+/** Change score dialog (Design.md 7.6): new score, required note, the AI value for reference. */
 export function OverrideDialog({
   candidateId,
   cell,
@@ -25,8 +25,8 @@ export function OverrideDialog({
   const valid = score !== null && note.trim().length >= MIN_NOTE;
 
   return (
-    <Modal title={`Override score: ${cell.criterion_name}`} onClose={onClose}>
-      <p className="muted">Model suggestion</p>
+    <Modal title={`Change score: ${cell.criterion_name}`} onClose={onClose}>
+      <p className="muted">AI suggestion</p>
       <ScoreChip model={cell.model_score} override={null} />
       <EvidenceBlock cell={cell} />
       <form
@@ -73,7 +73,7 @@ export function OverrideDialog({
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={!valid || override.isPending}>
-            Save override
+            Save score
           </button>
         </div>
       </form>

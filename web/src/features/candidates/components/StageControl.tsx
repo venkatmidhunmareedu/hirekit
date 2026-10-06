@@ -4,11 +4,12 @@ import { ErrorNotice } from "../../../components/ErrorNotice";
 import { Modal } from "../../../components/Modal";
 import { STAGES, type Stage } from "../api";
 import { useChangeStage } from "../hooks";
+import { STAGE_LABEL } from "../labels";
 
 const MOVES = STAGES.filter((s) => s !== "rejected");
 
 /**
- * Stage control (Design.md 7.7). Rejected sits apart and always asks first; only a
+ * Hiring stage control (Design.md 7.7). Rejected sits apart and always asks first; only a
  * recruiter's explicit choice here changes a stage.
  */
 export function StageControl({ candidateId, stage }: { candidateId: string; stage: Stage | null }) {
@@ -19,7 +20,7 @@ export function StageControl({ candidateId, stage }: { candidateId: string; stag
   return (
     <div className="stack">
       <div className="field">
-        <label htmlFor="stage">Stage</label>
+        <label htmlFor="stage">Hiring stage</label>
         <select
           id="stage"
           value={stage ?? ""}
@@ -32,15 +33,15 @@ export function StageControl({ candidateId, stage }: { candidateId: string; stag
           }}
         >
           {stage === null && <option value="">Not set</option>}
-          <optgroup label="Stages">
+          <optgroup label="Hiring stages">
             {MOVES.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {STAGE_LABEL[s]}
               </option>
             ))}
           </optgroup>
           <optgroup label="Reject">
-            <option value="rejected">rejected</option>
+            <option value="rejected">{STAGE_LABEL.rejected}</option>
           </optgroup>
         </select>
       </div>

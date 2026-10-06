@@ -2,25 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { type RankedCandidate, type ScoreCell, candidateLabel } from "./api";
 import { ScoreChip } from "./components/ScoreParts";
-
-const STAGE_LABEL: Record<RankedCandidate["stage"], string> = {
-  new: "New",
-  screened: "Screened",
-  interview: "Interview",
-  offer: "Offer",
-  hired: "Hired",
-  rejected: "Rejected",
-  withdrawn: "Withdrawn",
-};
-
-const PROCESSING_LABEL: Record<RankedCandidate["processing_status"], string> = {
-  queued: "Queued",
-  parsing: "Parsing",
-  anonymizing: "Anonymizing",
-  scoring: "Scoring",
-  done: "Done",
-  failed: "Failed",
-};
+import { PROCESSING_LABEL, STAGE_LABEL } from "./labels";
 
 /** A score cell: the shared chip labelled by source, or the plain no-score state. */
 function ScoreCellView({ cell }: { cell: ScoreCell }) {
@@ -31,7 +13,7 @@ function ScoreCellView({ cell }: { cell: ScoreCell }) {
     <span className="chip-cell">
       <ScoreChip model={cell.model_score} override={cell.override_score} />
       <small className="muted">
-        {cell.override_score !== null ? "Recruiter override" : "Model suggestion"}
+        {cell.override_score !== null ? "Changed by recruiter" : "AI suggestion"}
       </small>
     </span>
   );
@@ -77,9 +59,9 @@ export function RankedTable({
               </th>
             ))}
             <th scope="col" className="num">
-              Flags
+              Needs a look
             </th>
-            <th scope="col">Stage</th>
+            <th scope="col">Hiring stage</th>
           </tr>
         </thead>
         <tbody>
@@ -114,7 +96,7 @@ export function RankedTable({
                   {ready
                     ? candidate.total.toFixed(1)
                     : PROCESSING_LABEL[candidate.processing_status]}
-                  {candidate.stale && <small className="muted"> Stale scores</small>}
+                  {candidate.stale && <small className="muted"> Scores are out of date</small>}
                 </td>
                 <td>
                   {ready

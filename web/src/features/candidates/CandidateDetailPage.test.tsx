@@ -46,13 +46,15 @@ describe("candidate detail, recruiter", () => {
     expect(screen.getByText(`“${QUOTE}”`)).toBeInTheDocument();
     expect(screen.getByText("Verified")).toBeInTheDocument();
     expect(screen.getByText("No evidence found")).toBeInTheDocument();
-    expect(screen.getByText("Flagged")).toBeInTheDocument();
+    expect(screen.getByText("Needs a look")).toBeInTheDocument();
     expect(screen.getByText(/replaced with no evidence found/)).toBeInTheDocument();
-    expect(screen.getByText("Recruiter override")).toBeInTheDocument();
-    expect(screen.getByText("Override note: Mentioned in the interview")).toBeInTheDocument();
+    expect(screen.getByText("Changed by recruiter")).toBeInTheDocument();
+    expect(
+      screen.getByText("Note on the changed score: Mentioned in the interview"),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Must-have" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Nice-to-have" })).toBeInTheDocument();
-    expect(screen.getByText("Stage new to screened")).toBeInTheDocument();
+    expect(screen.getByText("Hiring stage New to Screened")).toBeInTheDocument();
   });
 
   it("highlights the selected criterion's quote in the anonymized text", async () => {
@@ -89,9 +91,9 @@ describe("candidate detail, recruiter", () => {
     );
     renderApp(`/candidates/${CAND}`);
 
-    await userEvent.click(await screen.findByRole("button", { name: /Override Backend/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Change score for Backend/ }));
     const dialog = await screen.findByRole("dialog");
-    const save = within(dialog).getByRole("button", { name: "Save override" });
+    const save = within(dialog).getByRole("button", { name: "Save score" });
     await userEvent.click(within(dialog).getByLabelText("4"));
     await userEvent.type(within(dialog).getByLabelText(/Note/), "too short");
     expect(save).toBeDisabled();
@@ -116,12 +118,12 @@ describe("candidate detail, recruiter", () => {
     );
     renderApp(`/candidates/${CAND}`);
 
-    await userEvent.click(await screen.findByRole("button", { name: /Override Backend/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Change score for Backend/ }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.type(within(dialog).getByLabelText(/Note/), "a long enough note");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Save override" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save score" }));
 
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("older criteria");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("out of date");
   });
 
   it("moves stage at once, but asks before rejecting", async () => {
@@ -132,10 +134,10 @@ describe("candidate detail, recruiter", () => {
       }),
     );
     renderApp(`/candidates/${CAND}`);
-    const select = await screen.findByLabelText("Stage");
+    const select = await screen.findByLabelText("Hiring stage");
 
     await userEvent.selectOptions(select, "interview");
-    await screen.findByLabelText("Stage");
+    await screen.findByLabelText("Hiring stage");
     expect(JSON.parse(calls.find((c) => c.method === "POST")?.body ?? "{}")).toEqual({
       stage: "interview",
     });
@@ -157,7 +159,7 @@ describe("candidate detail, recruiter", () => {
     );
     renderApp(`/candidates/${CAND}`);
 
-    await userEvent.selectOptions(await screen.findByLabelText("Stage"), "rejected");
+    await userEvent.selectOptions(await screen.findByLabelText("Hiring stage"), "rejected");
     const dialog = await screen.findByRole("dialog");
     await userEvent.type(within(dialog).getByLabelText(/Reason/), "role closed");
     await userEvent.click(within(dialog).getByRole("button", { name: "Reject candidate" }));
@@ -178,10 +180,10 @@ describe("candidate detail, recruiter", () => {
     );
     renderApp(`/candidates/${CAND}`);
 
-    await userEvent.click(await screen.findByRole("button", { name: "Reveal identity" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Show candidate name" }));
     expect(calls.some((c) => c.method === "POST")).toBe(false);
     const dialog = await screen.findByRole("dialog");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Reveal identity" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Show candidate name" }));
 
     expect(await screen.findByText("Jane Doe")).toBeInTheDocument();
   });
@@ -274,13 +276,13 @@ describe("candidate detail, interviewer", () => {
     ...extra,
   });
 
-  it("hides model scores and recruiter controls before feedback", async () => {
+  it("hides AI scores and recruiter controls before feedback", async () => {
     stubFetch(interviewerRoutes());
     renderApp(`/candidates/${CAND}`);
 
     expect(await screen.findByText(/stay hidden until you submit/)).toBeInTheDocument();
-    expect(screen.queryByLabelText("Stage")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Reveal identity" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Hiring stage")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show candidate name" })).not.toBeInTheDocument();
     expect(await screen.findByText("0 of 3 criteria scored")).toBeInTheDocument();
   });
 

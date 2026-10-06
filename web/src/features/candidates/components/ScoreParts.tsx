@@ -4,7 +4,7 @@ import { Icon } from "../../../components/Icon";
 import { StatusTag } from "../../../components/StatusTag";
 import { type ScoreCell } from "../api";
 
-/** Score chip (Design.md 7.2): neutral, mono; an override shows the model value struck through. */
+/** Score chip (Design.md 7.2): neutral, mono; a changed score shows the AI value struck through. */
 export function ScoreChip({ model, override }: { model: number | null; override: number | null }) {
   if (override !== null) {
     return (
@@ -13,7 +13,7 @@ export function ScoreChip({ model, override }: { model: number | null; override:
         <span className="mono">{override} / 4</span>
         {model !== null && (
           <s className="mono muted">
-            <span className="sr-only">model value </span>
+            <span className="sr-only">AI value </span>
             {model}
           </s>
         )}
@@ -25,9 +25,9 @@ export function ScoreChip({ model, override }: { model: number | null; override:
 }
 
 const SOURCE_LABEL: Record<ScoreCell["source"], string> = {
-  model_suggestion: "Model suggestion",
-  no_evidence_found: "Model suggestion",
-  recruiter_override: "Recruiter override",
+  model_suggestion: "AI suggestion",
+  no_evidence_found: "AI suggestion",
+  recruiter_override: "Changed by recruiter",
   failed: "Scoring failed",
 };
 
@@ -42,10 +42,9 @@ export function EvidenceBlock({ cell }: { cell: ScoreCell }) {
   if (cell.flag_reason) {
     return (
       <div className="evidence">
-        <StatusTag tone="warning">Flagged</StatusTag>
+        <StatusTag tone="warning">Needs a look</StatusTag>
         <p>
-          The model&apos;s quote was not found in the resume. It was replaced with no evidence
-          found.
+          The AI&apos;s quote was not found in the resume. It was replaced with no evidence found.
         </p>
         <p className="muted">{cell.flag_reason}</p>
       </div>
@@ -55,7 +54,7 @@ export function EvidenceBlock({ cell }: { cell: ScoreCell }) {
     return (
       <p className="tag muted">
         <Icon name="triangle" color="var(--warning)" />
-        Scoring failed for this criterion. Retry scoring from the ranked list.
+        Scoring failed for this criterion. Re-score from the ranked list.
       </p>
     );
   }

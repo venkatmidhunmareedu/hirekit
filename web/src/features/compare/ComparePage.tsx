@@ -25,7 +25,7 @@ function Cell({ cell }: { cell: CompareCell | undefined }) {
           <span className="muted">none yet</span>
         ) : (
           cell.feedback.map((f) => (
-            <span key={f.interviewer_id} className="chip mono" title={f.comment}>
+            <span key={f.interviewer_id} className="chip mono">
               {f.score} / 4
             </span>
           ))
@@ -71,7 +71,7 @@ export function ComparePage({ ids }: { ids: string[] }) {
     <div className="stack">
       <PageHeader
         title="Compare candidates"
-        purpose="Scores are model suggestions and recruiter overrides. Interviewer scores sit beside them."
+        purpose="Resume scores are AI suggestions or scores changed by a recruiter. Interviewer scores sit beside them."
       />
       <div className="table-scroll">
         <table className="table">

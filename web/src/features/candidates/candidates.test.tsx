@@ -123,15 +123,15 @@ describe("candidates page", () => {
     const second = within(table).getByRole("row", { name: /^2 C-003/ });
     expect(within(first).getByText("C-014")).toBeInTheDocument();
     expect(within(first).getByText("4 / 4")).toBeInTheDocument();
-    expect(within(first).getByText("Recruiter override")).toBeInTheDocument();
+    expect(within(first).getByText("Changed by recruiter")).toBeInTheDocument();
     expect(within(first).getByText("No evidence found")).toBeInTheDocument();
     expect(within(first).getByText("11.5")).toBeInTheDocument();
     expect(within(first).getByText("2 of 3")).toBeInTheDocument();
     expect(within(first).getByText("Screened")).toBeInTheDocument();
     expect(within(second).getByText("C-003")).toBeInTheDocument();
     expect(within(second).getByText(/Possible duplicate of C-014/)).toBeInTheDocument();
-    expect(within(second).getByText("Model suggestion")).toBeInTheDocument();
-    expect(screen.getByText(/marked stale/)).toBeInTheDocument();
+    expect(within(second).getByText("AI suggestion")).toBeInTheDocument();
+    expect(screen.getByText(/The criteria changed after some resumes/)).toBeInTheDocument();
     expect(screen.queryByText("secret evidence quote")).not.toBeInTheDocument();
   });
 
@@ -161,7 +161,7 @@ describe("candidates page", () => {
     renderApp(PATH);
 
     expect(await screen.findByText("Scoring")).toBeInTheDocument();
-    expect(screen.getByText("Failed")).toBeInTheDocument();
+    expect(screen.getByText("Could not process")).toBeInTheDocument();
     expect(screen.getAllByText("Not scored yet")).toHaveLength(2);
   });
 
@@ -175,9 +175,9 @@ describe("candidates page", () => {
     });
     renderApp(PATH);
 
-    await userEvent.selectOptions(await screen.findByLabelText("Stage"), "interview");
+    await userEvent.selectOptions(await screen.findByLabelText("Hiring stage"), "interview");
 
-    expect(await screen.findByText("No candidates are in this stage.")).toBeInTheDocument();
+    expect(await screen.findByText("No candidates are in this hiring stage.")).toBeInTheDocument();
     expect(calls.at(-1)?.path).toContain("filter%5Bstage%5D=interview");
   });
 
@@ -230,7 +230,7 @@ const budget = (allowed: boolean) => () =>
   });
 const RESCORE = `POST /v1/roles/${ROLE_ID}:rescore`;
 
-describe("re-run scoring", () => {
+describe("re-score", () => {
   const stale = () => json(200, page([candidate(1, { stale: true })]));
 
   it("posts the rescore and reports queued and skipped", async () => {
@@ -243,7 +243,7 @@ describe("re-run scoring", () => {
     });
     renderApp(PATH);
 
-    await userEvent.click(await screen.findByRole("button", { name: "Re-run scoring" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Re-score" }));
 
     expect(await screen.findByText("Re-scoring 2 candidates; 1 skipped")).toBeInTheDocument();
     expect(calls.some((c) => c.method === "POST" && c.path.endsWith(":rescore"))).toBe(true);
@@ -262,16 +262,16 @@ describe("re-run scoring", () => {
     });
     renderApp(PATH);
 
-    await userEvent.click(await screen.findByRole("button", { name: "Re-run scoring" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Re-score" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("model budget has been reached");
+    expect(await screen.findByRole("alert")).toHaveTextContent("AI budget has been reached");
   });
 
   it("is disabled when the budget blocks model actions", async () => {
     stubFetch({ ...approved, ...idle, [LIST]: stale, [COST]: budget(false) });
     renderApp(PATH);
 
-    const button = await screen.findByRole("button", { name: "Re-run scoring" });
+    const button = await screen.findByRole("button", { name: "Re-score" });
     await vi.waitFor(() => {
       expect(button).toBeDisabled();
     });
@@ -293,7 +293,7 @@ describe("ranked list filters and navigation", () => {
     stubFetch({ ...approved, ...idle, [LIST]: rows });
     renderApp(PATH);
 
-    await userEvent.click(await screen.findByLabelText("Flagged only"));
+    await userEvent.click(await screen.findByLabelText("Needs a look only"));
 
     expect(screen.getByText("C-001")).toBeInTheDocument();
     expect(screen.queryByText("C-002")).not.toBeInTheDocument();
@@ -304,11 +304,11 @@ describe("ranked list filters and navigation", () => {
     stubFetch({ ...approved, ...idle, [LIST]: rows });
     renderApp(PATH);
 
-    await userEvent.click(await screen.findByLabelText("Has overrides"));
+    await userEvent.click(await screen.findByLabelText("Changed by recruiter"));
     expect(screen.getByText("C-002")).toBeInTheDocument();
     expect(screen.queryByText("C-001")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText("Flagged only"));
+    await userEvent.click(screen.getByLabelText("Needs a look only"));
     expect(screen.getByText("No candidates on this page match the filters.")).toBeInTheDocument();
   });
 

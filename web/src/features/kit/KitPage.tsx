@@ -301,7 +301,7 @@ export function KitPage({ roleId }: { roleId: string }) {
                 generate.mutate(undefined, { onSuccess: setJobId });
               }}
             >
-              {hasQuestions ? "Regenerate kit" : "Generate kit"}
+              {hasQuestions ? "Regenerate interview kit" : "Generate interview kit"}
             </button>
           ) : (
             <button
@@ -311,7 +311,7 @@ export function KitPage({ roleId }: { roleId: string }) {
                 window.print();
               }}
             >
-              Print kit
+              Print interview kit
             </button>
           )
         }
@@ -319,21 +319,23 @@ export function KitPage({ roleId }: { roleId: string }) {
       {recruiter && <RoleTabs roleId={roleId} status={role.data.status} current="kit" />}
       {draftRole && (
         <p role="status" className="notice notice-info">
-          Approve the criteria to start generating the kit.
+          Approve the criteria to start generating the interview kit.
         </p>
       )}
       {kit.data.stale && (
         <p role="status" className="notice notice-warning">
           <Icon name="triangle" color="var(--warning)" />
           <span>
-            This kit was generated for older criteria. Regenerate it to match the current ones.
+            This interview kit was generated for older criteria. Regenerate it to match the current
+            ones.
           </span>
         </p>
       )}
       {running && <Loading label="Generating, this can take a minute" />}
       {job.data && isJobDone(job.data.status) && job.data.status !== "succeeded" && (
         <p role="alert" className="notice notice-danger">
-          The generation job ended as {job.data.status}. Try again.
+          Generating the interview kit{" "}
+          {job.data.status === "cancelled" ? "was cancelled" : "did not finish"}. Try again.
         </p>
       )}
       {generate.error && <ErrorNotice error={generate.error} />}
@@ -341,8 +343,8 @@ export function KitPage({ roleId }: { roleId: string }) {
         <EmptyState
           message={
             recruiter
-              ? "No kit yet. Generate the kit to see questions."
-              : "The kit is not ready yet."
+              ? "No interview kit yet. Generate it to see questions."
+              : "The interview kit is not ready yet."
           }
         />
       )}

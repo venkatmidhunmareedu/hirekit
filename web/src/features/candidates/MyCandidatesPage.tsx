@@ -17,7 +17,7 @@ export function MyCandidatesPage() {
     <div className="stack">
       <PageHeader
         title="My candidates"
-        purpose="Give feedback on each candidate you interviewed. Model scores stay hidden until you submit."
+        purpose="Give feedback on each candidate you interviewed. AI scores stay hidden until you submit."
       />
       {mine.data && mine.data.length > 0 && (
         <p role="status" className="muted">
