@@ -18,6 +18,7 @@ from app.core.auth import CurrentUser, InterviewerUser, RecruiterUser, current_s
 from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
+from tests.api.fake_assignments import FakeAssignments
 from tests.api.fakes import FakeCriteria, FakeRoles, FakeSessions, FakeUploads, FakeUsers
 from tests.files import pdf_bytes
 
@@ -35,6 +36,9 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("PUT", "/v1/roles/{role_id}/criteria"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/approve"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/resumes"): frozenset({"recruiter"}),
+    ("GET", "/v1/me/candidates"): frozenset({"interviewer"}),
+    ("POST", "/v1/candidates/{candidate_id}/assignments"): frozenset({"recruiter"}),
+    ("DELETE", "/v1/candidates/{candidate_id}/assignments/{user_id}"): frozenset({"recruiter"}),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -72,6 +76,7 @@ BODIES: dict[tuple[str, str], dict[str, object]] = {
         "criteria": [{"name": "Python", "kind": "must_have", "weight": 3, "rubric": FULL_RUBRIC}]
     },
     ("POST", "/v1/roles/{role_id}/approve"): {"criteria_version": 1},
+    ("POST", "/v1/candidates/{candidate_id}/assignments"): {"user_id": "{user_id}"},
 }
 # Routes whose body is multipart: a JSON body would be a 422 for them.
 FILES: dict[tuple[str, str], list[tuple[str, tuple[str, bytes, str]]]] = {
@@ -89,13 +94,20 @@ async def test_matrix_cell(
     roles: FakeRoles,
     criteria: FakeCriteria,
     uploads: FakeUploads,
+    assignments: FakeAssignments,
     method: str,
     path: str,
     who: str,
 ) -> None:
     role = roles.seed(status="approved")
     criteria.seed(role.id, "Python")
+    target = users.add(email="target@example.com", role="interviewer")
     url = path.replace("{role_id}", str(role.id))
+    url = url.replace("{candidate_id}", str(assignments.seed_candidate()))
+    url = url.replace("{user_id}", str(target.id))
+    body = BODIES.get((method, path))
+    if body:
+        body = {k: str(target.id) if v == "{user_id}" else v for k, v in body.items()}
     headers: dict[str, str] = {}
     if who != "anonymous":
         user = users.add(email=f"{who}@example.com", role=who)
@@ -106,7 +118,7 @@ async def test_matrix_cell(
         method,
         url,
         headers=headers,
-        json=BODIES.get((method, path)),
+        json=body,
         files=FILES.get((method, path)),
     )
 
