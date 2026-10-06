@@ -285,6 +285,8 @@ All SQL is in repositories, parameterised, columns named, no `SELECT *`, every l
 | Q17 | feedback: insert one row per criterion with `INSERT ... SELECT ... WHERE EXISTS (SELECT 1 FROM assignments WHERE candidate_id = :c AND user_id = :v)`, so a removal between check and write cannot leave feedback behind; a repeat submit hits `feedback_pkey` and is answered 409 `feedback_locked`; approve edit `UPDATE feedback SET locked = false WHERE candidate_id = :c AND interviewer_id = :i`; edit updates the rows, sets `locked = true`, and inserts `feedback_edited` audit rows with `old_score` and `old_comment` | few rows | `feedback_pkey`, `idx_feedback_interviewer_id` |
 | Q18 | compare: for 2 to 4 ids, one query per viewer type; for an interviewer, each score and override column is `CASE WHEN EXISTS(feedback for viewer and candidate) THEN ... END`, the feedback joined is `WHERE interviewer_id = :viewer` only (never another interviewer's), no quote, note or flag column is selected at all, and one unassigned id makes the whole request `404 not_found` | at most 4 candidates | `scores_pkey`, `feedback_pkey` |
 | Q19 | jobs: `INSERT` (enqueue, after the candidate row lock and the open-scoring-job check `NOT EXISTS (SELECT 1 FROM jobs WHERE candidate_id = :c AND type IN ('process_resume','rescore') AND status IN ('queued','running'))`, which uses `idx_jobs_candidate_id`), `UPDATE ... WHERE id = :j AND status IN ('queued','running')` (cancel, with the candidate status update in the same transaction), `SELECT` by id, per-role queue view `WHERE role_id = :r ORDER BY created_at DESC LIMIT :n` (max 200) | few rows | `jobs_pkey`, `idx_jobs_role_status` |
+
+Note (HK-57): the queue view returns the role's candidates, each with its latest `process_resume` or `rescore` job (LATERAL on `idx_jobs_candidate_id`), plus job-based counts, as `api/openapi.yaml` says; it is not a list of jobs.
 | Q20 | cost log page: `ORDER BY created_at DESC, id DESC LIMIT :n` with a keyset cursor `(created_at, id) < (:t, :i)` (max 100), and `read_spent` | keyset | `idx_call_log_created_at`, `budget_pkey` |
 
 Queries: 20 (without index: 2, both known bounded scans: Q3 under 10^2 rows and the computed sort in Q8).
@@ -360,7 +362,7 @@ Read once in `app/core/config.py` (`pydantic-settings`, fails fast). `DATABASE_U
 
 | Variable | Default | When missing |
 | --- | --- | --- |
-| `SESSION_COOKIE_SECURE` | `true` when `ENV=production`, else `false` | the default applies; local `http` needs `false` (HLD section 9) |
+| `SESSION_COOKIE_SECURE` | `true` unless `ENV` is explicitly `development` or `test` (an unset `ENV` gives `true`) | the default applies; local `http` needs `ENV=development` or `false` (HLD section 9) |
 | `SESSION_TTL_HOURS` | `12` (assumption: the lifetime is UNDEFINED, data-model open concern 5) | the default applies |
 | `MAX_UPLOAD_BYTES` | `5000000` (assumption: files are about 200 KB, HLD section 17) | the default applies |
 | `MAX_FILES_PER_UPLOAD` | `100` (REQ-050) | the default applies |
@@ -502,6 +504,7 @@ Items: 12 (largest about 390 lines, over 400: 0).
 - assumption: an override applies only to the current criteria version; after a re-run the new row has none (data-model open concern 3).
 - assumption: `PUT /v1/candidates/{id}/feedback`, `DELETE /v1/kit/questions/{id}` and `GET /v1/auth/me` are added (marked +) because AC-US-00-014-5, AC-US-00-013-5 and the CSRF token need them; the HLD lists none of the three.
 - assumption: the integration tests carry every tenet 6 proof and `make check` does not run them (no CI host). The unit-level AST scan of repositories (every function returning candidate data takes a `Viewer`) and the route-matrix test are the safety net that does run in `make check`; wire `make test-integration` into CI as soon as a git host exists.
+- note (HK-56): CI now exists in `.github/workflows/ci.yml`; its `backend-integration` job runs `make test-integration`, so the "no CI host" statements above predate it.
 - assumption: reading raw text is recruiter-only and not audited (no story asks for an audit); a real deployment would want it logged.
 - assumption: cookie `Max-Age` equals the session TTL, logout clears the cookie and deletes the session row, and expired rows are never purged (data-model open concern 5).
 - assumption: there is no path to delete a candidate (`audit_events` RESTRICT blocks it); a retention job must delete the events first (data-model section 6).

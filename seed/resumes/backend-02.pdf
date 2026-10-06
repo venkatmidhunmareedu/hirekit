@@ -1,0 +1,120 @@
+%PDF-1.3
+%יכס¿
+1 0 obj
+<<
+/Count 1
+/Kids [3 0 R]
+/MediaBox [0 0 595.28 841.89]
+/Type /Pages
+>>
+endobj
+2 0 obj
+<<
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+/Pages 1 0 R
+/Type /Catalog
+>>
+endobj
+3 0 obj
+<<
+/Contents 4 0 R
+/Parent 1 0 R
+/Resources 6 0 R
+/Type /Page
+>>
+endobj
+4 0 obj
+<<
+/Length 3367
+>>
+stream
+2 J
+0.57 w
+BT /F1 11.00 Tf ET
+BT 31.18 801.74 Td (James Whitfield) Tj ET
+BT 31.18 784.73 Td (Backend Developer, Denver, Colorado) Tj ET
+BT 31.18 767.72 Td (james.whitfield@example.com) Tj ET
+BT 31.18 750.72 Td (555-0102) Tj ET
+BT 31.18 733.71 Td (example.com/in/jameswhitfield) Tj ET
+BT 31.18 699.69 Td (Profile) Tj ET
+q BT 31.18 682.68 Td 0.168 Tw (I am a backend developer with five years of experience in product teams. I enjoy turning messy requirements) Tj ET Q
+BT 31.18 665.68 Td (into small, well-named services. Most people on my team call me Jim.) Tj ET
+BT 31.18 631.66 Td (Core skills) Tj ET
+28.35 626.46 179.53 -17.01 re S BT 31.18 614.65 Td (Skill) Tj ET
+207.88 626.46 179.53 -17.01 re S BT 210.71 614.65 Td (Years) Tj ET
+387.40 626.46 179.53 -17.01 re S BT 390.24 614.65 Td (Where used) Tj ET
+28.35 609.45 179.53 -17.01 re S BT 31.18 597.65 Td (Python) Tj ET
+207.88 609.45 179.53 -17.01 re S BT 210.71 597.65 Td (5) Tj ET
+387.40 609.45 179.53 -17.01 re S BT 390.24 597.65 Td (Order and billing services at Marlow Retail) Tj ET
+28.35 592.44 179.53 -17.01 re S BT 31.18 580.64 Td (FastAPI) Tj ET
+207.88 592.44 179.53 -17.01 re S BT 210.71 580.64 Td (3) Tj ET
+387.40 592.44 179.53 -17.01 re S BT 390.24 580.64 Td (Customer REST API, 25 endpoints) Tj ET
+28.35 575.43 179.53 -17.01 re S BT 31.18 563.63 Td (PostgreSQL) Tj ET
+207.88 575.43 179.53 -17.01 re S BT 210.71 563.63 Td (4) Tj ET
+387.40 575.43 179.53 -17.01 re S BT 390.24 563.63 Td (Billing database, reporting queries) Tj ET
+28.35 558.43 179.53 -17.01 re S BT 31.18 546.62 Td (pytest) Tj ET
+207.88 558.43 179.53 -17.01 re S BT 210.71 546.62 Td (4) Tj ET
+387.40 558.43 179.53 -17.01 re S BT 390.24 546.62 Td (Unit tests and some integration tests) Tj ET
+28.35 541.42 179.53 -17.01 re S BT 31.18 529.61 Td (Docker) Tj ET
+207.88 541.42 179.53 -17.01 re S BT 210.71 529.61 Td (2) Tj ET
+387.40 541.42 179.53 -17.01 re S BT 390.24 529.61 Td (Local development and staging images) Tj ET
+28.35 524.41 179.53 -17.01 re S BT 31.18 512.61 Td (AWS) Tj ET
+207.88 524.41 179.53 -17.01 re S BT 210.71 512.61 Td (1) Tj ET
+387.40 524.41 179.53 -17.01 re S BT 390.24 512.61 Td (Deployed a staging stack with a teammate) Tj ET
+28.35 507.40 179.53 -17.01 re S BT 31.18 495.60 Td (Grafana) Tj ET
+207.88 507.40 179.53 -17.01 re S BT 210.71 495.60 Td (1) Tj ET
+387.40 507.40 179.53 -17.01 re S BT 390.24 495.60 Td (Read dashboards during on-call weeks) Tj ET
+BT 31.18 461.58 Td (Work history) Tj ET
+q BT 31.18 444.57 Td 0.523 Tw (Backend Developer, Marlow Retail, 2021 to present. I own the customer REST API for orders \(FastAPI\) and) Tj ET Q
+q BT 31.18 427.57 Td 0.293 Tw (the billing service behind it. I add endpoints, validate requests and map errors to clear responses. I wrote the) Tj ET Q
+q BT 31.18 410.56 Td 1.114 Tw (indexes for the billing tables after a slow month-end report and brought it from 40 seconds to 6 seconds. I) Tj ET Q
+BT 31.18 393.55 Td (write unit tests for my own changes and review pull requests on the team. I take one on-call week in five.) Tj ET
+q BT 31.18 359.53 Td 2.930 Tw (Junior Developer, Fenwick Digital, 2019 to 2021. Fixed bugs in a Django app and wrote small REST) Tj ET Q
+BT 31.18 342.53 Td (endpoints with guidance from a senior colleague.) Tj ET
+BT 31.18 308.51 Td (Education) Tj ET
+BT 31.18 291.50 Td (BEng Software Engineering, Ashford Institute of Technology, 2019) Tj ET
+
+endstream
+endobj
+5 0 obj
+<<
+/BaseFont /Helvetica
+/Encoding /WinAnsiEncoding
+/Subtype /Type1
+/Type /Font
+>>
+endobj
+6 0 obj
+<<
+/Font <</F1 5 0 R>>
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+>>
+endobj
+7 0 obj
+<<
+/CreationDate (D:20260101000000Z)
+/Producer (hirekit-seed)
+/Title (Resume)
+>>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000015 00000 n 
+0000000102 00000 n 
+0000000205 00000 n 
+0000000285 00000 n 
+0000003704 00000 n 
+0000003801 00000 n 
+0000003888 00000 n 
+trailer
+<<
+/Size 8
+/Root 2 0 R
+/Info 7 0 R
+/ID [<1046253F2F539AAD8D25DB4EB819483D><1046253F2F539AAD8D25DB4EB819483D>]
+>>
+startxref
+3984
+%%EOF

@@ -1,0 +1,22 @@
+Emre Kaya
+Customer Support Team Lead
+Istanbul, Turkey
+emre.kaya@example.com
+555-0112
+example.com/in/emrekaya
+
+Experienced support lead, strongest on tools and process. I like to turn repeated questions into queues, rules and templates that let a team answer faster.
+
+- Customer Support Team Lead, Cobalt Travel Gear, 2020 to present
+- Lead a team of eight agents on a ticketing platform that I configured: eleven queues, priority rules, automatic routing by language and product, and 85 saved replies.
+- Wrote the triage rules and the escalation path to the shipping and payments teams; tickets reach the right owner at the first hop 94 percent of the time.
+- Connected the platform to the order system so agents see the order, tracking and refund history beside every ticket; handling time fell by 30 percent.
+- Handle customer replies for the harder cases (late parcels, damaged goods). I follow the team script and ask the director for guidance on angry customers.
+- Run weekly stand-ups and assign work; I give feedback to the agents but the director runs the formal reviews and promotions.
+- Pull weekly numbers from the platform reports (volume, first response, backlog) and share them in a slide for the team.
+
+- Support Agent, Cobalt Travel Gear, 2017 to 2020
+- Answered email and chat, tagged tickets and wrote 30 help articles.
+
+Skills: ticketing platform administration, automation rules, saved replies, order system integration, spreadsheets
+Education: BSc Management, Koruma University, 2017

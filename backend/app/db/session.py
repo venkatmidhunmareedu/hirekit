@@ -22,6 +22,7 @@ def make_engine(settings: Settings) -> AsyncEngine:
         max_overflow=settings.db_pool_max_overflow,
         pool_pre_ping=True,
         echo=settings.db_echo,
+        hide_parameters=True,  # a failed insert must not log a token hash or password hash
     )
 
 

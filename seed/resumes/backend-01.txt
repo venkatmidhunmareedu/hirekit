@@ -1,0 +1,29 @@
+Emily Carter
+Senior Backend Engineer
+Chicago, Illinois
+Email: emily.carter@example.com
+Phone: 555-0101
+Profile: example.com/in/emilycarter
+Pronouns: she/her
+
+SUMMARY
+Backend engineer with nine years of experience building payment and ledger services in Python and PostgreSQL. Friends and colleagues call me Em. I like small services, boring technology and tests that fail for the right reason.
+
+EXPERIENCE
+Staff Backend Engineer, Kestrel Payments, 2021 to present
+- Led the redesign of the public payments API (FastAPI, 60 endpoints, 2,000 requests per second at peak), with versioned contracts and a published OpenAPI spec used by 300 partners.
+- Designed the ledger schema in PostgreSQL (partitioned tables, covering indexes, zero-downtime migrations); cut the p95 of the statement query from 2.4 s to 180 ms.
+- Set the testing standard for a team of 12: pytest unit and integration suites, contract tests against partner mocks, 90 percent branch coverage on the money paths; production defects fell by 40 percent in a year.
+- Moved six services to containers on a managed Kubernetes cluster with Terraform; owned the deploy pipeline and cost reviews.
+- Defined service level objectives, built the dashboards and alerts, and ran the incident reviews; mean time to recovery dropped from 50 to 14 minutes.
+
+Backend Engineer, Brightwell Logistics, 2017 to 2021
+- Built a Python order-routing service and its REST API for 80 warehouses.
+- Wrote the migrations and indexes for the shipments database and fixed the slowest 20 queries.
+- Introduced code review and a CI pipeline that ran the full test suite on every merge.
+
+SKILLS
+Python, FastAPI, SQLAlchemy, PostgreSQL, pytest, Docker, Kubernetes, Terraform, Prometheus, Grafana
+
+EDUCATION
+BSc Computer Science, Halden Technical University, 2016

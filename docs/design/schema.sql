@@ -209,6 +209,7 @@ COMMENT ON COLUMN resume_raw_texts.created_at IS 'When the row was written.';
 CREATE TABLE resume_texts (
     candidate_id uuid NOT NULL REFERENCES candidates (id) ON DELETE CASCADE,
     anonymized_text text NOT NULL,
+    anonymizer_version smallint NOT NULL DEFAULT 1,
     created_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT resume_texts_pkey PRIMARY KEY (candidate_id),
     CONSTRAINT chk_resume_texts_not_blank CHECK (btrim(anonymized_text) <> '')
@@ -216,6 +217,7 @@ CREATE TABLE resume_texts (
 COMMENT ON TABLE resume_texts IS 'The anonymizer''s output: the only resume text the model sees and the text quotes are checked against. Serves US-00-004, US-00-005, US-00-006, US-00-007.';
 COMMENT ON COLUMN resume_texts.candidate_id IS 'The candidate this text belongs to.';
 COMMENT ON COLUMN resume_texts.anonymized_text IS 'Text after identity signals were removed. [personal data: derived from a resume; proxy signals can remain]';
+COMMENT ON COLUMN resume_texts.anonymizer_version IS 'Which anonymizer version produced the text, so text from before a fix can be told from new text.';
 COMMENT ON COLUMN resume_texts.created_at IS 'When the row was written.';
 
 -- scores: One criterion's score for one candidate at one criteria version, with its verified quote and any recruiter override.

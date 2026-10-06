@@ -1,0 +1,15 @@
+{
+  "input_sha256": "71edcbb948a639d10b5fd0ec908a488936cb745d9c45b3df1e1e0070b7451f20",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "2f3964bf241ba1ec0427b07bd232077dd2d5ad34eaa54ec3c4c4ea430f4252ee",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1184,
+    "output_tokens": 1456,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":2,\"quote\":\"Most customers are satisfied, but I find long angry calls hard and pass them to my manager.\"},{\"criterion\":2,\"value\":2,\"quote\":\"I use the helpdesk daily: views, tags and a few macros I made for the most common billing answers.\"},{\"criterion\":3,\"value\":3,\"quote\":\"I lead a group of four agents for the billing product.\"},{\"criterion\":4,\"value\":3,\"quote\":\"I produce a monthly report with volume, first response and satisfaction by product, and I presented it to the department three times. I found that 14 percent of tickets were about invoice downloads.\"},{\"criterion\":5,\"value\":3,\"quote\":\"That finding led me to rewrite the invoice help page and add a short video; invoice tickets fell by 40 percent in two months.\"}]}"
+  },
+  "schema_retry": 0
+}

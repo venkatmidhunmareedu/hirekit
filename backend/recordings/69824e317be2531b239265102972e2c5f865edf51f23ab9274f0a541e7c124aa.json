@@ -1,0 +1,15 @@
+{
+  "input_sha256": "099befac6d56144c5d79c977c312844361e9cb606065360e4714396550ab3cac",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "69824e317be2531b239265102972e2c5f865edf51f23ab9274f0a541e7c124aa",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1086,
+    "output_tokens": 680,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":1,\"quote\":\"I followed a tutorial to build the pages and a few routes that return JSON.\"},{\"criterion\":2,\"value\":2,\"quote\":\"It uses SQLite and I wrote simple SELECT and INSERT queries.\"},{\"criterion\":3,\"value\":1,\"quote\":\"I helped the support team by fixing typos in the admin pages and running the existing test suite before releases.\"},{\"criterion\":4,\"value\":1,\"quote\":\"Python, Flask, SQL basics, Git, HTML, a little Docker from a class demo\"},{\"criterion\":5,\"value\":0,\"quote\":null}]}"
+  },
+  "schema_retry": 0
+}

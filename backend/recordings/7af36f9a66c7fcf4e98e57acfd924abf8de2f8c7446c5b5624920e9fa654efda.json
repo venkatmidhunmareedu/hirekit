@@ -1,0 +1,15 @@
+{
+  "input_sha256": "6ea939921849c0ff73347d43b2b9acdbdad6af17b775b813c07df7bc5f4c2f74",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "7af36f9a66c7fcf4e98e57acfd924abf8de2f8c7446c5b5624920e9fa654efda",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1010,
+    "output_tokens": 302,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":1,\"quote\":\"I deliver parcels on a set route and say hello to customers at the door. Sometimes a customer asks where a late parcel is and I tell them to call the office.\"},{\"criterion\":2,\"value\":0,\"quote\":null},{\"criterion\":3,\"value\":0,\"quote\":null},{\"criterion\":4,\"value\":0,\"quote\":null},{\"criterion\":5,\"value\":0,\"quote\":null}]}"
+  },
+  "schema_retry": 0
+}

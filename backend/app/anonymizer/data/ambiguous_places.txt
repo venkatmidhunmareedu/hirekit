@@ -1,0 +1,34 @@
+# Place words that are also skills, job words, names or employers. They are masked only in a place context (after in, at, based in, a postal code, a comma list with another place, a Location or Address line, a header contact line) and only when capitalised. Every entry here must also be in a gazetteer file (a test checks it). Lines starting 'keep:' are employers or organisations containing a place word: the place inside is left alone.
+phoenix
+mobile
+reading
+jakarta
+nice
+split
+bath
+jersey
+victoria
+orange
+turkey
+jordan
+georgia
+chad
+washington
+virginia
+wales
+salem
+buffalo
+york
+cambridge
+waterloo
+hamilton
+guinea
+niger
+mali
+keep: bank of america
+keep: texas instruments
+keep: bank of new york mellon
+keep: washington post
+keep: new york times
+keep: new york life
+keep: bank of america merrill lynch

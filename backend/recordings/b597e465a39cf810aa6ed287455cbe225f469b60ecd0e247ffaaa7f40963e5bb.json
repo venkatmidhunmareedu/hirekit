@@ -1,0 +1,15 @@
+{
+  "input_sha256": "94ec653b250961781a7a19573025a65b008f75aefebc3930f2873af67db1986d",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "b597e465a39cf810aa6ed287455cbe225f469b60ecd0e247ffaaa7f40963e5bb",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1260,
+    "output_tokens": 720,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":4,\"quote\":\"Led the redesign of the public payments API (FastAPI, 60 endpoints, 2,000 requests per second at peak),\"},{\"criterion\":2,\"value\":4,\"quote\":\"Designed the ledger schema in PostgreSQL (partitioned tables, covering indexes, zero-downtime\"},{\"criterion\":3,\"value\":4,\"quote\":\"Set the testing standard for a team of 12: pytest unit and integration suites, contract tests against partner\"},{\"criterion\":4,\"value\":4,\"quote\":\"Moved six services to containers on a managed Kubernetes cluster with Terraform; owned the deploy\"},{\"criterion\":5,\"value\":4,\"quote\":\"Defined service level objectives, built the dashboards and alerts, and ran the incident reviews; mean time to\"}]}"
+  },
+  "schema_retry": 0
+}

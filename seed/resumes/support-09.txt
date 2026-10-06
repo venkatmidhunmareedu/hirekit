@@ -1,0 +1,30 @@
+Olena Kovalenko
+Customer Support Manager
+Toronto, Canada
+olena.kovalenko@example.com
+555-0119
+example.com/in/olenakovalenko
+Pronouns: she/her
+
+Summary: Support manager with nine years in subscription box and consumer electronics companies. Colleagues use Lena. I run support by the numbers and keep the team close.
+
+Capability | Evidence | Years
+Customer contact | Escalations, chat, phone | 9
+Helpdesk tooling | Triggers, SLAs, bot flows | 6
+Team leadership | 14 agents, hiring, one-to-ones | 5
+Metrics | Dashboards, forecasting, quality scores | 6
+Process | Help center, playbooks, root cause reviews | 5
+
+Experience
+Customer Support Manager, Fernhill Boxes, 2020 to present
+Manage 14 agents. I coach in weekly one-to-ones and review three recorded contacts per agent each month; six agents got a raise or a promotion, and turnover is 15 percent.
+I handle the tough escalations about missed deliveries and billing disputes, and I stay calm on the phone; my escalated cases score 90 percent satisfaction.
+I own the helpdesk setup: triggers, service level timers, a bot for order status and views for each queue. I wrote the rules in one quarter and trained the team.
+I forecast volume from sales campaigns and build the schedule, and I publish a weekly scorecard with first response, resolution time, quality and satisfaction. First response went from 6 hours to 90 minutes.
+I run monthly root cause reviews and wrote playbooks for the 15 most common issues, but the help center is owned by the content team and I only contribute drafts.
+
+Senior Agent, Gadgetry Direct, 2015 to 2020
+Handled escalations and trained new agents.
+
+Education
+BComm Marketing, Lakeshore University, 2015

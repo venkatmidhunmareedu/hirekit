@@ -5,7 +5,7 @@ UV ?= uv
 STATE := ../.bearing/state
 SKIPPED := $(STATE)/.skipped
 # The gates `make check` runs, in order. test-integration needs Postgres, so
-# it is a CI job and a manual target, not part of check.
+# it is a CI job (.github/workflows/ci.yml) and a manual target, not part of check.
 GATES := format-check lint typecheck test vuln
 POSTGRES_PORT ?= 5432
 DATABASE_URL ?= postgresql+asyncpg://postgres:postgres@localhost:$(POSTGRES_PORT)/hirekit
@@ -22,7 +22,7 @@ define need_tool
 command -v $(UV) >/dev/null || $(call skip,$(1),uv); $(UV) run --quiet $(2) --version >/dev/null 2>&1 || $(call skip,$(1),$(2))
 endef
 
-.PHONY: help setup dev check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new vuln doctor db db-reset clean
+.PHONY: help setup dev check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
@@ -124,6 +124,15 @@ migrate-verify: ## Every Down runs and restores the schema: up, snapshot, down, 
 	diff -u $(STATE)/schema-up.txt $(STATE)/schema-all.txt || { echo "migrate-verify: running every downgrade and every upgrade again changed the schema" >&2; exit 1; }; \
 	echo "migrate-verify: $$n migrations, every downgrade ran, $$o schema objects identical after down and up"
 
+seed: ## Load the seed roles, resumes and sign-in users (idempotent; needs make migrate): make seed SEED_ARGS=--reset-passwords
+	@DATABASE_URL=$(DATABASE_URL) $(UV) run python -m app.seed $(SEED_ARGS)
+
+eval: ## Run the agreement and name-swap evals on recordings (replay only, never live): make eval EVAL_ARGS="--out DIR --label x"
+	DATABASE_URL=$(DATABASE_URL) $(UV) run python -m app.evals $(EVAL_ARGS)
+
+eval-prompts: ## Judge the recorded scoring, criteria and kit replies (replay only, never live): make eval-prompts EVAL_ARGS="--label x"
+	DATABASE_URL=$(DATABASE_URL) $(UV) run python -m app.evals.prompts_run $(EVAL_ARGS)
+
 migrate-new: ## Autogenerate the next migration: make migrate-new name=add_invoices
 	@[ -n "$(name)" ] || { echo "usage: make migrate-new name=add_invoices" >&2; exit 2; }
 	@id=$$(printf '%04d' $$(( $$(ls alembic/versions/*.py 2>/dev/null | wc -l) + 1 ))); \
@@ -147,6 +156,9 @@ doctor: ## Environment diagnostics
 	@echo "alembic:   $$($(UV) run --quiet alembic --version 2>/dev/null || echo missing)"
 	@echo "docker:    $$(command -v docker >/dev/null && docker --version || echo missing)"
 	@echo "lock:      $$([ -f uv.lock ] && echo present || echo 'MISSING (run make setup and commit uv.lock)')"
+	@echo "jobs:      $$(psql "$(PSQL_URL)" -Atc "SELECT coalesce(string_agg(status || '=' || n, ' '), 'none') FROM (SELECT status, count(*) n FROM jobs GROUP BY status ORDER BY status) s" 2>/dev/null || echo 'unavailable (no psql or database)')"
+	@echo "oldest queued: $$(psql "$(PSQL_URL)" -Atc "SELECT coalesce(min(run_after)::text, 'none') FROM jobs WHERE status = 'queued'" 2>/dev/null || echo 'unavailable')"
+	@echo "expired leases: $$(psql "$(PSQL_URL)" -Atc "SELECT count(*) FROM jobs WHERE status = 'running' AND lease_expires_at < now()" 2>/dev/null || echo 'unavailable')"
 	@echo "hooksPath: $$(git config core.hooksPath || echo 'NOT SET (run make setup)')"
 
 clean: ## Remove caches and build output

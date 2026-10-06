@@ -1,0 +1,115 @@
+# States, provinces, territories and regions. Lowercase, one per line.
+alabama
+alaska
+arizona
+arkansas
+california
+colorado
+connecticut
+delaware
+florida
+hawaii
+idaho
+illinois
+indiana
+iowa
+kansas
+kentucky
+louisiana
+maine
+maryland
+massachusetts
+michigan
+minnesota
+mississippi
+missouri
+montana
+nebraska
+nevada
+new hampshire
+new jersey
+new mexico
+new york
+north carolina
+north dakota
+ohio
+oklahoma
+oregon
+pennsylvania
+rhode island
+south carolina
+south dakota
+tennessee
+texas
+utah
+vermont
+virginia
+washington
+west virginia
+wisconsin
+wyoming
+district of columbia
+ontario
+quebec
+british columbia
+alberta
+manitoba
+saskatchewan
+nova scotia
+new brunswick
+newfoundland
+prince edward island
+victoria
+queensland
+new south wales
+western australia
+south australia
+tasmania
+northern territory
+andhra pradesh
+arunachal pradesh
+assam
+bihar
+chhattisgarh
+goa
+gujarat
+haryana
+himachal pradesh
+jharkhand
+karnataka
+kerala
+madhya pradesh
+maharashtra
+manipur
+meghalaya
+mizoram
+nagaland
+odisha
+orissa
+punjab
+rajasthan
+sikkim
+tamil nadu
+telangana
+tripura
+uttar pradesh
+uttarakhand
+west bengal
+jammu and kashmir
+ladakh
+bavaria
+catalonia
+lombardy
+tuscany
+yorkshire
+lancashire
+cornwall
+jersey
+gauteng
+lagos state
+sindh
+khyber pakhtunkhwa
+guangdong
+zhejiang
+kanagawa
+seoul capital region

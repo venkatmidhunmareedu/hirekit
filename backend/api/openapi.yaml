@@ -23,7 +23,7 @@ info:
   x-conventions:
     - rule: No Idempotency-Key header on creating POSTs.
       why: The design stops duplicates in the database instead (unique open-job indexes, content-hash duplicate flags, idempotent assignment, 409 on a repeat feedback submit). Only POST /v1/roles can double-create on a retry, and a duplicate role is harmless and visible; revisit if it is not.
-    - rule: The ranked list and the job queue view use limit and offset, not cursors.
+    - rule: The ranked list uses limit and offset, and the job queue view uses limit only, not cursors.
       why: The order is a computed weighted total that no cursor can key on, and one role holds at most about 1,200 candidates (offset capped at 1,000); the cost log, which grows without bound, uses a cursor.
     - rule: No X-API-Version and no rate-limit headers in the first build.
       why: One client, one maintainer, local demo (HLD section 1); a hosted deployment adds both.
@@ -208,6 +208,11 @@ paths:
     post:
       operationId: proposeCriteria
       summary: Ask the model to propose criteria (enqueues a job)
+      description: |
+        The role must be Draft (409 role_not_draft). In live mode at the budget cap the request is
+        refused with 409 budget_reached and the message "The model budget of $8.00 has been
+        reached. No new model calls can be made."; replay mode is never refused. A second
+        proposal while one is queued or running is 409 job_already_open.
       tags: [roles]
       x-story-ids: [US-00-001]
       x-roles: [recruiter]
@@ -228,8 +233,10 @@ paths:
       operationId: replaceCriteria
       summary: Replace the criteria set in place (a removed id is retired, never deleted)
       description: >-
-        Edits by id. Bumps criteria_version and returns an approved role to Draft. Idempotent by
-        definition (PUT).
+        Edits by id; an id that is not a live criterion of this role is 422 validation_error. The
+        array index is the position. Every call, even one that changes nothing, returns the role to
+        Draft and bumps criteria_version. Scores, jobs and kits are never touched. Idempotent in
+        the criteria set (PUT), not in the version.
       tags: [roles]
       x-story-ids: [US-00-002]
       x-roles: [recruiter]
@@ -254,6 +261,11 @@ paths:
     post:
       operationId: approveRole
       summary: Approve the criteria
+      description: >-
+        409 criteria_changed (details.current_version) when the version is not the current one;
+        422 no_criteria without live criteria; 422 incomplete_rubric (details.criterion_ids) when a
+        live criterion lacks any level 0 to 4. Approving an already approved role at the current
+        version is a 200 with no change.
       tags: [roles]
       x-story-ids: [US-00-002]
       x-roles: [recruiter]
@@ -273,8 +285,18 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
+        '409':
+          description: The criteria changed since the caller loaded them
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+              example: { error: { code: criteria_changed, message: the criteria changed since you loaded them, details: { current_version: 3 }, request_id: req_01J9Z6 } }
+        '422':
+          description: No live criteria, an incomplete rubric, or an invalid body
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+              example: { error: { code: incomplete_rubric, message: every criterion needs a descriptor for levels 0 to 4, details: { criterion_ids: [20000000-0000-4000-8000-000000000001] }, request_id: req_01J9Z6 } }
   /v1/roles/{role_id}/resumes:
     post:
       operationId: uploadResumes
@@ -282,7 +304,11 @@ paths:
       description: >-
         Authenticated and CSRF-checked before the body is read. Each file is accepted or rejected
         on its own; the response has one result per file. An upload to a Draft role, or in live
-        mode at the budget cap, is refused as a whole before any file is written.
+        mode at the budget cap, is refused as a whole before any file is written. A role that
+        turns Draft while the request runs gives the files not yet stored a role_not_approved
+        result. The type comes from the file's first bytes, not its name or content type. A file
+        over the per-file limit is rejected on its own; a request over the whole-request limit is
+        413, and more than 100 files is 422 too_many_files.
       tags: [resumes]
       x-story-ids: [US-00-003]
       x-roles: [recruiter]
@@ -441,6 +467,11 @@ paths:
     post:
       operationId: retryCandidate
       summary: Enqueue a new scoring job for a candidate that needs scoring
+      description: >-
+        A candidate needs scoring when it has no score rows at the role's current criteria version,
+        a failed score row at its latest version, or a failed file. Otherwise 409 not_retryable.
+        409 job_already_open when a process_resume or rescore job is already queued or running for
+        it, and 409 budget_reached in live mode at the budget cap.
       tags: [jobs]
       x-story-ids: [US-00-003, US-00-006]
       x-roles: [recruiter]
@@ -529,6 +560,9 @@ paths:
     post:
       operationId: assignInterviewer
       summary: Assign an interviewer (idempotent)
+      description: >-
+        The target must be an interviewer, else 422 validation_error. A repeat returns 201 again
+        and changes nothing. An unknown candidate is 404.
       tags: [candidates]
       x-story-ids: [US-00-016]
       x-roles: [recruiter]
@@ -553,6 +587,9 @@ paths:
     delete:
       operationId: removeAssignment
       summary: Remove an assignment
+      description: >-
+        The candidate leaves that interviewer's list at once. Removing an absent pair is 204; an
+        unknown candidate is 404.
       tags: [candidates]
       x-story-ids: [US-00-016]
       x-roles: [recruiter]
@@ -591,6 +628,9 @@ paths:
     get:
       operationId: getKit
       summary: The kit; stale when it was generated for older criteria
+      description: |
+        404 when the role has no kit yet, and for an interviewer when none of the role's
+        candidates is assigned to them. The same body for both roles; an edit shows read-only.
       tags: [kit]
       x-story-ids: [US-00-002, US-00-013]
       x-roles: [recruiter, interviewer]
@@ -750,7 +790,8 @@ paths:
       description: >-
         For an interviewer, resume scores and overrides are hidden for a candidate they have not
         submitted feedback on, only their own feedback is returned, no quote is ever selected, and
-        one unassigned id makes the whole request 404.
+        one unassigned id makes the whole request 404. The candidates must be distinct and belong to
+        one role (else 422 validation_error); a role without criteria is 422 no_criteria.
       tags: [compare]
       x-story-ids: [US-00-015]
       x-roles: [recruiter, interviewer]
@@ -924,6 +965,7 @@ components:
         - { code: csrf_failed, status: 403, meaning: "The X-CSRF-Token header is missing or wrong" }
         - { code: forbidden, status: 403, meaning: "The caller's role may not use this route" }
         - { code: not_found, status: 404, meaning: "Missing, or not visible to this caller" }
+        - { code: role_not_draft, status: 409, meaning: "Criteria can be proposed only for a Draft role" }
         - { code: role_not_approved, status: 409, meaning: "The role is Draft; approve the criteria first" }
         - { code: scores_stale, status: 409, meaning: "The score belongs to an older criteria version" }
         - { code: same_stage, status: 409, meaning: "The candidate is already in that stage" }
@@ -931,11 +973,12 @@ components:
         - { code: not_retryable, status: 409, meaning: "The candidate does not need scoring" }
         - { code: job_not_cancellable, status: 409, meaning: "The job is already finished" }
         - { code: feedback_locked, status: 409, meaning: "Feedback is already submitted and locked" }
-        - { code: criteria_changed, status: 409, meaning: "The criteria changed since the caller loaded them" }
-        - { code: budget_reached, status: 409, meaning: "The model budget is reached in live mode" }
+        - { code: criteria_changed, status: 409, meaning: "The criteria changed since the caller loaded them; details.current_version has the current one" }
+        - { code: no_criteria, status: 422, meaning: "The role has no live criteria to approve" }
+        - { code: incomplete_rubric, status: 422, meaning: "A live criterion lacks a descriptor for a level 0 to 4; details.criterion_ids lists them" }
+        - { code: budget_reached, status: 409, meaning: "In live mode no further model call fits under the USD 8 limit: The model budget of $8.00 has been reached. No new model calls can be made." }
         - { code: incomplete_feedback, status: 422, meaning: "A criterion has no score or comment" }
         - { code: too_many_files, status: 422, meaning: "More than 100 files in one upload" }
-        - { code: no_criteria, status: 422, meaning: "The role has no criteria to approve" }
         - { code: validation_error, status: 422, meaning: "A field failed validation" }
         - { code: payload_too_large, status: 413, meaning: "The request body is over the cap" }
         - { code: internal, status: 500, meaning: "An unexpected error; quote the request_id" }
@@ -949,10 +992,11 @@ components:
       example: { status: ok, version: 0.1.0 }
     Ready:
       type: object
-      required: [status]
+      required: [status, checks]
       properties:
         status: { type: string }
-      example: { status: ready }
+        checks: { type: object, additionalProperties: { type: string } }
+      example: { status: ok, checks: { database: ok } }
     Role_kind: { type: string, enum: [recruiter, interviewer], example: recruiter }
     Stage:
       type: string
@@ -989,8 +1033,8 @@ components:
       required: [title, job_description]
       additionalProperties: false
       properties:
-        title: { type: string, minLength: 1 }
-        job_description: { type: string, minLength: 1 }
+        title: { type: string, minLength: 1, maxLength: 200, description: Trimmed; not blank }
+        job_description: { type: string, minLength: 1, maxLength: 20000, description: Trimmed; not blank }
       example: { title: Backend engineer, job_description: Build and run our payments API. }
     Role:
       type: object
@@ -1016,7 +1060,7 @@ components:
       required: [level, descriptor]
       properties:
         level: { type: integer, minimum: 0, maximum: 4 }
-        descriptor: { type: string }
+        descriptor: { type: string, minLength: 1, maxLength: 200, description: Trimmed; one line }
       example: { level: 4, descriptor: Led the design of a production payments system }
     Criterion:
       type: object
@@ -1025,7 +1069,7 @@ components:
         id: { type: string, format: uuid }
         name: { type: string }
         kind: { type: string, enum: [must_have, nice_to_have] }
-        weight: { type: number, exclusiveMinimum: 0 }
+        weight: { type: number, exclusiveMinimum: 0, description: Stored as numeric(6,3); returned as a JSON number }
         position: { type: integer }
         rubric:
           type: array
@@ -1036,7 +1080,7 @@ components:
         kind: must_have
         weight: 3
         position: 1
-        rubric: [{ level: 0, descriptor: No evidence }, { level: 4, descriptor: Led a production Python system }]
+        rubric: [{ level: 0, descriptor: No evidence }, { level: 1, descriptor: Used Python in coursework }, { level: 2, descriptor: Shipped small Python services }, { level: 3, descriptor: Owned a production Python service }, { level: 4, descriptor: Led a production Python system }]
     RoleDetail:
       allOf:
         - $ref: '#/components/schemas/Role'
@@ -1060,25 +1104,28 @@ components:
             kind: must_have
             weight: 3
             position: 1
-            rubric: [{ level: 0, descriptor: No evidence }, { level: 4, descriptor: Led a production Python system }]
+            rubric: [{ level: 0, descriptor: No evidence }, { level: 1, descriptor: Used Python in coursework }, { level: 2, descriptor: Shipped small Python services }, { level: 3, descriptor: Owned a production Python service }, { level: 4, descriptor: Led a production Python system }]
     CriterionInput:
       type: object
       required: [name, kind, weight, rubric]
       additionalProperties: false
       properties:
         id: { type: [string, 'null'], format: uuid, description: Existing id to edit in place; omit for a new criterion }
-        name: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1, maxLength: 80, description: Trimmed; one line; unique in the set ignoring case and spacing }
         kind: { type: string, enum: [must_have, nice_to_have] }
-        weight: { type: number, exclusiveMinimum: 0 }
+        weight: { type: integer, minimum: 1, maximum: 5 }
         rubric:
           type: array
+          minItems: 0
+          maxItems: 5
+          description: Levels 0 to 4, each at most once. A save may leave levels out; approving needs all five.
           items: { $ref: '#/components/schemas/RubricLevel' }
       example:
         id: 20000000-0000-4000-8000-000000000001
         name: Python experience
         kind: must_have
         weight: 3
-        rubric: [{ level: 0, descriptor: No evidence }, { level: 4, descriptor: Led a production Python system }]
+        rubric: [{ level: 0, descriptor: No evidence }, { level: 1, descriptor: Used Python in coursework }, { level: 2, descriptor: Shipped small Python services }, { level: 3, descriptor: Owned a production Python service }, { level: 4, descriptor: Led a production Python system }]
     CriteriaReplace:
       type: object
       required: [criteria]
@@ -1086,16 +1133,27 @@ components:
       properties:
         criteria:
           type: array
+          minItems: 1
+          maxItems: 8
           items: { $ref: '#/components/schemas/CriterionInput' }
       example:
         criteria:
-          - { id: 20000000-0000-4000-8000-000000000001, name: Python experience, kind: must_have, weight: 3, rubric: [{ level: 0, descriptor: No evidence }] }
+          - id: 20000000-0000-4000-8000-000000000001
+            name: Python experience
+            kind: must_have
+            weight: 3
+            rubric:
+              - { level: 0, descriptor: No evidence }
+              - { level: 1, descriptor: Used Python in coursework }
+              - { level: 2, descriptor: Shipped small Python services }
+              - { level: 3, descriptor: Owned a production Python service }
+              - { level: 4, descriptor: Led a production Python system }
     ApproveRequest:
       type: object
       required: [criteria_version]
       additionalProperties: false
       properties:
-        criteria_version: { type: integer, description: The version the recruiter saw; a different current version is 409 criteria_changed }
+        criteria_version: { type: integer, minimum: 1, description: The version the recruiter saw; a different current version is 409 criteria_changed }
       example: { criteria_version: 2 }
     JobAccepted:
       type: object
@@ -1314,6 +1372,10 @@ components:
         created_at: 2026-09-30T10:00:00Z
     CandidateDetail:
       type: object
+      description: >-
+        A recruiter gets every field. An interviewer gets only id, candidate_no, role_id and
+        has_submitted until they submit feedback, then scores too; stage, processing_status and
+        audit are left out for them, not sent as null.
       required: [id, candidate_no, role_id]
       properties:
         id: { type: string, format: uuid }

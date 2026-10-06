@@ -21,8 +21,14 @@ def load_migration() -> ModuleType:
 
 
 def test_migration_sql_is_a_copy_of_the_design_schema() -> None:
-    """The two must not drift before the first release; delete this test then."""
-    assert (VERSIONS / "0001_initial_schema.sql").read_text() == DESIGN.read_text()
+    """The two must not drift before the first release; delete this test then.
+
+    The design file is the schema after every migration; migration 3 adds
+    `resume_texts.anonymizer_version`, so its two lines are the only difference allowed.
+    """
+    later = "anonymizer_version"
+    design = "".join(line for line in DESIGN.read_text().splitlines(True) if later not in line)
+    assert (VERSIONS / "0001_initial_schema.sql").read_text() == design
 
 
 def test_statements_drop_begin_and_commit_and_keep_the_trigger_function_whole() -> None:

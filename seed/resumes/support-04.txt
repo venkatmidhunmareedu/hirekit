@@ -1,0 +1,30 @@
+Nikos Papadakis
+Support Operations Lead
+Athens, Greece
+Email: nikos.papadakis@example.com
+Phone: 555-0114
+Profile: example.com/in/nikospapadakis
+Pronouns: he/him
+
+Summary: Support lead of seven years who has run teams, queues and reports for a software subscription product. He is better at running a team than at talking customers down.
+
+Skills snapshot
+Focus | Detail | Years
+Team leadership | Six agents, shifts, one-to-ones | 4
+Ticketing | Admin of a helpdesk, basic rules | 3
+Customer contact | Email and chat, some phone | 7
+Reporting | Weekly numbers, two dashboards | 4
+Documentation | Internal guides, help center | 3
+
+Experience
+Support Team Lead, Quillmark Software, 2020 to present
+I lead six agents on a subscription product. I schedule the shifts, hold fortnightly one-to-ones, review five tickets per agent per month and help agents plan their growth; two have moved into senior roles. I interview and onboard new hires with a checklist I wrote.
+On the helpdesk I maintain the group assignments and a few rules, but larger changes go through the tools team.
+I take escalations only when the customer asks for a manager. Some of those ended in refunds I would have avoided with a firmer first reply, and my own satisfaction score on escalated cases is 78 percent.
+I send a weekly report of volume, first response and backlog and keep two dashboards. I update the internal guides when product changes land, and I added 25 articles to the help center last year.
+
+Support Agent, Quillmark Software, 2017 to 2020
+Answered email and chat for subscribers.
+
+Education
+BA Communication, Mirador University, 2017

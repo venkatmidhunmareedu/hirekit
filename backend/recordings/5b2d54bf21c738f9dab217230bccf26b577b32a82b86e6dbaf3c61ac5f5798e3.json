@@ -1,0 +1,15 @@
+{
+  "input_sha256": "be25b86fb6968ba2b65a493ab26f4ba823b3645b558ea8afd52b95627747b6ef",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "5b2d54bf21c738f9dab217230bccf26b577b32a82b86e6dbaf3c61ac5f5798e3",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 981,
+    "output_tokens": 706,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":1,\"quote\":\"At the bootcamp I made a to-do list app and learned the basics of Python.\"},{\"criterion\":2,\"value\":1,\"quote\":\"I also watched videos on databases.\"},{\"criterion\":3,\"value\":0,\"quote\":null},{\"criterion\":4,\"value\":0,\"quote\":null},{\"criterion\":5,\"value\":0,\"quote\":null}]}"
+  },
+  "schema_retry": 0
+}

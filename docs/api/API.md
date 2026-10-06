@@ -176,7 +176,7 @@ Serves US-00-015.
 
 | Method | Path | Does | Auth | Success | Errors |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/v1/compare` | Compare two to four candidates by criterion | cookieAuth or csrfToken | 200 The comparison | 401 unauthenticated, 404 not_found, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error |
+| GET | `/v1/compare` | Compare two to four candidates by criterion | cookieAuth or csrfToken | 200 The comparison | 401 unauthenticated, 404 not_found, 422 no_criteria, 422 validation_error |
 
 ## jobs
 

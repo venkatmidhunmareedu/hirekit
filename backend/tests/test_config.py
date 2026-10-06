@@ -11,7 +11,7 @@ DB = "postgresql+asyncpg://postgres:postgres@localhost:5432/test"
 def test_defaults() -> None:
     settings = Settings(_env_file=None, database_url=DB)
 
-    assert settings.env == "development"
+    assert settings.env is None
     assert settings.port == 8080
     assert settings.log_level == "info"
     assert settings.log_format == "json"
@@ -47,3 +47,83 @@ def test_invalid_values_are_rejected(
 def test_sync_driver_is_rejected() -> None:
     with pytest.raises(ValidationError, match="postgresql\\+asyncpg"):
         Settings(_env_file=None, database_url="postgresql://postgres:postgres@localhost/test")
+
+
+def test_model_base_url_is_unset_by_default() -> None:
+    settings = Settings(_env_file=None, database_url=DB)
+
+    assert settings.model_base_url is None
+
+
+def test_model_base_url_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MODEL_BASE_URL", "https://proxy.example.com/v1")
+
+    settings = Settings(_env_file=None, database_url=DB)
+
+    assert settings.model_base_url == "https://proxy.example.com/v1"
+
+
+@pytest.mark.parametrize(
+    "url", ["http://localhost:8000/v1", "http://127.0.0.1:8000/v1", "http://[::1]:8000/v1"]
+)
+def test_model_base_url_allows_plain_http_on_loopback(url: str) -> None:
+    settings = Settings(_env_file=None, database_url=DB, model_base_url=url)
+
+    assert settings.model_base_url == url
+
+
+def test_model_base_url_strips_a_trailing_slash() -> None:
+    settings = Settings(
+        _env_file=None, database_url=DB, model_base_url="https://proxy.example.com/v1/"
+    )
+
+    assert settings.model_base_url == "https://proxy.example.com/v1"
+
+
+@pytest.mark.parametrize(
+    ("url", "rule"),
+    [
+        ("http://proxy.example.com/v1?k=s3cret", "https"),
+        ("ftp://proxy.example.com/v1?k=s3cret", "http"),
+        ("https://user:s3cret@proxy.example.com/v1", "credentials"),
+        ("https:///v1?k=s3cret", "host"),
+    ],
+)
+def test_model_base_url_rule_failures_do_not_echo_the_url(url: str, rule: str) -> None:
+    with pytest.raises(ValidationError, match=rule) as caught:
+        Settings(_env_file=None, database_url=DB, model_base_url=url)
+
+    message = str(caught.value)
+    assert "s3cret" not in message
+    assert "proxy.example.com" not in message
+
+
+def test_upload_limits_default_to_5mb_100_files_and_100mb() -> None:
+    settings = Settings(_env_file=None, database_url=DB)
+
+    assert (
+        settings.max_upload_bytes,
+        settings.max_files_per_upload,
+        settings.max_request_bytes,
+    ) == (5_000_000, 100, 100_000_000)
+
+
+@pytest.mark.parametrize(
+    "variable", ["MAX_UPLOAD_BYTES", "MAX_FILES_PER_UPLOAD", "MAX_REQUEST_BYTES"]
+)
+@pytest.mark.parametrize("value", ["0", "-1"])
+def test_a_non_positive_upload_limit_is_rejected(
+    monkeypatch: pytest.MonkeyPatch, variable: str, value: str
+) -> None:
+    monkeypatch.setenv(variable, value)
+
+    with pytest.raises(ValidationError, match="must be greater than 0"):
+        Settings(_env_file=None, database_url=DB)
+
+
+def test_the_request_cap_may_not_be_below_the_file_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MAX_UPLOAD_BYTES", "2000")
+    monkeypatch.setenv("MAX_REQUEST_BYTES", "1000")
+
+    with pytest.raises(ValidationError, match="MAX_REQUEST_BYTES must be at least"):
+        Settings(_env_file=None, database_url=DB)
