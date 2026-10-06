@@ -245,3 +245,9 @@ Backfilled on 2026-10-03 from the reports of HK-17 to HK-40. Owner task numbers 
 | N-W22 | HK-68 | Interviewers have no landing page of their own: "/" is the Roles page, which GET /v1/roles forbids them | An interviewer lands on a 403; send them to /me/candidates | unassigned | open |
 | N-W23 | HK-74 | The "Flagged only" and "Has overrides" filters apply to the loaded page (up to 100 rows), not the whole set, because the API has no such filters | With more than 100 candidates a match on another page is not shown; a server filter is a backend task | unassigned | open |
 | N-W24 | HK-74 | The budget pill in the top bar is not clickable because no call-log page exists (GET /v1/cost-log is read for `budget` only) | Design.md 7.10 implies a link to the log; needs a call-log screen | unassigned | open |
+| N-W25 | HK-80 | No endpoint lists users, so assigning an interviewer still needs a pasted account id | A user-list endpoint would allow a picker | unassigned | open |
+| N-W26 | HK-80 | "Next candidate" on the recruiter detail page only follows the first ranked page of 100 | Beyond 100 candidates the link is missing | unassigned | open |
+| N-W27 | HK-80 | The role list has no candidate counts, so rows cannot say "Review N candidates" | Needs counts in GET /v1/roles | unassigned | open |
+| N-W28 | HK-80 | Interviewers see a "Print interview kit" button on the kit page and no way back to My candidates | Add a back link | unassigned | open |
+| N-W29 | HK-80 | The interviewer "submitted" notice also shows when revisiting an already submitted candidate | Reads like a repeat confirmation | unassigned | open |
+| N-W30 | HK-80 | No browser or axe walk-through was run for the HK-80 restyle; AlertIcon red vs the new status tone contrast is unmeasured | Do a desktop and phone pass with both seed accounts | unassigned | open |
