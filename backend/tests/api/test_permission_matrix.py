@@ -14,10 +14,12 @@ from fastapi.routing import APIRoute, _EffectiveRouteContext, _IncludedRouter
 from httpx import AsyncClient
 from starlette.routing import BaseRoute
 
+from app.api.candidates.router import get_candidates
 from app.core.auth import CurrentUser, InterviewerUser, RecruiterUser, current_session
 from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
+from tests.api.fake_candidates import FakeCandidates
 from tests.api.fake_decisions import FakeAudit, FakeDecisions
 from tests.api.fakes import (
     FakeCost,
@@ -65,6 +67,9 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ),
     ("POST", "/v1/candidates/{candidate_id}/stage"): frozenset({"recruiter"}),
     ("POST", "/v1/candidates/{candidate_id}:reveal-identity"): frozenset({"recruiter"}),
+    ("GET", "/v1/roles/{role_id}/candidates"): frozenset({"recruiter"}),
+    ("GET", "/v1/candidates/{candidate_id}"): frozenset({"recruiter", "interviewer"}),
+    ("GET", "/v1/candidates/{candidate_id}/text"): frozenset({"recruiter"}),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -93,6 +98,10 @@ def register_test_routes(app: FastAPI) -> None:
 @pytest.fixture(autouse=True)
 def _routes(app: FastAPI) -> None:
     register_test_routes(app)
+    fake = FakeCandidates(
+        permissive=True
+    )  # the matrix checks roles; row visibility has its own tests
+    app.dependency_overrides[get_candidates] = lambda: fake
 
 
 FULL_RUBRIC = [{"level": n, "descriptor": f"level {n}"} for n in range(5)]

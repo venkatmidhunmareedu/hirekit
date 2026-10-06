@@ -174,3 +174,9 @@ Backfilled on 2026-10-03 from the reports of HK-17 to HK-40. Owner task numbers 
 | N-303 | HK-60 | Stage `reason` and the override `note` have no maximum length beyond `MAX_REQUEST_BYTES`; the spec sets none either | Add a maxLength to spec and code together | unassigned | open |
 | N-304 | HK-60 | The worktree started from `main`, not `feature/HK-58-UploadApi`; fast-forwarded the new branch onto HK-58 (no rebase) | None | unassigned | done |
 | N-305 | HK-60 | Commits carry no Co-Authored-By trailer, same as N-208 | Align the reminder with AGENTS rule 11 | engineer | open |
+| N-330 | HK-59 | The brief names "section 9 item 14" but api-lld section 9 has 12 items; the ranked list, detail and text routes are item 5 | Fix the reference when the roadmap is next edited | unassigned | open |
+| N-331 | HK-59 | A candidate's cells come from its newest scored criteria version and show only live criteria, so after a criteria edit a candidate with partial old scores shows fewer cells; the LLD fixes the "latest version" rule but not this case | Confirm, or show retired criteria greyed out | engineer | open |
+| N-332 | HK-59 | The ranked list is one statement (rows, totals and page count agree) rather than the LLD's repeatable-read statement set; an offset past the end runs one extra count query | None | unassigned | open |
+| N-333 | HK-59 | `GET /v1/candidates/{id}` for an interviewer omits stage, processing_status, audit (and scores before they submit) via `response_model_exclude_unset`; the spec now says so in `CandidateDetail.description` | None | unassigned | open |
+| N-334 | HK-59 | `GET .../text` is 404 until the Worker has stored both texts, the same code as for an unknown candidate | None | unassigned | open |
+| N-335 | HK-59 | The candidate read SQL is raw `text()` like N-135: `Candidate` has no stage, scores or feedback ORM columns yet | Swap to models when a later item adds them | unassigned | open |
