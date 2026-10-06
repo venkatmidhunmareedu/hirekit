@@ -16,8 +16,10 @@ from uuid import UUID, uuid4
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.anonymizer import Anonymized
+from app.anonymizer.pipeline import AnonymizationReport
 from app.db.repositories.jobs import Job
-from app.db.repositories.worker_writes import RoleState, ScoreRow
+from app.db.repositories.worker_writes import RoleState, ScoreRow, StoredFile
 from app.gateway import GatewayRequest, GatewayResponse
 from app.gateway.text import (
     AnonymizedText,
@@ -301,3 +303,90 @@ class FakeQuoteVerifier:
         if self.jobs is not None:
             self.jobs.calls.append(("verify", quote))
         return quote in self.found
+
+
+@dataclass
+class FakeExtractor:
+    """Returns `text` or raises `error`; records the transactions open while it ran."""
+
+    sessions: FakeSessions
+    text: str = "Jane Doe built billing in Go."
+    error: Exception | None = None
+    calls: list[tuple[bytes, str]] = field(default_factory=list)
+    open_during_call: list[int] = field(default_factory=list)
+
+    def extract(self, data: bytes, media_type: str) -> str:
+        self.calls.append((data, media_type))
+        self.open_during_call.append(self.sessions.open)
+        if self.error is not None:
+            raise self.error
+        return self.text
+
+
+@dataclass
+class FakeAnonymizer:
+    """Returns an `Anonymized` for the raw text, or raises `error`."""
+
+    sessions: FakeSessions
+    name: str | None = "Jane Doe"
+    error: Exception | None = None
+    seen: list[str] = field(default_factory=list)
+    open_during_call: list[int] = field(default_factory=list)
+
+    def anonymize(self, raw: str) -> Anonymized:
+        self.seen.append(raw)
+        self.open_during_call.append(self.sessions.open)
+        if self.error is not None:
+            raise self.error
+        report = AnonymizationReport({}, self.name is not None, 0, 7)
+        return Anonymized(mint_anonymized("[NAME] built billing in Go."), self.name, report)
+
+
+@dataclass
+class FakeResumeWrites:
+    """Stands in for `worker_writes` (Q7, Q8a, T3); the file is held until `store_texts`."""
+
+    jobs: FakeJobs
+    file: StoredFile | None = field(default_factory=lambda: StoredFile("application/pdf", b"%PDF"))
+    text_stored: bool = False
+    stored: list[dict[str, object]] = field(default_factory=list)
+
+    async def read_file(self, session: AsyncSession, candidate_id: UUID) -> StoredFile | None:
+        self.jobs.calls.append(("read_file",))
+        return self.file
+
+    async def text_exists(self, session: AsyncSession, candidate_id: UUID) -> bool:
+        return self.text_stored
+
+    async def set_status(
+        self,
+        session: AsyncSession,
+        candidate_id: UUID,
+        status: str,
+        failure_reason: str | None = None,
+    ) -> None:
+        await self.jobs.set_status(session, candidate_id, status, failure_reason)
+
+    async def store_texts(
+        self,
+        session: AsyncSession,
+        candidate_id: UUID,
+        *,
+        raw_text: str,
+        anonymized: AnonymizedText,
+        anonymizer_version: int,
+        identity_name: str | None,
+        status: str,
+    ) -> None:
+        self.jobs.calls.append(("store_texts", status))
+        self.jobs.calls.append(("set_status", candidate_id, status, None))  # T3 sets it too
+        self.stored.append(
+            {
+                "raw_text": raw_text,
+                "anonymized": anonymized.value,
+                "anonymizer_version": anonymizer_version,
+                "identity_name": identity_name,
+            }
+        )
+        self.file = None
+        self.text_stored = True

@@ -4,10 +4,11 @@ import asyncio
 
 from app.gateway.errors import ProviderRejectedError
 from app.worker.handlers import build_handlers
+from app.worker.handlers.process_resume import ResumeDeps
 from app.worker.handlers.rescore import make_rescore
 from app.worker.loop import run_worker
 from app.worker.outcome import Stale, Succeeded
-from tests.worker.fakes import make_job, reply
+from tests.worker.fakes import FakeAnonymizer, FakeExtractor, FakeResumeWrites, make_job, reply
 from tests.worker.test_scoring import rig, scores
 
 
@@ -36,13 +37,16 @@ async def test_a_failed_rescore_leaves_the_candidate_done() -> None:
     job = make_job(1, job_type="rescore")
     r.jobs.queue = [job]
     r.gateway.replies = [ProviderRejectedError("rejected")]
+    resume = ResumeDeps(
+        FakeExtractor(r.sessions), FakeAnonymizer(r.sessions), FakeResumeWrites(r.jobs)
+    )
     stop = asyncio.Event()
     r.jobs.clock.stop, r.jobs.clock.stop_after_sleeps = stop, 1
     await run_worker(
         sessions=r.sessions.begin,
         jobs=r.jobs,
         writes=r.jobs,
-        handlers=build_handlers(r.deps),
+        handlers=build_handlers(r.deps, resume),
         stop=stop,
         now=r.jobs.clock.now,
         sleep=r.jobs.clock.sleep,
