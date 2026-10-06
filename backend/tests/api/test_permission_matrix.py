@@ -18,7 +18,15 @@ from app.core.auth import CurrentUser, InterviewerUser, RecruiterUser, current_s
 from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
-from tests.api.fakes import FakeCriteria, FakeRoles, FakeSessions, FakeUploads, FakeUsers
+from tests.api.fakes import (
+    FakeCost,
+    FakeCriteria,
+    FakeRoles,
+    FakeScoringJobs,
+    FakeSessions,
+    FakeUploads,
+    FakeUsers,
+)
 from tests.files import pdf_bytes
 
 # (method, path) -> roles allowed. An absent role gets 403; no sign-in gets 401.
@@ -35,6 +43,9 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("PUT", "/v1/roles/{role_id}/criteria"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/approve"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/resumes"): frozenset({"recruiter"}),
+    ("POST", "/v1/roles/{role_id}:rescore"): frozenset({"recruiter"}),
+    ("POST", "/v1/candidates/{candidate_id}:retry"): frozenset({"recruiter"}),
+    ("GET", "/v1/cost-log"): frozenset({"recruiter"}),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -89,13 +100,16 @@ async def test_matrix_cell(
     roles: FakeRoles,
     criteria: FakeCriteria,
     uploads: FakeUploads,
+    scoring_jobs: FakeScoringJobs,
+    costs: FakeCost,
     method: str,
     path: str,
     who: str,
 ) -> None:
     role = roles.seed(status="approved")
     criteria.seed(role.id, "Python")
-    url = path.replace("{role_id}", str(role.id))
+    candidate_id, _ = scoring_jobs.add(role.id)
+    url = path.replace("{role_id}", str(role.id)).replace("{candidate_id}", str(candidate_id))
     headers: dict[str, str] = {}
     if who != "anonymous":
         user = users.add(email=f"{who}@example.com", role=who)
