@@ -37,7 +37,10 @@ describe("route guard", () => {
   });
 
   it("shows the shell with the user name when signed in", async () => {
-    stubFetch({ "GET /v1/auth/me": () => json(200, session) });
+    stubFetch({
+      "GET /v1/auth/me": () => json(200, session),
+      "GET /v1/roles": () => json(200, { data: [] }),
+    });
 
     renderApp("/");
 
@@ -57,6 +60,7 @@ describe("route guard", () => {
   it("signs out, sends the CSRF header and returns to sign-in", async () => {
     const { calls } = stubFetch({
       "GET /v1/auth/me": () => json(200, session),
+      "GET /v1/roles": () => json(200, { data: [] }),
       "POST /v1/auth/logout": () => new Response(null, { status: 204 }),
     });
     const router = renderApp("/");
@@ -72,6 +76,7 @@ describe("route guard", () => {
   it("treats a 401 on logout as signed out", async () => {
     stubFetch({
       "GET /v1/auth/me": () => json(200, session),
+      "GET /v1/roles": () => json(200, { data: [] }),
       "POST /v1/auth/logout": unauthenticated,
     });
     const router = renderApp("/");
@@ -86,6 +91,7 @@ describe("route guard", () => {
   it("stays signed in and says so when logout cannot reach the server", async () => {
     stubFetch({
       "GET /v1/auth/me": () => json(200, session),
+      "GET /v1/roles": () => json(200, { data: [] }),
       "POST /v1/auth/logout": networkDown,
     });
     const router = renderApp("/");

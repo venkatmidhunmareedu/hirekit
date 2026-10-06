@@ -7,16 +7,56 @@ import {
   getAnonymizedText,
   getCandidate,
   getMyCandidates,
+  getQueue,
+  listCandidates,
   overrideScore,
   revealIdentity,
   unassignInterviewer,
+  uploadResumes,
 } from "./api";
 
 export const candidateKeys = {
+  role: (roleId: string) => ["candidates", roleId] as const,
+  ranked: (roleId: string, stage: Stage | null, offset: number) =>
+    ["candidates", roleId, "ranked", { stage, offset }] as const,
+  queue: (roleId: string) => ["candidates", roleId, "queue"] as const,
   detail: (id: string) => ["candidates", id] as const,
   text: (id: string) => ["candidates", id, "text"] as const,
   mine: ["candidates", "mine"] as const,
 };
+
+/** The queue is polled while any file is waiting or running. */
+export function queueQueryOptions(roleId: string) {
+  return queryOptions({
+    queryKey: candidateKeys.queue(roleId),
+    queryFn: () => getQueue(roleId),
+    refetchInterval: (query) => {
+      const queue = query.state.data;
+      return queue && queue.waiting + queue.running > 0 ? 2000 : false;
+    },
+  });
+}
+
+export function rankedQueryOptions(
+  roleId: string,
+  stage: Stage | null,
+  offset: number,
+  polling: boolean,
+) {
+  return queryOptions({
+    queryKey: candidateKeys.ranked(roleId, stage, offset),
+    queryFn: () => listCandidates(roleId, { stage, offset }),
+    refetchInterval: polling ? 4000 : false,
+  });
+}
+
+export function useUpload(roleId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (files: File[]) => uploadResumes(roleId, files),
+    onSuccess: async () => queryClient.invalidateQueries({ queryKey: candidateKeys.role(roleId) }),
+  });
+}
 
 export const candidateQueryOptions = (id: string) =>
   queryOptions({ queryKey: candidateKeys.detail(id), queryFn: () => getCandidate(id) });
