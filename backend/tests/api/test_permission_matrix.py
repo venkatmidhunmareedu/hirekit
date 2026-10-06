@@ -75,6 +75,8 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("GET", "/v1/candidates/{candidate_id}/text"): frozenset({"recruiter"}),
     ("GET", "/v1/compare"): frozenset({"recruiter", "interviewer"}),
     ("GET", "/v1/me/candidates"): frozenset({"interviewer"}),
+    ("GET", "/v1/users"): frozenset({"recruiter"}),
+    ("GET", "/v1/candidates/{candidate_id}/assignments"): frozenset({"recruiter"}),
     ("POST", "/v1/candidates/{candidate_id}/assignments"): frozenset({"recruiter"}),
     ("DELETE", "/v1/candidates/{candidate_id}/assignments/{user_id}"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/criteria:propose"): frozenset({"recruiter"}),
@@ -130,6 +132,8 @@ BODIES: dict[tuple[str, str], dict[str, object]] = {
     ("POST", "/v1/candidates/{candidate_id}/stage"): {"stage": "screened"},
     ("POST", "/v1/candidates/{candidate_id}/assignments"): {"user_id": "{user_id}"},
 }
+# Required query parameters, by path.
+QUERY: dict[str, dict[str, str]] = {"/v1/users": {"role": "interviewer"}}
 # Routes whose body is multipart: a JSON body would be a 422 for them.
 FILES: dict[tuple[str, str], list[tuple[str, tuple[str, bytes, str]]]] = {
     ("POST", "/v1/roles/{role_id}/resumes"): [
@@ -207,7 +211,8 @@ async def test_matrix_cell(
         headers=headers,
         json={"items": [item]} if "/feedback" in path else body,
         files=FILES.get((method, path)),
-        params={"ids": ",".join(map(str, two))} if path == "/v1/compare" else None,
+        params=QUERY.get(path)
+        or ({"ids": ",".join(map(str, two))} if path == "/v1/compare" else None),
     )
 
     if who == "anonymous":

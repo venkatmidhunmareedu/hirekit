@@ -8,7 +8,7 @@ import uuid
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.candidates.assignment_schemas import MyCandidate
+from app.api.candidates.assignment_schemas import CandidateAssignment, MyCandidate
 
 _MINE = text(
     "SELECT c.id AS candidate_id, c.candidate_no, c.role_id, r.title AS role_title, "
@@ -17,6 +17,11 @@ _MINE = text(
     "FROM candidates c JOIN roles r ON r.id = c.role_id "
     "WHERE c.id IN (SELECT candidate_id FROM assignments WHERE user_id = :viewer) "
     "ORDER BY c.candidate_no, c.id LIMIT :n"
+)
+
+_FOR_CANDIDATE = text(
+    "SELECT a.user_id, u.name FROM assignments a JOIN users u ON u.id = a.user_id "
+    "WHERE a.candidate_id = :c ORDER BY u.name, a.user_id"
 )
 
 
@@ -61,3 +66,8 @@ class AssignmentRepository:
         """The interviewer's assigned candidates by candidate number, at most `limit`."""
         result = await self._session.execute(_MINE, {"viewer": user_id, "n": limit})
         return [MyCandidate.model_validate(dict(row._mapping)) for row in result]
+
+    async def for_candidate(self, candidate_id: uuid.UUID) -> list[CandidateAssignment]:
+        """The interviewers assigned to the candidate, by name."""
+        result = await self._session.execute(_FOR_CANDIDATE, {"c": candidate_id})
+        return [CandidateAssignment.model_validate(dict(row._mapping)) for row in result]

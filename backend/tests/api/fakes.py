@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
+from app.api.candidates.assignment_schemas import InterviewerOption
 from app.core.errors import FeedbackLockedError
 from app.db.models import Criterion, Role, RubricLevel, User, UserSession
 from app.db.repositories.cost import CallRow
@@ -39,6 +40,10 @@ class FakeUsers:
 
     async def by_id(self, user_id: uuid.UUID) -> User | None:
         return next((u for u in self.rows if u.id == user_id), None)
+
+    async def list_by_role(self, role: str, limit: int) -> list[InterviewerOption]:
+        found = sorted((u for u in self.rows if u.role == role), key=lambda u: (u.name, u.id))
+        return [InterviewerOption(id=u.id, name=u.name) for u in found[:limit]]
 
 
 class FakeSessions:

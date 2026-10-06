@@ -1,15 +1,22 @@
-"""POST/DELETE /v1/candidates/{id}/assignments and GET /v1/me/candidates."""
+"""Assignment routes, GET /v1/me/candidates and GET /v1/users?role=interviewer."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.candidates.assignment_schemas import Assignment, AssignRequest, MyCandidates
-from app.core.auth import InterviewerUser, RecruiterUser
+from app.api.candidates.assignment_schemas import (
+    Assignment,
+    AssignRequest,
+    CandidateAssignments,
+    InterviewerList,
+    MyCandidates,
+)
+from app.core.auth import InterviewerUser, RecruiterUser, get_users
 from app.core.errors import ErrorEnvelope
 from app.db.repositories.assignments import AssignmentRepository
+from app.db.repositories.users import UserRepository
 from app.db.session import get_session
 from app.domain.candidates import assignments as service
 
@@ -27,6 +34,7 @@ def get_assignments(session: Annotated[AsyncSession, Depends(get_session)]) -> A
 
 Db = Annotated[AsyncSession, Depends(get_session)]
 Assignments = Annotated[AssignmentRepository, Depends(get_assignments)]
+Users = Annotated[UserRepository, Depends(get_users)]
 
 
 @router.get("/me/candidates", response_model=MyCandidates, responses=_errors())
@@ -71,3 +79,29 @@ async def remove_assignment(
     """Remove an assignment; the candidate disappears from that interviewer's view."""
     await service.unassign(db, repo, candidate_id, user_id)
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/users", response_model=InterviewerList, responses=_errors(422))
+async def list_interviewers(
+    _: RecruiterUser,
+    users: Users,
+    response: Response,
+    role: Annotated[Literal["interviewer"], Query()],
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> InterviewerList:
+    """Interviewers to pick from; only role=interviewer, so recruiters cannot be enumerated."""
+    response.headers["Cache-Control"] = "no-store"
+    return InterviewerList(data=await service.list_interviewers(users, limit))
+
+
+@router.get(
+    "/candidates/{candidate_id}/assignments",
+    response_model=CandidateAssignments,
+    responses=_errors(404),
+)
+async def list_assignments(
+    candidate_id: uuid.UUID, _: RecruiterUser, repo: Assignments, response: Response
+) -> CandidateAssignments:
+    """The interviewers currently assigned to this candidate."""
+    response.headers["Cache-Control"] = "no-store"
+    return CandidateAssignments(data=await service.list_for_candidate(repo, candidate_id))

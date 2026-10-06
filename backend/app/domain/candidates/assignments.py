@@ -4,9 +4,15 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.candidates.assignment_schemas import Assignment, MyCandidate
+from app.api.candidates.assignment_schemas import (
+    Assignment,
+    CandidateAssignment,
+    InterviewerOption,
+    MyCandidate,
+)
 from app.core.errors import NotFoundError, ValidationFailedError
 from app.db.repositories.assignments import AssignmentRepository
+from app.db.repositories.users import UserRepository
 
 
 async def assign(
@@ -50,3 +56,17 @@ async def my_candidates(
 ) -> list[MyCandidate]:
     """The caller's own assigned candidates."""
     return await repo.for_interviewer(user_id, limit)
+
+
+async def list_interviewers(users: UserRepository, limit: int) -> list[InterviewerOption]:
+    """Interviewers a recruiter can assign, by name."""
+    return await users.list_by_role("interviewer", limit)
+
+
+async def list_for_candidate(
+    repo: AssignmentRepository, candidate_id: uuid.UUID
+) -> list[CandidateAssignment]:
+    """The candidate's assigned interviewers; an unknown candidate is 404."""
+    if not await repo.candidate_exists(candidate_id):
+        raise NotFoundError("candidate not found")
+    return await repo.for_candidate(candidate_id)

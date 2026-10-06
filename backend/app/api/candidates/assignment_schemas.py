@@ -1,4 +1,4 @@
-"""Models for the assignment routes and GET /v1/me/candidates (api/openapi.yaml)."""
+"""Models for the assignment routes, the interviewer list and GET /v1/me/candidates."""
 
 import uuid
 
@@ -34,3 +34,29 @@ class MyCandidates(BaseModel):
     """The caller's assigned candidates."""
 
     data: list[MyCandidate]
+
+
+class InterviewerOption(BaseModel):
+    """An interviewer a recruiter may assign: id and display name, never the email."""
+
+    id: uuid.UUID
+    name: str
+
+
+class InterviewerList(BaseModel):
+    """The interviewers a recruiter can pick from."""
+
+    data: list[InterviewerOption]
+
+
+class CandidateAssignment(BaseModel):
+    """One interviewer currently assigned to a candidate."""
+
+    user_id: uuid.UUID
+    name: str
+
+
+class CandidateAssignments(BaseModel):
+    """A candidate's assigned interviewers."""
+
+    data: list[CandidateAssignment]

@@ -407,6 +407,31 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /v1/users:
+    get:
+      operationId: listInterviewers
+      summary: The interviewers a recruiter can assign (at most 200)
+      description: >-
+        Only role=interviewer is accepted, so recruiters cannot be listed; any other value is 422.
+        Id and name only, never the email. Ordered by name.
+      tags: [candidates]
+      x-story-ids: [US-00-016]
+      x-roles: [recruiter]
+      parameters:
+        - name: role
+          in: query
+          required: true
+          schema: { type: string, enum: [interviewer] }
+        - $ref: '#/components/parameters/Limit200'
+      responses:
+        '200':
+          description: The interviewers
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InterviewerList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
   /v1/me/candidates:
     get:
       operationId: listMyCandidates
@@ -557,6 +582,24 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
   /v1/candidates/{candidate_id}/assignments:
+    get:
+      operationId: listCandidateAssignments
+      summary: The interviewers assigned to a candidate
+      description: An unknown candidate is 404. Ordered by interviewer name.
+      tags: [candidates]
+      x-story-ids: [US-00-016]
+      x-roles: [recruiter]
+      parameters:
+        - $ref: '#/components/parameters/CandidateId'
+      responses:
+        '200':
+          description: The assigned interviewers
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CandidateAssignments' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     post:
       operationId: assignInterviewer
       summary: Assign an interviewer (idempotent)
@@ -1450,6 +1493,37 @@ components:
         candidate_id: { type: string, format: uuid }
         user_id: { type: string, format: uuid }
       example: { candidate_id: 30000000-0000-4000-8000-000000000001, user_id: 00000000-0000-4000-8000-000000000002 }
+    InterviewerList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          maxItems: 200
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+      example:
+        data:
+          - { id: 00000000-0000-4000-8000-000000000002, name: Imran }
+    CandidateAssignments:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required: [user_id, name]
+            properties:
+              user_id: { type: string, format: uuid }
+              name: { type: string }
+      example:
+        data:
+          - { user_id: 00000000-0000-4000-8000-000000000002, name: Imran }
     Question:
       type: object
       required: [id, criterion_id, question_text, strong_answer, weak_answer, position]
