@@ -502,6 +502,7 @@ Items: 12 (largest about 390 lines, over 400: 0).
 - assumption: an override applies only to the current criteria version; after a re-run the new row has none (data-model open concern 3).
 - assumption: `PUT /v1/candidates/{id}/feedback`, `DELETE /v1/kit/questions/{id}` and `GET /v1/auth/me` are added (marked +) because AC-US-00-014-5, AC-US-00-013-5 and the CSRF token need them; the HLD lists none of the three.
 - assumption: the integration tests carry every tenet 6 proof and `make check` does not run them (no CI host). The unit-level AST scan of repositories (every function returning candidate data takes a `Viewer`) and the route-matrix test are the safety net that does run in `make check`; wire `make test-integration` into CI as soon as a git host exists.
+- note (HK-56): CI now exists in `.github/workflows/ci.yml`; its `backend-integration` job runs `make test-integration`, so the "no CI host" statements above predate it.
 - assumption: reading raw text is recruiter-only and not audited (no story asks for an audit); a real deployment would want it logged.
 - assumption: cookie `Max-Age` equals the session TTL, logout clears the cookie and deletes the session row, and expired rows are never purged (data-model open concern 5).
 - assumption: there is no path to delete a candidate (`audit_events` RESTRICT blocks it); a retention job must delete the events first (data-model section 6).

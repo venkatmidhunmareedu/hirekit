@@ -11,7 +11,7 @@ Stack:        Python 3.14, FastAPI, React + Vite (web/, later)
 Databases:    PostgreSQL
 Entrypoint:   backend/app/main.py
 Run, test:    make dev, make test; gate: make check
-Git host:     none yet (no remote)
+Git host:     GitHub venkatmidhunmareedu/hirekit; CI .github/workflows/ci.yml
 Tracker:      none (BEARING_TRACKER; none is valid)
 Trunk:        main (name develop here if this repository keeps one)
 ```
