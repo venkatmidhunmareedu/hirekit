@@ -24,3 +24,4 @@ __pycache__/
 coverage.xml
 junit.xml
 htmlcov/
+.claude/worktrees/
