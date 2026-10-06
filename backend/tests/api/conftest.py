@@ -3,14 +3,22 @@
 import pytest
 from fastapi import FastAPI
 
+from app.api.candidates.decisions import get_audit, get_decisions
+from app.api.cost.router import get_costs
 from app.api.feedback.router import get_feedback
+from app.api.kit.router import get_kits
 from app.api.resumes.router import get_uploads
 from app.api.roles.router import get_criteria, get_roles
+from app.api.scoring.router import get_scoring_jobs
 from app.core.auth import get_sessions, get_users
+from tests.api.fake_decisions import FakeAudit, FakeDecisions
 from tests.api.fakes import (
+    FakeCost,
     FakeCriteria,
     FakeFeedback,
+    FakeKit,
     FakeRoles,
+    FakeScoringJobs,
     FakeSessions,
     FakeUploads,
     FakeUsers,
@@ -56,4 +64,39 @@ def uploads(app: FastAPI, roles: FakeRoles) -> FakeUploads:
 def feedback(app: FastAPI) -> FakeFeedback:
     fake = FakeFeedback()
     app.dependency_overrides[get_feedback] = lambda: fake
+    return fake
+
+
+@pytest.fixture
+def kit(app: FastAPI, roles: FakeRoles) -> FakeKit:
+    fake = FakeKit(roles)
+    app.dependency_overrides[get_kits] = lambda: fake
+    return fake
+
+
+@pytest.fixture
+def scoring_jobs(app: FastAPI, roles: FakeRoles) -> FakeScoringJobs:
+    fake = FakeScoringJobs(roles)
+    app.dependency_overrides[get_scoring_jobs] = lambda: fake
+    return fake
+
+
+@pytest.fixture
+def decisions(app: FastAPI) -> FakeDecisions:
+    fake = FakeDecisions()
+    app.dependency_overrides[get_decisions] = lambda: fake
+    return fake
+
+
+@pytest.fixture
+def costs(app: FastAPI) -> FakeCost:
+    fake = FakeCost()
+    app.dependency_overrides[get_costs] = lambda: fake
+    return fake
+
+
+@pytest.fixture
+def audit(app: FastAPI) -> FakeAudit:
+    fake = FakeAudit()
+    app.dependency_overrides[get_audit] = lambda: fake
     return fake

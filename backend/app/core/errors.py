@@ -102,6 +102,30 @@ class IncompleteFeedbackError(DomainError):
     code = "incomplete_feedback"
 
 
+class NotRetryableError(ConflictError):
+    """The candidate has nothing to score again (retry and rescore share one rule)."""
+
+    code = "not_retryable"
+
+
+class JobAlreadyOpenError(ConflictError):
+    """A scoring, proposal or kit job for the same target is already queued or running."""
+
+    code = "job_already_open"
+
+
+class ScoresStaleError(ConflictError):
+    """The score belongs to an older criteria version, or does not exist yet."""
+
+    code = "scores_stale"
+
+
+class SameStageError(ConflictError):
+    """The candidate is already in the requested stage."""
+
+    code = "same_stage"
+
+
 class TooManyFilesError(DomainError):
     """More files in one upload than the limit allows."""
 

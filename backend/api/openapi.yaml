@@ -462,6 +462,11 @@ paths:
     post:
       operationId: retryCandidate
       summary: Enqueue a new scoring job for a candidate that needs scoring
+      description: >-
+        A candidate needs scoring when it has no score rows at the role's current criteria version,
+        a failed score row at its latest version, or a failed file. Otherwise 409 not_retryable.
+        409 job_already_open when a process_resume or rescore job is already queued or running for
+        it, and 409 budget_reached in live mode at the budget cap.
       tags: [jobs]
       x-story-ids: [US-00-003, US-00-006]
       x-roles: [recruiter]
@@ -612,6 +617,9 @@ paths:
     get:
       operationId: getKit
       summary: The kit; stale when it was generated for older criteria
+      description: |
+        404 when the role has no kit yet, and for an interviewer when none of the role's
+        candidates is assigned to them. The same body for both roles; an edit shows read-only.
       tags: [kit]
       x-story-ids: [US-00-002, US-00-013]
       x-roles: [recruiter, interviewer]

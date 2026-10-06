@@ -18,10 +18,14 @@ from app.core.auth import CurrentUser, InterviewerUser, RecruiterUser, current_s
 from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
+from tests.api.fake_decisions import FakeAudit, FakeDecisions
 from tests.api.fakes import (
+    FakeCost,
     FakeCriteria,
     FakeFeedback,
+    FakeKit,
     FakeRoles,
+    FakeScoringJobs,
     FakeSessions,
     FakeUploads,
     FakeUsers,
@@ -48,6 +52,19 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("POST", "/v1/candidates/{candidate_id}/feedback/{interviewer_id}:approve-edit"): frozenset(
         {"recruiter"}
     ),
+    ("POST", "/v1/roles/{role_id}/kit:generate"): frozenset({"recruiter"}),
+    ("GET", "/v1/roles/{role_id}/kit"): frozenset({"recruiter", "interviewer"}),
+    ("PUT", "/v1/kit/questions/{question_id}"): frozenset({"recruiter"}),
+    ("DELETE", "/v1/kit/questions/{question_id}"): frozenset({"recruiter"}),
+    ("POST", "/v1/kit/questions/{question_id}:regenerate"): frozenset({"recruiter"}),
+    ("POST", "/v1/roles/{role_id}:rescore"): frozenset({"recruiter"}),
+    ("POST", "/v1/candidates/{candidate_id}:retry"): frozenset({"recruiter"}),
+    ("GET", "/v1/cost-log"): frozenset({"recruiter"}),
+    ("PUT", "/v1/candidates/{candidate_id}/scores/{criterion_id}/override"): frozenset(
+        {"recruiter"}
+    ),
+    ("POST", "/v1/candidates/{candidate_id}/stage"): frozenset({"recruiter"}),
+    ("POST", "/v1/candidates/{candidate_id}:reveal-identity"): frozenset({"recruiter"}),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -85,6 +102,12 @@ BODIES: dict[tuple[str, str], dict[str, object]] = {
         "criteria": [{"name": "Python", "kind": "must_have", "weight": 3, "rubric": FULL_RUBRIC}]
     },
     ("POST", "/v1/roles/{role_id}/approve"): {"criteria_version": 1},
+    ("PUT", "/v1/kit/questions/{question_id}"): {"question_text": "Why Python?"},
+    ("PUT", "/v1/candidates/{candidate_id}/scores/{criterion_id}/override"): {
+        "override_score": 4,
+        "note": "Seen in the interview notes",
+    },
+    ("POST", "/v1/candidates/{candidate_id}/stage"): {"stage": "screened"},
 }
 # Routes whose body is multipart: a JSON body would be a 422 for them.
 FILES: dict[tuple[str, str], list[tuple[str, tuple[str, bytes, str]]]] = {
@@ -103,29 +126,43 @@ async def test_matrix_cell(
     criteria: FakeCriteria,
     uploads: FakeUploads,
     feedback: FakeFeedback,
+    kit: FakeKit,
+    scoring_jobs: FakeScoringJobs,
+    costs: FakeCost,
+    decisions: FakeDecisions,
+    audit: FakeAudit,
     method: str,
     path: str,
     who: str,
 ) -> None:
     role = roles.seed(status="approved")
     criterion = criteria.seed(role.id, "Python")
-    url = path.replace("{role_id}", str(role.id))
+    question_id = kit.seed_question(role.id)
+    _, candidate_id, criterion_id = decisions.seed()
+    # One candidate id that both the decisions and the scoring fakes know.
+    scoring_jobs.candidates[candidate_id] = (role.id, 1)
+    scoring_jobs.needs.add(candidate_id)
+    url = (
+        path.replace("{role_id}", str(role.id))
+        .replace("{question_id}", str(question_id))
+        .replace("{candidate_id}", str(candidate_id))
+        .replace("{criterion_id}", str(criterion_id))
+    )
     headers: dict[str, str] = {}
     if who != "anonymous":
         user = users.add(email=f"{who}@example.com", role=who)
         headers = (await sessions.sign_in(user)).unsafe_headers
         roles.assigned.add((role.id, user.id))  # lets an interviewer read the role
-    # Feedback routes: a candidate assigned to the caller, and the rows each route expects.
-    candidate_id = feedback.candidate(role.id, *(u.id for u in users.rows))
+    # Feedback routes: the same candidate, assigned to the caller, and the rows each route expects.
+    feedback.role_of[candidate_id] = role.id
+    feedback.assigned |= {(candidate_id, u.id) for u in users.rows}
     submitted_by = users.add(email="submitted@example.com", role="interviewer")
     caller = next((u for u in users.rows if u.email == f"{who}@example.com"), submitted_by)
     feedback.assigned.add((candidate_id, submitted_by.id))
     feedback_owner = submitted_by.id if "approve-edit" in path else caller.id
     if method != "POST" or "approve-edit" in path:
         feedback.seed(candidate_id, feedback_owner, criterion.id, locked="approve-edit" in path)
-    url = url.replace("{candidate_id}", str(candidate_id)).replace(
-        "{interviewer_id}", str(submitted_by.id)
-    )
+    url = url.replace("{interviewer_id}", str(submitted_by.id))
     item = {"criterion_id": str(criterion.id), "score": 3, "comment": "Solid"}
 
     response = await client.request(
