@@ -1,0 +1,286 @@
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { setCsrfToken } from "../../lib/api";
+import {
+  CAND,
+  CRIT_A,
+  INTERVIEWER,
+  QUOTE,
+  ROLE,
+  candidate,
+  role,
+  scores,
+} from "../../test/fixtures";
+import { json, session, stubFetch } from "../../test/fetch";
+import { renderApp } from "../../test/renderApp";
+
+afterEach(() => {
+  setCsrfToken(null);
+});
+
+const text = {
+  raw_text: "Jane Doe. Led a team of five engineers on the payments API.",
+  anonymized_text: `Summary. ${QUOTE}.  Later text.`,
+};
+
+function recruiterRoutes(extra: Record<string, () => Response> = {}) {
+  return {
+    "GET /v1/auth/me": () => json(200, session),
+    [`GET /v1/candidates/${CAND}`]: () => json(200, candidate),
+    [`GET /v1/candidates/${CAND}/text`]: () => json(200, text),
+    [`GET /v1/roles/${ROLE}`]: () => json(200, role),
+    [`GET /v1/candidates/${CAND}/feedback`]: () => json(200, { data: [] }),
+    ...extra,
+  };
+}
+
+describe("candidate detail, recruiter", () => {
+  it("shows a verified quote, no evidence found, a flagged quote and the override", async () => {
+    stubFetch(recruiterRoutes());
+    renderApp(`/candidates/${CAND}`);
+
+    expect(await screen.findByRole("heading", { name: "Candidate C-014" })).toBeInTheDocument();
+    expect(screen.getByText(`“${QUOTE}”`)).toBeInTheDocument();
+    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.getByText("No evidence found")).toBeInTheDocument();
+    expect(screen.getByText("Flagged")).toBeInTheDocument();
+    expect(screen.getByText(/replaced with no evidence found/)).toBeInTheDocument();
+    expect(screen.getByText("Recruiter override")).toBeInTheDocument();
+    expect(screen.getByText("Override note: Mentioned in the interview")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Must-have" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nice-to-have" })).toBeInTheDocument();
+    expect(screen.getByText("Stage new to screened")).toBeInTheDocument();
+  });
+
+  it("highlights the selected criterion's quote in the anonymized text", async () => {
+    stubFetch(recruiterRoutes());
+    renderApp(`/candidates/${CAND}`);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show Backend experience in resume" }),
+    );
+
+    expect((await screen.findByText(QUOTE, { selector: "mark" })).tagName).toBe("MARK");
+    expect(screen.queryByText(/Jane/)).not.toBeInTheDocument();
+  });
+
+  it("requires a 10 character note, then sends the override and refetches", async () => {
+    let overridden = false;
+    const { calls } = stubFetch(
+      recruiterRoutes({
+        [`GET /v1/candidates/${CAND}`]: () =>
+          json(200, {
+            ...candidate,
+            scores: overridden
+              ? [
+                  { ...scores[0], override_score: 4, source: "recruiter_override" },
+                  ...scores.slice(1),
+                ]
+              : scores,
+          }),
+        [`PUT /v1/candidates/${CAND}/scores/${CRIT_A}/override`]: () => {
+          overridden = true;
+          return json(200, { ...scores[0], override_score: 4 });
+        },
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: /Override Backend/ }));
+    const dialog = await screen.findByRole("dialog");
+    const save = within(dialog).getByRole("button", { name: "Save override" });
+    await userEvent.click(within(dialog).getByLabelText("4"));
+    await userEvent.type(within(dialog).getByLabelText(/Note/), "too short");
+    expect(save).toBeDisabled();
+    await userEvent.type(within(dialog).getByLabelText(/Note/), " now long enough");
+    await userEvent.click(save);
+
+    await screen.findByText("4 / 4");
+    const put = calls.find((c) => c.method === "PUT");
+    expect(put?.headers.get("X-CSRF-Token")).toBe("csrf-abc");
+    expect(JSON.parse(put?.body ?? "{}")).toEqual({
+      override_score: 4,
+      note: "too short now long enough",
+    });
+  });
+
+  it("explains a failed override and keeps the dialog open", async () => {
+    stubFetch(
+      recruiterRoutes({
+        [`PUT /v1/candidates/${CAND}/scores/${CRIT_A}/override`]: () =>
+          json(409, { error: { code: "scores_stale", message: "x", details: {} } }),
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: /Override Backend/ }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/Note/), "a long enough note");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save override" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("older criteria");
+  });
+
+  it("moves stage at once, but asks before rejecting", async () => {
+    const { calls } = stubFetch(
+      recruiterRoutes({
+        [`POST /v1/candidates/${CAND}/stage`]: () =>
+          json(200, { candidate_id: CAND, from_stage: "screened", to_stage: "interview" }),
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+    const select = await screen.findByLabelText("Stage");
+
+    await userEvent.selectOptions(select, "interview");
+    await screen.findByLabelText("Stage");
+    expect(JSON.parse(calls.find((c) => c.method === "POST")?.body ?? "{}")).toEqual({
+      stage: "interview",
+    });
+
+    const before = calls.filter((c) => c.method === "POST").length;
+    await userEvent.selectOptions(select, "rejected");
+    const dialog = await screen.findByRole("dialog");
+    expect(calls.filter((c) => c.method === "POST")).toHaveLength(before);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(calls.filter((c) => c.method === "POST")).toHaveLength(before);
+  });
+
+  it("sends the reject only after the confirmation, with the reason", async () => {
+    const { calls } = stubFetch(
+      recruiterRoutes({
+        [`POST /v1/candidates/${CAND}/stage`]: () =>
+          json(200, { candidate_id: CAND, from_stage: "screened", to_stage: "rejected" }),
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+
+    await userEvent.selectOptions(await screen.findByLabelText("Stage"), "rejected");
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/Reason/), "role closed");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Reject candidate" }));
+
+    await screen.findByRole("heading", { name: "Candidate C-014" });
+    expect(JSON.parse(calls.find((c) => c.method === "POST")?.body ?? "{}")).toEqual({
+      stage: "rejected",
+      reason: "role closed",
+    });
+  });
+
+  it("reveals the identity only after a confirmation", async () => {
+    const { calls } = stubFetch(
+      recruiterRoutes({
+        [`POST /v1/candidates/${CAND}:reveal-identity`]: () =>
+          json(200, { identity_name: "Jane Doe", file_name: "jane.pdf" }),
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Reveal identity" }));
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Reveal identity" }));
+
+    expect(await screen.findByText("Jane Doe")).toBeInTheDocument();
+  });
+
+  it("assigns and removes an interviewer", async () => {
+    const user = "00000000-0000-4000-8000-000000000002";
+    const { calls } = stubFetch(
+      recruiterRoutes({
+        [`POST /v1/candidates/${CAND}/assignments`]: () =>
+          json(201, { candidate_id: CAND, user_id: user }),
+        [`DELETE /v1/candidates/${CAND}/assignments/${user}`]: () =>
+          new Response(null, { status: 204 }),
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+
+    await userEvent.type(await screen.findByLabelText("Interviewer user id"), user);
+    await userEvent.click(screen.getByRole("button", { name: "Assign interviewer" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: `Remove interviewer ${user}` }),
+    );
+
+    await screen.findByLabelText("Interviewer user id");
+    expect(calls.map((c) => c.method).filter((m) => m !== "GET")).toEqual(["POST", "DELETE"]);
+    expect(screen.queryByRole("button", { name: /Remove interviewer/ })).not.toBeInTheDocument();
+  });
+
+  it("shows an error when the candidate cannot be loaded", async () => {
+    stubFetch({
+      "GET /v1/auth/me": () => json(200, session),
+      [`GET /v1/candidates/${CAND}`]: () =>
+        json(404, { error: { code: "not_found", message: "x", details: {} } }),
+    });
+    renderApp(`/candidates/${CAND}`);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("missing or you cannot see it");
+  });
+});
+
+describe("candidate detail, interviewer", () => {
+  const interviewerRoutes = (extra: Record<string, () => Response> = {}) => ({
+    "GET /v1/auth/me": () => json(200, INTERVIEWER),
+    [`GET /v1/candidates/${CAND}`]: () =>
+      json(200, { id: CAND, candidate_no: 14, role_id: ROLE, has_submitted: false }),
+    [`GET /v1/roles/${ROLE}`]: () => json(200, role),
+    [`GET /v1/candidates/${CAND}/feedback`]: () => json(200, { data: [] }),
+    ...extra,
+  });
+
+  it("hides model scores and recruiter controls before feedback", async () => {
+    stubFetch(interviewerRoutes());
+    renderApp(`/candidates/${CAND}`);
+
+    expect(await screen.findByText(/stay hidden until you submit/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Stage")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reveal identity" })).not.toBeInTheDocument();
+    expect(await screen.findByText("0 of 3 criteria scored")).toBeInTheDocument();
+  });
+
+  it("keeps submit disabled until every criterion has a score and comment, then submits", async () => {
+    const { calls } = stubFetch(
+      interviewerRoutes({
+        [`POST /v1/candidates/${CAND}/feedback`]: () => json(201, { data: [] }),
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+    const submit = await screen.findByRole("button", { name: "Submit feedback" });
+
+    for (const name of ["Backend experience", "Incident response", "Mentoring"]) {
+      expect(submit).toBeDisabled();
+      const group = screen.getByRole("radiogroup", { name: `Score for ${name}` });
+      await userEvent.click(within(group).getByLabelText("3"));
+      await userEvent.type(screen.getByLabelText(`Comment on ${name}`), "solid");
+    }
+    expect(screen.getByText("3 of 3 criteria scored")).toBeInTheDocument();
+    await userEvent.click(submit);
+
+    await screen.findByRole("button", { name: "Submit feedback" });
+    const post = calls.find((c) => c.method === "POST");
+    expect((post?.body ?? "").split('"criterion_id"')).toHaveLength(4);
+  });
+
+  it("shows submitted feedback read-only and locked", async () => {
+    stubFetch(
+      interviewerRoutes({
+        [`GET /v1/candidates/${CAND}/feedback`]: () =>
+          json(200, {
+            data: [CRIT_A, "x"].slice(0, 1).map((c) => ({
+              interviewer_id: INTERVIEWER.user.id,
+              criterion_id: c,
+              score: 3,
+              comment: "good",
+              locked: true,
+            })),
+          }),
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+
+    expect(await screen.findByText(/Submitted and locked/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Submit feedback" })).not.toBeInTheDocument();
+  });
+});

@@ -1,0 +1,225 @@
+/* Base, layout and the few components the sign-in screen and shell use. */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font: 400 14px/22px var(--font-sans);
+}
+
+h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 500;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+}
+
+/* Logo (Design.md section 2.2): wordmark 24px, weight 500, "Kit" in the accent. */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.logo-word {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 500;
+}
+
+.logo-accent {
+  color: var(--wordmark-accent);
+}
+
+/* Form controls: 8px radius, 40px minimum target (Design.md section 12). */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field label {
+  font-weight: 500;
+}
+
+input {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font: inherit;
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+.btn {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  font: 500 14px/22px var(--font-sans);
+  cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-primary {
+  background: var(--button-primary-fill);
+  color: var(--button-primary-text);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--brand-deep);
+}
+
+.btn-secondary {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* Error notice: danger icon plus text; the text stays in the body colour for contrast. */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-control);
+}
+
+.notice svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* App shell (Design.md section 5): 240px sidebar, top bar, content up to 1200px. */
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  background: var(--card);
+  border-right: 1px solid var(--border);
+}
+
+.nav-link {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  min-height: 40px;
+  border-radius: var(--radius-control);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  background: var(--row-hover);
+}
+
+.nav-link[aria-current="page"] {
+  font-weight: 500;
+  background: var(--row-hover);
+}
+
+.shell-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.topbar-user {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.content {
+  width: 100%;
+  max-width: 1200px;
+  padding: var(--space-5);
+}
+
+.content p {
+  margin: var(--space-2) 0 0;
+}
+
+@media (max-width: 640px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
