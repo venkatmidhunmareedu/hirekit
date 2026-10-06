@@ -24,13 +24,14 @@ MAX_INPUT_CHARS = 500_000
 
 Pass = Callable[[str, NameSet], list[Replacement]]
 # Each pass is a pure `text -> list[Replacement]`; the passes are added by work items 2 to 7.
-# Dates and places run before contact: of two equal-length matches the earlier pass wins, so
-# `03-12-1990` and `94105-1234` (also phone-shaped runs) are labelled a date and a postal code.
+# Of two equal-length matches the earlier pass wins. Dates and places run before contact, so
+# `03-12-1990` and `94105-1234` (also phone-shaped runs) are labelled a date and a postal code;
+# names run before places, so a candidate called Sofia is a name, not a city.
 PASSES: tuple[Pass, ...] = (
     mask_dates,
+    mask_names,
     mask_places,
     contact,
-    mask_names,
     mask_gender,
     mask_religion,
 )
