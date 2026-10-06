@@ -163,6 +163,48 @@ describe("interview kit, recruiter", () => {
   });
 });
 
+describe("interview kit, no kit yet", () => {
+  it("offers Generate kit to a recruiter instead of an error", async () => {
+    stubFetch(
+      routes({
+        [`GET /v1/roles/${ROLE}/kit`]: () =>
+          json(404, { error: { code: "not_found", message: "kit not found", details: {} } }),
+      }),
+    );
+    renderApp(`/roles/${ROLE}/kit`);
+
+    expect(await screen.findByText(/No interview kit yet/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generate interview kit" })).toBeEnabled();
+  });
+
+  it("tells an interviewer the kit is not ready", async () => {
+    stubFetch(
+      routes(
+        {
+          [`GET /v1/roles/${ROLE}/kit`]: () =>
+            json(404, { error: { code: "not_found", message: "kit not found", details: {} } }),
+        },
+        INTERVIEWER,
+      ),
+    );
+    renderApp(`/roles/${ROLE}/kit`);
+
+    expect(await screen.findByText("The interview kit is not ready yet.")).toBeInTheDocument();
+  });
+
+  it("keeps a server error as an error", async () => {
+    stubFetch(
+      routes({
+        [`GET /v1/roles/${ROLE}/kit`]: () =>
+          json(500, { error: { code: "internal", message: "boom", details: {} } }),
+      }),
+    );
+    renderApp(`/roles/${ROLE}/kit`);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+});
+
 describe("interview kit, interviewer", () => {
   it("is read-only and printable", async () => {
     stubFetch(routes({}, INTERVIEWER));

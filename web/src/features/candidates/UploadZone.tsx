@@ -2,7 +2,6 @@ import { CircleCheck, FileUp, TriangleAlert } from "lucide-react";
 import { useState, type DragEvent } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 import { Notice } from "../../components/Notice";
 import { Section } from "../../components/Section";
@@ -59,7 +58,7 @@ export function UploadZone({ roleId }: { roleId: string }) {
             Choose files
           </label>
         </Button>
-        <Input
+        <input
           id="resume-files"
           className="sr-only"
           type="file"

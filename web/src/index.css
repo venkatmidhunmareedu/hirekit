@@ -7,6 +7,15 @@
 
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
+/* The shadcn radix-nova registry styles state with bare data attributes (data-checked,
+   data-open); Radix sets data-state and data-orientation. These variants make both match,
+   so the generated components in src/components/ui stay unedited. */
+@custom-variant data-checked (&:is([data-checked], [data-state="checked"]));
+@custom-variant data-open (&:is([data-open], [data-state="open"], [data-state="delayed-open"]));
+@custom-variant data-closed (&:is([data-closed], [data-state="closed"]));
+@custom-variant data-horizontal (&:is([data-horizontal], [data-orientation="horizontal"]));
+@custom-variant data-vertical (&:is([data-vertical], [data-orientation="vertical"]));
+
 :root {
   --radius: 0.375rem;
 

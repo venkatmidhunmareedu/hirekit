@@ -1,4 +1,4 @@
-import { request } from "../../lib/api";
+import { ApiError, request } from "../../lib/api";
 import { Reader } from "../../lib/parse";
 import { type Kind } from "../candidates/api";
 
@@ -65,9 +65,16 @@ function readQuestion(r: Reader): Question {
   };
 }
 
-/** GET /v1/roles/{id}/kit. */
+/** GET /v1/roles/{id}/kit. A role with no kit yet answers 404 not_found: that is an empty kit. */
 export async function getKit(roleId: string): Promise<Kit> {
-  const r = new Reader(await request("GET", `/v1/roles/${roleId}/kit`), "kit");
+  let body: unknown;
+  try {
+    body = await request("GET", `/v1/roles/${roleId}/kit`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return { stale: false, questions: [] };
+    throw error;
+  }
+  const r = new Reader(body, "kit");
   return { stale: r.bool("stale"), questions: r.list("questions", readQuestion) };
 }
 

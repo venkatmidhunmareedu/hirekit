@@ -43,7 +43,12 @@ export function ResumeText({ candidateId, quote }: { candidateId: string; quote:
       title="Anonymized resume text"
       description="Identity signals are removed by code. Some signals, such as schools or career gaps, can remain."
     >
-      <div className="max-h-120 max-w-prose overflow-auto rounded-lg border bg-card p-4 whitespace-pre-wrap">
+      <div
+        role="region"
+        aria-label="Anonymized resume"
+        tabIndex={0}
+        className="max-h-120 max-w-prose overflow-auto rounded-lg border bg-card p-4 whitespace-pre-wrap"
+      >
         {parts ? (
           <>
             {parts[0]}

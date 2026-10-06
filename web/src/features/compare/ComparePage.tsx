@@ -87,11 +87,21 @@ export function ComparePage({ ids }: { ids: string[] }) {
         title="Compare candidates"
         purpose="Resume scores are AI suggestions or scores changed by a recruiter. Interviewer scores sit beside them."
       />
-      <div className="rounded-lg border bg-card">
+      <p className="text-sm text-muted-foreground md:hidden">
+        Scroll sideways to see every candidate.
+      </p>
+      <div
+        role="region"
+        aria-label="Candidate comparison table"
+        tabIndex={0}
+        className="overflow-x-auto rounded-lg border bg-card focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none *:data-[slot=table-container]:overflow-visible"
+      >
         <Table>
           <TableHeader className="bg-muted/60">
             <TableRow className="hover:bg-transparent">
-              <TableHead scope="col">Criterion</TableHead>
+              <TableHead scope="col" className="sticky left-0 z-10 bg-muted">
+                Criterion
+              </TableHead>
               {candidates.map((c) => (
                 <TableHead key={c.candidate_id} scope="col" className="mono font-mono">
                   {candidateLabel(c.candidate_no)}
@@ -102,7 +112,10 @@ export function ComparePage({ ids }: { ids: string[] }) {
           <TableBody>
             {criteria.map((crit) => (
               <TableRow key={crit.id} className="align-top">
-                <TableHead scope="row" className="h-auto min-w-40 py-3 align-top whitespace-normal">
+                <TableHead
+                  scope="row"
+                  className="sticky left-0 z-10 h-auto min-w-40 bg-card py-3 align-top whitespace-normal"
+                >
                   {crit.name}
                   <div className="text-sm font-normal text-muted-foreground">
                     {crit.kind === "must_have" ? "Must-have" : "Nice-to-have"}

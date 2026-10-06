@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -174,9 +175,9 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
                         <Label htmlFor={`level-${row.key}-${level.level}`}>
                           Score {level.level} looks like
                         </Label>
-                        <Input
+                        <Textarea
                           id={`level-${row.key}-${level.level}`}
-                          className="h-10"
+                          rows={3}
                           value={level.descriptor}
                           onChange={(e) => {
                             update(row.key, {

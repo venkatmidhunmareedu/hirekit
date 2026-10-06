@@ -12,7 +12,13 @@ export function ErrorNotice({ error, retry }: { error: unknown; retry?: () => vo
       <CircleAlert aria-hidden="true" className="size-4 shrink-0" />
       <AlertDescription className="flex-1 text-bad">{errorMessage(error)}</AlertDescription>
       {retry && (
-        <Button type="button" variant="outline" size="sm" onClick={retry}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="bg-card text-foreground dark:bg-card"
+          onClick={retry}
+        >
           Try again
         </Button>
       )}
