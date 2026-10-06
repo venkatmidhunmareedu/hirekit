@@ -10,9 +10,12 @@ import {
 
 import { SignInPage } from "../features/auth/SignInPage";
 import { sessionQueryOptions } from "../features/auth/hooks";
+import { CandidatesPage } from "../features/candidates/CandidatesPage";
+import { RoleSetupPage } from "../features/roles/RoleSetupPage";
+import { RolesPage } from "../features/roles/RolesPage";
 import { ApiError } from "../lib/api";
 
-import { AppShell, HomePage } from "./AppShell";
+import { AppShell } from "./AppShell";
 import { RouteError } from "./RouteError";
 
 const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -46,10 +49,25 @@ const appRoute = createRoute({
 const homeRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/",
-  component: HomePage,
+  component: RolesPage,
 });
 
-const routeTree = rootRoute.addChildren([signInRoute, appRoute.addChildren([homeRoute])]);
+const roleSetupRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/roles/$roleId",
+  component: RoleSetupPage,
+});
+
+const roleCandidatesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/roles/$roleId/candidates",
+  component: CandidatesPage,
+});
+
+const routeTree = rootRoute.addChildren([
+  signInRoute,
+  appRoute.addChildren([homeRoute, roleSetupRoute, roleCandidatesRoute]),
+]);
 
 /** Build the router; tests pass a memory history. */
 export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {

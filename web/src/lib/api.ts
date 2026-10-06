@@ -34,7 +34,9 @@ function errorCode(body: unknown): string | null {
  */
 export async function request(method: string, path: string, body?: unknown): Promise<unknown> {
   const headers = new Headers({ Accept: "application/json" });
-  if (body !== undefined) headers.set("Content-Type", "application/json");
+  // A FormData body (resume upload) sets its own multipart boundary header.
+  const isForm = body instanceof FormData;
+  if (body !== undefined && !isForm) headers.set("Content-Type", "application/json");
   if (method !== "GET" && csrfToken !== null) headers.set("X-CSRF-Token", csrfToken);
 
   let response: Response;
@@ -43,7 +45,7 @@ export async function request(method: string, path: string, body?: unknown): Pro
       method,
       headers,
       credentials: "same-origin",
-      ...(body !== undefined && { body: JSON.stringify(body) }),
+      ...(body !== undefined && { body: isForm ? body : JSON.stringify(body) }),
     });
   } catch {
     throw new ApiError(0, "network", "The request did not reach the server");

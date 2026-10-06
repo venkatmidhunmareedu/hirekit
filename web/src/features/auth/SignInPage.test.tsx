@@ -49,6 +49,7 @@ describe("sign-in screen", () => {
     const { calls } = stubFetch({
       "POST /v1/auth/login": () => json(200, session),
       "GET /v1/auth/me": () => json(200, session),
+      "GET /v1/roles": () => json(200, { data: [] }),
     });
     const router = renderSignIn();
 

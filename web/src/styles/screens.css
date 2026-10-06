@@ -1,0 +1,198 @@
+/* Roles and candidates screens (HK-67). Chips and tags are neutral: no score-based color (Design.md 7.2, 9). */
+h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 500;
+}
+
+textarea,
+select {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font: inherit;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.dropzone:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.btn-destructive {
+  background: var(--card);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+label.btn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.notice-info {
+  border-color: var(--info);
+}
+
+.notice-warning {
+  border-color: var(--warning);
+}
+
+.tag {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+}
+
+.role-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.role-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs a {
+  padding: var(--space-2) var(--space-3);
+  min-height: 40px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.tabs a[aria-current="page"] {
+  font-weight: 500;
+  border-bottom: 2px solid var(--focus);
+}
+
+.job-description {
+  white-space: pre-line;
+}
+
+.criterion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.criterion-meta {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-card);
+}
+
+.file-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.file-results li {
+  display: flex;
+  gap: var(--space-4);
+  min-height: 40px;
+  align-items: center;
+}
+
+.file-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table.ranked {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.ranked th,
+table.ranked td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+  font-weight: 400;
+}
+
+table.ranked thead th {
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  font-weight: 500;
+}
+
+table.ranked tbody tr:hover {
+  background: var(--row-hover);
+}
+
+table.ranked .num {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.chip-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.chip {
+  align-self: flex-start;
+  display: inline-flex;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--row-hover);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+progress {
+  width: 100%;
+}
