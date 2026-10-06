@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.repositories.worker_writes import NewQuestion, RoleState
 from app.gateway import GatewayRequest, GatewayResponse
-from app.gateway.text import JobDescriptionText
+from app.gateway.text import JobDescriptionText, PromptText
 from app.worker.context import JobContext
 from app.worker.errors import SchemaError
 from app.worker.handlers.scoring import JobEnds
@@ -187,21 +187,41 @@ async def _read_inputs(
     return [_Input(c, await deps.load_job_description(session, job.role_id, c)) for c in criteria]
 
 
+async def call_kit(
+    gateway: KitGateway,
+    *,
+    role_id: UUID | None,
+    prompt_version: str,
+    system: PromptText,
+    description: JobDescriptionText,
+    schema_retry: int,
+) -> GatewayResponse:
+    """The one kit request; the handlers and the prompt evals both make it here."""
+    return await gateway.complete(
+        GatewayRequest(
+            purpose="kit",
+            role_id=role_id,
+            prompt_version=prompt_version,
+            system=system,
+            input=description,
+            max_tokens=KIT_MAX_TOKENS,
+            schema_retry=schema_retry,
+        )
+    )
+
+
 async def _ask(ctx: JobContext, deps: KitDeps, item: _Input) -> list[ProposedQuestion] | None:
     """One call for one criterion, one more at `schema_retry=1`; None if both are unusable."""
     system = deps.prompt.build(item.criterion)
     for schema_retry in (0, 1):
         await ctx.renew()
-        reply = await deps.gateway.complete(
-            GatewayRequest(
-                purpose="kit",
-                role_id=ctx.job.role_id,
-                prompt_version=deps.prompt_version,
-                system=system,
-                input=item.description,
-                max_tokens=KIT_MAX_TOKENS,
-                schema_retry=schema_retry,
-            )
+        reply = await call_kit(
+            deps.gateway,
+            role_id=ctx.job.role_id,
+            prompt_version=deps.prompt_version,
+            system=system,
+            description=item.description,
+            schema_retry=schema_retry,
         )
         if reply.finish_reason == "length":
             continue

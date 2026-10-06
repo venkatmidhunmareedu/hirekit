@@ -22,7 +22,7 @@ define need_tool
 command -v $(UV) >/dev/null || $(call skip,$(1),uv); $(UV) run --quiet $(2) --version >/dev/null 2>&1 || $(call skip,$(1),$(2))
 endef
 
-.PHONY: help setup dev check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval vuln doctor db db-reset clean
+.PHONY: help setup dev check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
@@ -129,6 +129,9 @@ seed: ## Load the seed roles and resumes into the database (idempotent; needs ma
 
 eval: ## Run the agreement and name-swap evals on recordings (replay only, never live): make eval EVAL_ARGS="--out DIR --label x"
 	DATABASE_URL=$(DATABASE_URL) $(UV) run python -m app.evals $(EVAL_ARGS)
+
+eval-prompts: ## Judge the recorded scoring, criteria and kit replies (replay only, never live): make eval-prompts EVAL_ARGS="--label x"
+	DATABASE_URL=$(DATABASE_URL) $(UV) run python -m app.evals.prompts_run $(EVAL_ARGS)
 
 migrate-new: ## Autogenerate the next migration: make migrate-new name=add_invoices
 	@[ -n "$(name)" ] || { echo "usage: make migrate-new name=add_invoices" >&2; exit 2; }
