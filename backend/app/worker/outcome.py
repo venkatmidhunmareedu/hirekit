@@ -26,6 +26,7 @@ ANONYMIZATION_LEAK: Final = (
     "This resume could not be made anonymous, so it was not sent to the model."
 )
 SCORING_FAILED: Final = "Scoring failed. Try again, or contact the maintainer."
+CRITERIA_FAILED: Final = "Criteria could not be proposed. Try again, or write them by hand."
 SOMETHING_WENT_WRONG: Final = "Something went wrong. Try again."
 
 

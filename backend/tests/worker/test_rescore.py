@@ -8,7 +8,14 @@ from app.worker.handlers.process_resume import ResumeDeps
 from app.worker.handlers.rescore import make_rescore
 from app.worker.loop import run_worker
 from app.worker.outcome import Stale, Succeeded
-from tests.worker.fakes import FakeAnonymizer, FakeExtractor, FakeResumeWrites, make_job, reply
+from tests.worker.fakes import (
+    FakeAnonymizer,
+    FakeExtractor,
+    FakeResumeWrites,
+    make_criteria_deps,
+    make_job,
+    reply,
+)
 from tests.worker.test_scoring import rig, scores
 
 
@@ -46,7 +53,7 @@ async def test_a_failed_rescore_leaves_the_candidate_done() -> None:
         sessions=r.sessions.begin,
         jobs=r.jobs,
         writes=r.jobs,
-        handlers=build_handlers(r.deps, resume),
+        handlers=build_handlers(r.deps, resume, make_criteria_deps(r.sessions, r.jobs)[0]),
         stop=stop,
         now=r.jobs.clock.now,
         sleep=r.jobs.clock.sleep,
