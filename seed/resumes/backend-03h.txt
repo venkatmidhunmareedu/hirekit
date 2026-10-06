@@ -1,0 +1,24 @@
+Katarzyna Nowak - Data and Backend Engineer
+Based in Warsaw, Poland
+katarzyna.nowak@example.com, 555-0103
+example.com/in/katarzynanowak
+
+Technical skills
+Area | Tools | Level
+Databases | PostgreSQL, query planning, partitioning | Strong
+Languages | SQL, Python, some Bash | Working
+Web | Flask, a little FastAPI | Basic
+Testing | pytest, manual checks | Basic
+Delivery | Docker, a shared CI server | Basic
+
+Experience
+Database Engineer, Northfield Labs, 2019 to present
+I design and tune the PostgreSQL databases behind a clinical scheduling product. I model new features as tables and constraints, write the migrations, and review every slow query report. Last year I redesigned the appointments schema (normalised six overlapping tables into three, added partial indexes) and cut the busiest query from 3 s to 120 ms. I wrote a migration playbook for adding columns without locking large tables, now used by four teams.
+I also maintain a few small Flask endpoints that expose reports to the support team. They return JSON from SQL views and have no authentication of their own because they sit behind the internal gateway.
+Tests for my work are mostly SQL scripts I run by hand before a release; the team has asked me to move them into pytest.
+
+Analyst, Corbel Insurance, 2016 to 2019
+Wrote reporting queries and nightly scripts in Python and SQL.
+
+Education
+BSc Mathematics, Halden Technical University, 2016

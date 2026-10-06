@@ -130,6 +130,7 @@ class OpenRouterTransport:
             api_key=settings.openrouter_api_key,
             timeout_seconds=settings.gateway_timeout_seconds,
             ci=settings.ci,
+            base_url=settings.model_base_url or BASE_URL,
         )
 
     async def aclose(self) -> None:

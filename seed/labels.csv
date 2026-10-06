@@ -1,0 +1,201 @@
+resume_id,criterion,label,rationale
+backend-01,Python and API development,4,Led redesign of a 60-endpoint FastAPI payments API with versioned contracts used by 300 partners.
+backend-01,SQL and relational data modeling,4,Designed a partitioned PostgreSQL ledger schema and cut a statement query p95 from 2.4 s to 180 ms.
+backend-01,Automated testing and code quality,4,Set the testing standard for a team of 12 with contract tests and a 40 percent drop in defects.
+backend-01,Cloud deployment and containers,3,"Owned container, Kubernetes and Terraform deployment for six services, but no multi-service cost or reliability result is stated."
+backend-01,Production operations and observability,4,"Defined SLOs, built alerts and cut mean time to recovery from 50 to 14 minutes."
+backend-01l,Python and API development,4,Led redesign of a 60-endpoint FastAPI payments API with versioned contracts used by 300 partners.
+backend-01l,SQL and relational data modeling,4,Designed a partitioned PostgreSQL ledger schema and cut a statement query p95 from 2.4 s to 180 ms.
+backend-01l,Automated testing and code quality,4,Set the testing standard for a team of 12 with contract tests and a 40 percent drop in defects.
+backend-01l,Cloud deployment and containers,3,"Owned container, Kubernetes and Terraform deployment for six services, but no multi-service cost or reliability result is stated."
+backend-01l,Production operations and observability,4,"Defined SLOs, built alerts and cut mean time to recovery from 50 to 14 minutes."
+backend-02,Python and API development,3,Owns a FastAPI customer REST API for orders and the billing service behind it in production.
+backend-02,SQL and relational data modeling,3,"Wrote indexes for billing tables and cut a month-end report from 40 s to 6 s, within an existing schema."
+backend-02,Automated testing and code quality,3,Writes unit tests for own changes and reviews pull requests; integration tests are only some.
+backend-02,Cloud deployment and containers,2,"Deployed a staging stack on AWS with a teammate and builds Docker staging images, but nothing in production."
+backend-02,Production operations and observability,2,"Takes one on-call week in five and reads Grafana dashboards, with no alerts built."
+backend-02b,Python and API development,3,Owns a FastAPI customer REST API for orders and the billing service behind it in production.
+backend-02b,SQL and relational data modeling,3,"Wrote indexes for billing tables and cut a month-end report from 40 s to 6 s, within an existing schema."
+backend-02b,Automated testing and code quality,3,Writes unit tests for own changes and reviews pull requests; integration tests are only some.
+backend-02b,Cloud deployment and containers,2,"Deployed a staging stack on AWS with a teammate and builds Docker staging images, but nothing in production."
+backend-02b,Production operations and observability,2,"Takes one on-call week in five and reads Grafana dashboards, with no alerts built."
+backend-03,Python and API development,2,"Maintains a few small Flask JSON report endpoints, but they are narrow and sit behind an internal gateway."
+backend-03,SQL and relational data modeling,4,"Redesigned the appointments schema, added partial indexes, cut the busiest query from 3 s to 120 ms and wrote a migration playbook used by four teams."
+backend-03,Automated testing and code quality,2,Tests are mostly SQL scripts run by hand and some checks; the move to pytest is only requested.
+backend-03,Cloud deployment and containers,1,"Lists Docker and a shared CI server as basic skills, with no deployment described."
+backend-03,Production operations and observability,0,"No on-call, metrics or alerts described; only slow query report reviews."
+backend-03h,Python and API development,2,"Maintains a few small Flask JSON report endpoints, but they are narrow and sit behind an internal gateway."
+backend-03h,SQL and relational data modeling,4,"Redesigned the appointments schema, added partial indexes, cut the busiest query from 3 s to 120 ms and wrote a migration playbook used by four teams."
+backend-03h,Automated testing and code quality,2,Tests are mostly SQL scripts run by hand and some checks; the move to pytest is only requested.
+backend-03h,Cloud deployment and containers,1,"Lists Docker and a shared CI server as basic skills, with no deployment described."
+backend-03h,Production operations and observability,0,"No on-call, metrics or alerts described; only slow query report reviews."
+backend-04,Python and API development,1,Built a tutorial-based Flask library app with a few JSON routes; no production service.
+backend-04,SQL and relational data modeling,1,Wrote simple SELECT and INSERT queries on SQLite in a course project.
+backend-04,Automated testing and code quality,1,Ran an existing test suite during an internship but wrote no tests.
+backend-04,Cloud deployment and containers,1,Lists a little Docker from a class demo only.
+backend-04,Production operations and observability,0,"No evidence of monitoring, on-call or production support."
+backend-04o,Python and API development,1,Built a tutorial-based Flask library app with a few JSON routes; no production service.
+backend-04o,SQL and relational data modeling,1,Wrote simple SELECT and INSERT queries on SQLite in a course project.
+backend-04o,Automated testing and code quality,1,Ran an existing test suite during an internship but wrote no tests.
+backend-04o,Cloud deployment and containers,1,Lists a little Docker from a class demo only.
+backend-04o,Production operations and observability,0,"No evidence of monitoring, on-call or production support."
+backend-05,Python and API development,1,Uses Python for glue scripts and a small Flask internal tool; states no customer-facing Python API.
+backend-05,SQL and relational data modeling,2,"Sets up PostgreSQL databases, backups and reads query plans with app teams but does not design schemas."
+backend-05,Automated testing and code quality,2,Writes JUnit tests for libraries and post-deploy smoke tests.
+backend-05,Cloud deployment and containers,4,"Built the container pipeline for 30 services, Terraform modules and a second AWS region move that cut cost by 22 percent."
+backend-05,Production operations and observability,4,"Set SLOs, built alerts and runbooks, and cut outages from nine to three a quarter."
+backend-05g,Python and API development,1,Uses Python for glue scripts and a small Flask internal tool; states no customer-facing Python API.
+backend-05g,SQL and relational data modeling,2,"Sets up PostgreSQL databases, backups and reads query plans with app teams but does not design schemas."
+backend-05g,Automated testing and code quality,2,Writes JUnit tests for libraries and post-deploy smoke tests.
+backend-05g,Cloud deployment and containers,4,"Built the container pipeline for 30 services, Terraform modules and a second AWS region move that cut cost by 22 percent."
+backend-05g,Production operations and observability,4,"Set SLOs, built alerts and runbooks, and cut outages from nine to three a quarter."
+backend-06,Python and API development,4,Built and owns a 45-endpoint FastAPI shipment API with versioning that retired two old versions without tickets.
+backend-06,SQL and relational data modeling,3,"Designed the events table and indexes and sped up the three slowest queries, cutting median response time by a third."
+backend-06,Automated testing and code quality,3,Owns the pytest suite with integration tests in containers and 85 percent coverage in CI.
+backend-06,Cloud deployment and containers,1,Deployed with Docker Compose to a virtual server; no Kubernetes or managed cloud services.
+backend-06,Production operations and observability,2,"Joins on-call and added structured logging, but alerting is run by another team."
+backend-06j,Python and API development,4,Built and owns a 45-endpoint FastAPI shipment API with versioning that retired two old versions without tickets.
+backend-06j,SQL and relational data modeling,3,"Designed the events table and indexes and sped up the three slowest queries, cutting median response time by a third."
+backend-06j,Automated testing and code quality,3,Owns the pytest suite with integration tests in containers and 85 percent coverage in CI.
+backend-06j,Cloud deployment and containers,1,Deployed with Docker Compose to a virtual server; no Kubernetes or managed cloud services.
+backend-06j,Production operations and observability,2,"Joins on-call and added structured logging, but alerting is run by another team."
+backend-07,Python and API development,1,Learned Python basics and saw what an API is at a bootcamp but built none on their own.
+backend-07,SQL and relational data modeling,0,Only watched videos on databases; no queries or schema work described.
+backend-07,Automated testing and code quality,0,No tests or code review mentioned.
+backend-07,Cloud deployment and containers,0,No cloud or container use mentioned.
+backend-07,Production operations and observability,0,Customer support experience only; no production software.
+backend-07b0,Python and API development,1,Learned Python basics and saw what an API is at a bootcamp but built none on their own.
+backend-07b0,SQL and relational data modeling,0,Only watched videos on databases; no queries or schema work described.
+backend-07b0,Automated testing and code quality,0,No tests or code review mentioned.
+backend-07b0,Cloud deployment and containers,0,No cloud or container use mentioned.
+backend-07b0,Production operations and observability,0,Customer support experience only; no production software.
+backend-08,Python and API development,0,No application code or API work; IT support and systems administration only.
+backend-08,SQL and relational data modeling,0,States no work with databases.
+backend-08,Automated testing and code quality,0,States no automated tests; none described.
+backend-08,Cloud deployment and containers,1,Used a virtual machine once to test a printer server; no containers or cloud.
+backend-08,Production operations and observability,2,"Joined a weekend on-call list, restarted failed services and read a monitoring screen."
+backend-08g,Python and API development,0,No application code or API work; IT support and systems administration only.
+backend-08g,SQL and relational data modeling,0,States no work with databases.
+backend-08g,Automated testing and code quality,0,States no automated tests; none described.
+backend-08g,Cloud deployment and containers,1,Used a virtual machine once to test a printer server; no containers or cloud.
+backend-08g,Production operations and observability,2,"Joined a weekend on-call list, restarted failed services and read a monitoring screen."
+backend-09,Python and API development,2,Adds endpoints in FastAPI one or two a sprint under the tech lead's guidance.
+backend-09,SQL and relational data modeling,2,Writes SQL for reports and changes to tables designed by the data team.
+backend-09,Automated testing and code quality,4,"Owns a 1,400-test suite, introduced contract and mutation tests and set a review checklist used by three other teams."
+backend-09,Cloud deployment and containers,1,Uses Docker for test containers and GitHub Actions only; no deployment described.
+backend-09,Production operations and observability,0,"No monitoring, alerts or on-call described."
+backend-09c,Python and API development,2,Adds endpoints in FastAPI one or two a sprint under the tech lead's guidance.
+backend-09c,SQL and relational data modeling,2,Writes SQL for reports and changes to tables designed by the data team.
+backend-09c,Automated testing and code quality,4,"Owns a 1,400-test suite, introduced contract and mutation tests and set a review checklist used by three other teams."
+backend-09c,Cloud deployment and containers,1,Uses Docker for test containers and GitHub Actions only; no deployment described.
+backend-09c,Production operations and observability,0,"No monitoring, alerts or on-call described."
+backend-10,Python and API development,3,"Owns a 70-endpoint FastAPI appointments service with typed models and a deprecation policy; scale is mid-size, not led across many teams."
+backend-10,SQL and relational data modeling,4,Designed an eight-table billing schema with row level history and cut a checkout query from 900 ms to 60 ms.
+backend-10,Automated testing and code quality,3,"Owns a 2,100-test suite gating every merge and runs a testing clinic; no team-wide standard or defect numbers."
+backend-10,Cloud deployment and containers,4,Built ECS deployments with Terraform and blue-green releases for three services and cut the cloud bill by 18 percent.
+backend-10,Production operations and observability,3,"Added metrics, logs and alerts and ran the incident review process; outages fell from eleven to four but no SLO program is stated."
+backend-10r,Python and API development,3,"Owns a 70-endpoint FastAPI appointments service with typed models and a deprecation policy; scale is mid-size, not led across many teams."
+backend-10r,SQL and relational data modeling,4,Designed an eight-table billing schema with row level history and cut a checkout query from 900 ms to 60 ms.
+backend-10r,Automated testing and code quality,3,"Owns a 2,100-test suite gating every merge and runs a testing clinic; no team-wide standard or defect numbers."
+backend-10r,Cloud deployment and containers,4,Built ECS deployments with Terraform and blue-green releases for three services and cut the cloud bill by 18 percent.
+backend-10r,Production operations and observability,3,"Added metrics, logs and alerts and ran the incident review process; outages fell from eleven to four but no SLO program is stated."
+support-01,Customer communication and de-escalation,4,Wrote the de-escalation guide used by 46 agents and cut tone complaints by 55 percent.
+support-01,Ticketing platform and workflow,4,"Migrated the team to a ticketing platform, designed queues, routing and 120 macros, and trained everyone in two weeks."
+support-01,Team leadership and coaching,4,"Leads 46 agents and six leads, promoted nine agents and cut attrition from 38 to 17 percent."
+support-01,Support metrics and reporting,4,Owns the support dashboard and moved first response from 9 hours to 55 minutes and satisfaction from 81 to 93 percent.
+support-01,Process improvement and knowledge base,4,Runs monthly contact reason reviews that removed 11 percent of tickets and rebuilt a 400-article help center.
+support-01h,Customer communication and de-escalation,4,Wrote the de-escalation guide used by 46 agents and cut tone complaints by 55 percent.
+support-01h,Ticketing platform and workflow,4,"Migrated the team to a ticketing platform, designed queues, routing and 120 macros, and trained everyone in two weeks."
+support-01h,Team leadership and coaching,4,"Leads 46 agents and six leads, promoted nine agents and cut attrition from 38 to 17 percent."
+support-01h,Support metrics and reporting,4,Owns the support dashboard and moved first response from 9 hours to 55 minutes and satisfaction from 81 to 93 percent.
+support-01h,Process improvement and knowledge base,4,Runs monthly contact reason reviews that removed 11 percent of tickets and rebuilt a 400-article help center.
+support-02,Customer communication and de-escalation,3,Handles late and damaged parcel cases independently but asks the director for guidance on angry customers.
+support-02,Ticketing platform and workflow,4,"Configured eleven queues, routing rules, 85 saved replies and an order system integration that cut handling time by 30 percent."
+support-02,Team leadership and coaching,2,"Runs stand-ups and assigns work, but the director runs reviews and promotions."
+support-02,Support metrics and reporting,3,"Pulls weekly volume, first response and backlog numbers and shares them with the team, without a scorecard of satisfaction."
+support-02,Process improvement and knowledge base,2,"Wrote 30 help articles and saved replies, with no root cause program stated."
+support-02q,Customer communication and de-escalation,3,Handles late and damaged parcel cases independently but asks the director for guidance on angry customers.
+support-02q,Ticketing platform and workflow,4,"Configured eleven queues, routing rules, 85 saved replies and an order system integration that cut handling time by 30 percent."
+support-02q,Team leadership and coaching,2,"Runs stand-ups and assigns work, but the director runs reviews and promotions."
+support-02q,Support metrics and reporting,3,"Pulls weekly volume, first response and backlog numbers and shares them with the team, without a scorecard of satisfaction."
+support-02q,Process improvement and knowledge base,2,"Wrote 30 help articles and saved replies, with no root cause program stated."
+support-03,Customer communication and de-escalation,2,"Handles chats and emails using policy options and calmed upset customers, but works within the manager's scripts."
+support-03,Ticketing platform and workflow,1,"Uses a shared inbox and a hand-kept spreadsheet, with no ticketing platform."
+support-03,Team leadership and coaching,1,"Sits with new agents for a few days, with no management or reviews."
+support-03,Support metrics and reporting,1,Counts the day's cases in a spreadsheet and sends the total to the manager.
+support-03,Process improvement and knowledge base,2,"Fixed typos on five help pages, with no articles or macros written."
+support-03b,Customer communication and de-escalation,2,"Handles chats and emails using policy options and calmed upset customers, but works within the manager's scripts."
+support-03b,Ticketing platform and workflow,1,"Uses a shared inbox and a hand-kept spreadsheet, with no ticketing platform."
+support-03b,Team leadership and coaching,1,"Sits with new agents for a few days, with no management or reviews."
+support-03b,Support metrics and reporting,1,Counts the day's cases in a spreadsheet and sends the total to the manager.
+support-03b,Process improvement and knowledge base,2,"Fixed typos on five help pages, with no articles or macros written."
+support-04,Customer communication and de-escalation,3,"Takes escalations on request, but a 78 percent satisfaction score on escalated cases and some avoidable refunds show uneven results."
+support-04,Ticketing platform and workflow,2,"Maintains group assignments and a few rules, with larger changes made by the tools team."
+support-04,Team leadership and coaching,3,"Leads six agents with shifts, one-to-ones, ticket reviews and onboarding, and two agents moved into senior roles."
+support-04,Support metrics and reporting,2,"Sends a weekly report of volume, first response and backlog and keeps two dashboards, with no decisions tied to it."
+support-04,Process improvement and knowledge base,3,"Updates internal guides and added 25 help center articles, with no root cause reviews."
+support-04b,Customer communication and de-escalation,3,"Takes escalations on request, but a 78 percent satisfaction score on escalated cases and some avoidable refunds show uneven results."
+support-04b,Ticketing platform and workflow,2,"Maintains group assignments and a few rules, with larger changes made by the tools team."
+support-04b,Team leadership and coaching,3,"Leads six agents with shifts, one-to-ones, ticket reviews and onboarding, and two agents moved into senior roles."
+support-04b,Support metrics and reporting,2,"Sends a weekly report of volume, first response and backlog and keeps two dashboards, with no decisions tied to it."
+support-04b,Process improvement and knowledge base,3,"Updates internal guides and added 25 help center articles, with no root cause reviews."
+support-05,Customer communication and de-escalation,1,"Answered student questions at a volunteer help desk from a printed list, with no support cases described."
+support-05,Ticketing platform and workflow,1,Has used chat and email and has only heard of ticketing tools.
+support-05,Team leadership and coaching,0,No evidence of leading or coaching anyone.
+support-05,Support metrics and reporting,0,No evidence of using support numbers.
+support-05,Process improvement and knowledge base,1,"Mentions no help content written, only a stated willingness to learn."
+support-05i,Customer communication and de-escalation,1,"Answered student questions at a volunteer help desk from a printed list, with no support cases described."
+support-05i,Ticketing platform and workflow,1,Has used chat and email and has only heard of ticketing tools.
+support-05i,Team leadership and coaching,0,No evidence of leading or coaching anyone.
+support-05i,Support metrics and reporting,0,No evidence of using support numbers.
+support-05i,Process improvement and knowledge base,1,"Mentions no help content written, only a stated willingness to learn."
+support-06,Customer communication and de-escalation,4,Writes apologies for founder-level escalations and runs monthly workshops that cut repeat contacts on escalations by 35 percent.
+support-06,Ticketing platform and workflow,3,"Rolled out a platform with a bot, routing by city and 200 macros, but no multi-team training is described."
+support-06,Team leadership and coaching,4,"Coaches four leads, runs calibration sessions and started a program that promoted three leads from the agent pool."
+support-06,Support metrics and reporting,4,Built the metrics pack and a staffing model that saved 14 percent of agent hours.
+support-06,Process improvement and knowledge base,3,Runs a weekly meeting with product that cut contacts by 17 percent and reorganized 300 articles.
+support-06d,Customer communication and de-escalation,4,Writes apologies for founder-level escalations and runs monthly workshops that cut repeat contacts on escalations by 35 percent.
+support-06d,Ticketing platform and workflow,3,"Rolled out a platform with a bot, routing by city and 200 macros, but no multi-team training is described."
+support-06d,Team leadership and coaching,4,"Coaches four leads, runs calibration sessions and started a program that promoted three leads from the agent pool."
+support-06d,Support metrics and reporting,4,Built the metrics pack and a staffing model that saved 14 percent of agent hours.
+support-06d,Process improvement and knowledge base,3,Runs a weekly meeting with product that cut contacts by 17 percent and reorganized 300 articles.
+support-07,Customer communication and de-escalation,1,"Mentions only writing emails to friends and a landlord, with no support work."
+support-07,Ticketing platform and workflow,0,States no experience with support tools.
+support-07,Team leadership and coaching,0,"Showed new colleagues where things were kept, with no leading or coaching described."
+support-07,Support metrics and reporting,0,No evidence of using support numbers.
+support-07,Process improvement and knowledge base,0,No evidence of improving processes or writing help content.
+support-07g,Customer communication and de-escalation,1,"Mentions only writing emails to friends and a landlord, with no support work."
+support-07g,Ticketing platform and workflow,0,States no experience with support tools.
+support-07g,Team leadership and coaching,0,"Showed new colleagues where things were kept, with no leading or coaching described."
+support-07g,Support metrics and reporting,0,No evidence of using support numbers.
+support-07g,Process improvement and knowledge base,0,No evidence of improving processes or writing help content.
+support-08,Customer communication and de-escalation,2,Handles billing cases but passes long angry calls to the manager.
+support-08,Ticketing platform and workflow,2,"Uses views, tags and a few macros daily, with no queue design."
+support-08,Team leadership and coaching,3,"Leads a group of four with weekly planning, reply checks, training sessions and interviews."
+support-08,Support metrics and reporting,3,"Produces a monthly report by product and presented it, and used it to find invoice download tickets."
+support-08,Process improvement and knowledge base,1,"Rewrote one help page and added a video, which cut invoice tickets by 40 percent, without a wider program."
+support-08b,Customer communication and de-escalation,2,Handles billing cases but passes long angry calls to the manager.
+support-08b,Ticketing platform and workflow,2,"Uses views, tags and a few macros daily, with no queue design."
+support-08b,Team leadership and coaching,3,"Leads a group of four with weekly planning, reply checks, training sessions and interviews."
+support-08b,Support metrics and reporting,3,"Produces a monthly report by product and presented it, and used it to find invoice download tickets."
+support-08b,Process improvement and knowledge base,1,"Rewrote one help page and added a video, which cut invoice tickets by 40 percent, without a wider program."
+support-09,Customer communication and de-escalation,3,Handles escalations calmly by phone with a 90 percent satisfaction score on escalated cases.
+support-09,Ticketing platform and workflow,3,"Built triggers, service level timers, a bot and queue views for the team and trained them."
+support-09,Team leadership and coaching,2,"Manages 14 agents with one-to-ones and reviews, but no coaching program or lead pipeline is described."
+support-09,Support metrics and reporting,4,"Forecasts volume, builds the schedule and publishes a weekly scorecard that cut first response from 6 hours to 90 minutes."
+support-09,Process improvement and knowledge base,3,"Runs monthly root cause reviews and wrote 15 playbooks, with the help center owned by another team."
+support-09b,Customer communication and de-escalation,3,Handles escalations calmly by phone with a 90 percent satisfaction score on escalated cases.
+support-09b,Ticketing platform and workflow,3,"Built triggers, service level timers, a bot and queue views for the team and trained them."
+support-09b,Team leadership and coaching,2,"Manages 14 agents with one-to-ones and reviews, but no coaching program or lead pipeline is described."
+support-09b,Support metrics and reporting,4,"Forecasts volume, builds the schedule and publishes a weekly scorecard that cut first response from 6 hours to 90 minutes."
+support-09b,Process improvement and knowledge base,3,"Runs monthly root cause reviews and wrote 15 playbooks, with the help center owned by another team."
+support-10,Customer communication and de-escalation,1,Greets customers at the door and refers late parcel questions to the office.
+support-10,Ticketing platform and workflow,0,No evidence of using a ticketing platform.
+support-10,Team leadership and coaching,0,No evidence of leading or coaching anyone.
+support-10,Support metrics and reporting,0,No evidence of using support numbers.
+support-10,Process improvement and knowledge base,0,No evidence of improving support processes.
+support-10f,Customer communication and de-escalation,1,Greets customers at the door and refers late parcel questions to the office.
+support-10f,Ticketing platform and workflow,0,No evidence of using a ticketing platform.
+support-10f,Team leadership and coaching,0,No evidence of leading or coaching anyone.
+support-10f,Support metrics and reporting,0,No evidence of using support numbers.
+support-10f,Process improvement and knowledge base,0,No evidence of improving support processes.

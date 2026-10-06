@@ -1,0 +1,15 @@
+{
+  "input_sha256": "b0e94ae6c6c38e7f3233adfd8eca1ef3cd79ef9a8260c2a7a4f93d2365add59c",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "5911cc5165be367d5004ac3bf8d358395b43b85321b81bbca6b8d6eb138fb5d3",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1260,
+    "output_tokens": 989,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":4,\"quote\":\"Led the redesign of the public payments API (FastAPI, 60 endpoints, 2,000 requests per second at peak), with versioned contracts and a published OpenAPI spec used by 300 partners.\"},{\"criterion\":2,\"value\":4,\"quote\":\"Designed the ledger schema in PostgreSQL (partitioned tables, covering indexes, zero-downtime migrations); cut the p95 of the statement query from 2.4 s to 180 ms.\"},{\"criterion\":3,\"value\":4,\"quote\":\"Set the testing standard for a team of 12: pytest unit and integration suites, contract tests against partner mocks, 90 percent branch coverage on the money paths; production defects fell by 40 percent in a year.\"},{\"criterion\":4,\"value\":4,\"quote\":\"Moved six services to containers on a managed Kubernetes cluster with Terraform; owned the deploy pipeline and cost reviews.\"},{\"criterion\":5,\"value\":4,\"quote\":\"Defined service level objectives, built the dashboards and alerts, and ran the incident reviews; mean time to recovery dropped from 50 to 14 minutes.\"}]}"
+  },
+  "schema_retry": 1
+}

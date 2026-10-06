@@ -1,0 +1,15 @@
+{
+  "input_sha256": "87725da8680e938d8308cb6e291c06957e5ee019c2190e2855faa08dc225e9f0",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "4503feef21786f344f8c4670fb39be384909215c8663d2ff7aac006be5706bf5",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1331,
+    "output_tokens": 1249,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":4,\"quote\":\"Run the daily escalation desk myself for the hardest cases (chargebacks, safety complaints, press inquiries); I wrote the de-escalation guide every new hire now practises in role plays, and customer complaints about tone fell by 55 percent.\"},{\"criterion\":2,\"value\":4,\"quote\":\"Migrated the team from a shared inbox to a ticketing platform, designed the queues, routing rules and 120 macros, and trained everyone in two weeks with no drop in service.\"},{\"criterion\":3,\"value\":4,\"quote\":\"Coach through weekly one-to-ones and call reviews; promoted nine agents to lead roles and cut attrition from 38 to 17 percent.\"},{\"criterion\":4,\"value\":3,\"quote\":\"Own the support dashboard: first response time, resolution time, satisfaction score and backlog.\"},{\"criterion\":5,\"value\":4,\"quote\":\"Run a monthly review of the top ten contact reasons with product and logistics; two fixes removed 11 percent of all tickets.\"}]}"
+  },
+  "schema_retry": 0
+}

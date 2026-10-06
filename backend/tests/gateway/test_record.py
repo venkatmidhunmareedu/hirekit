@@ -219,9 +219,10 @@ async def test_run_rejects_an_unknown_command(tmp_path: Path) -> None:
 
 
 async def test_main_turns_invalid_settings_into_a_refusal_not_a_traceback(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     """Live mode with no OPENROUTER_API_KEY fails settings validation; that is a refusal."""
+    monkeypatch.chdir(tmp_path)  # Settings reads ./.env; a developer's real .env must not leak in
     monkeypatch.setenv("DATABASE_URL", DB)
     monkeypatch.setenv("MODEL_MODE", "live")
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)

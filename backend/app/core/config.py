@@ -8,6 +8,7 @@ from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Self
+from urllib.parse import urlsplit
 
 from pydantic import PostgresDsn, SecretStr, field_validator, model_validator
 from pydantic.fields import FieldInfo
@@ -24,6 +25,7 @@ ModelMode = Literal["replay", "live"]
 DEFAULT_RECORDINGS_DIR = Path(__file__).resolve().parents[2] / "recordings"
 LogLevel = Literal["debug", "info", "warning", "error"]
 LogFormat = Literal["json", "console"]
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
 class _DotenvWithoutMode(PydanticBaseSettingsSource):
@@ -46,10 +48,16 @@ class _DotenvWithoutMode(PydanticBaseSettingsSource):
 class Settings(BaseSettings):
     """Validated process configuration, read from the environment and .env."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        # A rejected URL or DSN can carry a secret; errors name the rule, never the value.
+        hide_input_in_errors=True,
+    )
 
     app_name: str = "HireKitApp"
-    env: Env = "development"
+    env: Env | None = None  # unset is not "development": the cookie fails closed (cookie_secure)
     port: int = 8080
     log_level: LogLevel = "info"
     log_format: LogFormat = "json"
@@ -62,6 +70,7 @@ class Settings(BaseSettings):
     model_mode: ModelMode = "replay"
     ci: bool = False
     openrouter_api_key: SecretStr | None = None
+    model_base_url: str | None = None  # unset: the gateway transport uses its own default
     model_id: str = "anthropic/claude-haiku-4.5"
     gateway_timeout_seconds: float = 60.0
     price_input_usd_per_mtok: Decimal = Decimal(1)
@@ -69,6 +78,19 @@ class Settings(BaseSettings):
     recordings_dir: Path = DEFAULT_RECORDINGS_DIR
     record_responses: bool = False
     key_credit_limit_confirmed: str | None = None
+
+    # Session cookie (docs/design/api-lld.md section 7). Unset secure means: on in production.
+    session_cookie_secure: bool | None = None
+    session_ttl_hours: int = 12
+
+    # Upload (docs/design/api-lld.md section 6): per file, files per request, whole request.
+    max_upload_bytes: int = 5_000_000
+    max_files_per_upload: int = 100
+    max_request_bytes: int = 100_000_000
+
+    # Worker (docs/design/worker-lld.md section 7).
+    worker_poll_seconds: float = 1.0
+    worker_lease_seconds: int = 180
 
     @classmethod
     def settings_customise_sources(
@@ -87,6 +109,31 @@ class Settings(BaseSettings):
             file_secret_settings,
         )
 
+    @property
+    def cookie_secure(self) -> bool:
+        """The Secure flag: the explicit setting, else on unless ENV is development or test."""
+        if self.session_cookie_secure is None:
+            return self.env not in ("development", "test")
+        return self.session_cookie_secure
+
+    @field_validator("session_ttl_hours")
+    @classmethod
+    def _positive_ttl(cls, value: int) -> int:
+        """A zero or negative lifetime would issue sessions that are already expired."""
+        if value <= 0:
+            msg = "SESSION_TTL_HOURS must be greater than 0"
+            raise ValueError(msg)
+        return value
+
+    @field_validator("max_upload_bytes", "max_files_per_upload", "max_request_bytes")
+    @classmethod
+    def _positive_limit(cls, value: int) -> int:
+        """A zero or negative cap would refuse every upload."""
+        if value <= 0:
+            msg = "the MAX_UPLOAD_*, MAX_FILES_* and MAX_REQUEST_* limits must be greater than 0"
+            raise ValueError(msg)
+        return value
+
     @field_validator("database_url")
     @classmethod
     def _async_driver(cls, value: PostgresDsn) -> PostgresDsn:
@@ -96,6 +143,27 @@ class Settings(BaseSettings):
             raise ValueError(msg)
         return value
 
+    @field_validator("model_base_url")
+    @classmethod
+    def _safe_base_url(cls, value: str | None) -> str | None:
+        """The API key is sent here: https unless loopback, no credentials in the URL."""
+        if value is None:
+            return None
+        parts = urlsplit(value)
+        if parts.scheme not in {"http", "https"}:
+            msg = "MODEL_BASE_URL must be an http or https URL"
+            raise ValueError(msg)
+        if not parts.hostname:
+            msg = "MODEL_BASE_URL must include a host"
+            raise ValueError(msg)
+        if parts.username is not None or parts.password is not None:
+            msg = "MODEL_BASE_URL must not contain credentials"
+            raise ValueError(msg)
+        if parts.scheme == "http" and parts.hostname not in _LOOPBACK_HOSTS:
+            msg = "MODEL_BASE_URL must use https unless the host is localhost, 127.0.0.1 or ::1"
+            raise ValueError(msg)
+        return value.rstrip("/")
+
     @field_validator("gateway_timeout_seconds")
     @classmethod
     def _positive_timeout(cls, value: float) -> float:
@@ -104,6 +172,32 @@ class Settings(BaseSettings):
             msg = "GATEWAY_TIMEOUT_SECONDS must be greater than 0"
             raise ValueError(msg)
         return value
+
+    @field_validator("worker_poll_seconds")
+    @classmethod
+    def _positive_poll(cls, value: float) -> float:
+        """A zero poll would spin on an empty queue."""
+        if value <= 0:
+            msg = "WORKER_POLL_SECONDS must be greater than 0"
+            raise ValueError(msg)
+        return value
+
+    @model_validator(mode="after")
+    def _request_cap_holds_a_file(self) -> Self:
+        """A request cap below the per-file cap would make the file cap meaningless."""
+        if self.max_request_bytes < self.max_upload_bytes:
+            msg = "MAX_REQUEST_BYTES must be at least MAX_UPLOAD_BYTES"
+            raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _lease_outlasts_a_call(self) -> Self:
+        """The lease is renewed before each model call, so it must outlast one call plus slack."""
+        floor = 2 * self.gateway_timeout_seconds + 30
+        if self.worker_lease_seconds < floor:
+            msg = f"WORKER_LEASE_SECONDS must be at least {floor:g} (2 * timeout + 30)"
+            raise ValueError(msg)
+        return self
 
     @model_validator(mode="after")
     def _live_mode_rules(self) -> Self:

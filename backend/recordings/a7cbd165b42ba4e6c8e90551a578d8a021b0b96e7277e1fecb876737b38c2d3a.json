@@ -1,0 +1,15 @@
+{
+  "input_sha256": "acb5cc90d3ef3cbc22ab1c7c617260c353ad7528543691efaf0d84f80fbb2c15",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "a7cbd165b42ba4e6c8e90551a578d8a021b0b96e7277e1fecb876737b38c2d3a",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1023,
+    "output_tokens": 470,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":0,\"quote\":\"I have not written application code or worked with databases or automated tests.\"},{\"criterion\":2,\"value\":0,\"quote\":\"I have not written application code or worked with databases or automated tests.\"},{\"criterion\":3,\"value\":0,\"quote\":\"I have not written application code or worked with databases or automated tests.\"},{\"criterion\":4,\"value\":0,\"quote\":null},{\"criterion\":5,\"value\":2,\"quote\":\"I joined the weekend on-call list for server alarms, restarted failed services and wrote down what happened in the incident log.\"}]}"
+  },
+  "schema_retry": 0
+}

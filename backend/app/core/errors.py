@@ -29,6 +29,27 @@ class DomainError(Exception):
         self.details: dict[str, object] = dict(details or {})
 
 
+class UnauthenticatedError(DomainError):
+    """No valid session, or the sign-in credentials were wrong."""
+
+    status_code = 401
+    code = "unauthenticated"
+
+
+class CsrfError(DomainError):
+    """A state-changing request without the session's CSRF token."""
+
+    status_code = 403
+    code = "csrf_failed"
+
+
+class ForbiddenError(DomainError):
+    """Signed in, but the role does not allow the route."""
+
+    status_code = 403
+    code = "forbidden"
+
+
 class NotFoundError(DomainError):
     """The requested resource does not exist or is not visible to the caller."""
 
@@ -41,6 +62,108 @@ class ConflictError(DomainError):
 
     status_code = 409
     code = "conflict"
+
+
+class ValidationFailedError(DomainError):
+    """A request the shape check passed but the stored state refuses (same envelope as a 422)."""
+
+    status_code = 422
+    code = "validation_error"
+
+
+class CriteriaChangedError(ConflictError):
+    """The criteria changed since the caller loaded them; details carry current_version."""
+
+    code = "criteria_changed"
+
+
+class RoleNotApprovedError(ConflictError):
+    """The role is still Draft; the criteria must be approved first."""
+
+    code = "role_not_approved"
+
+
+class BudgetReachedError(ConflictError):
+    """Live mode and the USD 8 model budget has no room for another model action."""
+
+    code = "budget_reached"
+
+
+class FeedbackLockedError(ConflictError):
+    """The interviewer's feedback for this candidate is submitted and locked."""
+
+    code = "feedback_locked"
+
+
+class IncompleteFeedbackError(DomainError):
+    """A live criterion has no score or comment, or an item names no live criterion."""
+
+    status_code = 422
+    code = "incomplete_feedback"
+
+
+class NotRetryableError(ConflictError):
+    """The candidate has nothing to score again (retry and rescore share one rule)."""
+
+    code = "not_retryable"
+
+
+class JobAlreadyOpenError(ConflictError):
+    """A scoring, proposal or kit job for the same target is already queued or running."""
+
+    code = "job_already_open"
+
+
+class ScoresStaleError(ConflictError):
+    """The score belongs to an older criteria version, or does not exist yet."""
+
+    code = "scores_stale"
+
+
+class SameStageError(ConflictError):
+    """The candidate is already in the requested stage."""
+
+    code = "same_stage"
+
+
+class TooManyFilesError(DomainError):
+    """More files in one upload than the limit allows."""
+
+    status_code = 422
+    code = "too_many_files"
+
+
+class PayloadTooLargeError(DomainError):
+    """The request body is over the size cap."""
+
+    status_code = 413
+    code = "payload_too_large"
+
+
+class NoCriteriaError(DomainError):
+    """The role has no live criteria to approve."""
+
+    status_code = 422
+    code = "no_criteria"
+
+
+class IncompleteRubricError(DomainError):
+    """A live criterion lacks a descriptor for one of the levels 0 to 4."""
+
+    status_code = 422
+    code = "incomplete_rubric"
+
+
+class RoleNotDraftError(ConflictError):
+    """Criteria can be proposed only for a Draft role."""
+
+    code = "role_not_draft"
+
+
+class JobNotCancellableError(ConflictError):
+    """The job already finished, failed, went stale or was cancelled."""
+
+    code = "job_not_cancellable"
 
 
 class ServiceUnavailableError(DomainError):

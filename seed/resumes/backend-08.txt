@@ -1,0 +1,14 @@
+Hannah Schmidt
+IT Support Specialist
+Munich, Germany
+hannah.schmidt@example.com
+555-0108
+example.com/in/hannahschmidt
+
+Looking for a technical role at a software company. Han to my friends.
+
+For six years I worked in IT support and systems administration for a regional school transport company. I set up laptops, managed user accounts, ran the backup jobs on the file server and kept the office network running. I joined the weekend on-call list for server alarms, restarted failed services and wrote down what happened in the incident log.
+I read the monitoring screen that showed disk space and CPU, and I raised tickets when a threshold was crossed. I used a few shell scripts written by my colleague to restart services and once used a virtual machine to test a new printer server.
+I have not written application code or worked with databases or automated tests.
+
+Certificates: help desk fundamentals, basic networking

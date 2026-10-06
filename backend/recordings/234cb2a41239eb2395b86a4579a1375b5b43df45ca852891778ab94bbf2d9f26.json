@@ -1,0 +1,15 @@
+{
+  "input_sha256": "8d79de371cbeb22b95176c21f3766430bd447e9d3f1cdf689f58e47690535c84",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "234cb2a41239eb2395b86a4579a1375b5b43df45ca852891778ab94bbf2d9f26",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1003,
+    "output_tokens": 551,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":0,\"quote\":null},{\"criterion\":2,\"value\":0,\"quote\":null},{\"criterion\":3,\"value\":1,\"quote\":\"the supervisor asked me to show new colleagues where things were kept\"},{\"criterion\":4,\"value\":0,\"quote\":null},{\"criterion\":5,\"value\":0,\"quote\":null}]}"
+  },
+  "schema_retry": 0
+}

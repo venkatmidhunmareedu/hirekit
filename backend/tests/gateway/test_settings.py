@@ -89,3 +89,25 @@ def test_api_key_is_a_secret_and_never_printed() -> None:
 def test_timeout_must_be_positive() -> None:
     with pytest.raises(ValidationError, match="GATEWAY_TIMEOUT_SECONDS"):
         make(gateway_timeout_seconds=0)
+
+
+def test_worker_defaults_match_the_design() -> None:
+    settings = make()
+    assert settings.worker_poll_seconds == 1
+    assert settings.worker_lease_seconds == 180
+
+
+def test_lease_validator_rejects_a_lease_shorter_than_two_timeouts_plus_thirty() -> None:
+    with pytest.raises(ValidationError, match="WORKER_LEASE_SECONDS"):
+        make(gateway_timeout_seconds=60, worker_lease_seconds=149)
+    assert make(gateway_timeout_seconds=60, worker_lease_seconds=150).worker_lease_seconds == 150
+
+
+def test_a_longer_gateway_timeout_cannot_silently_break_the_default_lease() -> None:
+    with pytest.raises(ValidationError, match="WORKER_LEASE_SECONDS"):
+        make(gateway_timeout_seconds=90)
+
+
+def test_a_zero_poll_is_refused() -> None:
+    with pytest.raises(ValidationError, match="WORKER_POLL_SECONDS"):
+        make(worker_poll_seconds=0)

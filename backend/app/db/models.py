@@ -2,15 +2,28 @@
 
 The schema is written in SQL (alembic/versions/0001_initial_schema.sql, from
 docs/design/schema.sql). A model is added here only for a table the code reads or
-writes, with its work item (the gateway adds `Budget` and `CallLog`). Migrations for
-this schema are written by hand; autogenerate would propose dropping every unmapped table.
+writes, with its work item (the gateway adds `Budget` and `CallLog`, the Api adds `User` and
+`UserSession`). Migrations for this schema are written by hand; autogenerate would propose
+dropping every unmapped table.
 """
 
 import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Enum, Identity, Numeric, SmallInteger, String, func
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Identity,
+    Integer,
+    LargeBinary,
+    Numeric,
+    SmallInteger,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -47,3 +60,136 @@ class CallLog(Base):
     cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+
+class User(Base):
+    """A seeded recruiter or interviewer who can sign in."""
+
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    role: Mapped[str] = mapped_column(
+        Enum("recruiter", "interviewer", name="user_role", create_type=False), nullable=False
+    )
+    password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class UserSession(Base):
+    """A server-side session behind the cookie; keyed by the SHA-256 of the cookie value."""
+
+    __tablename__ = "sessions"
+
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    csrf_token: Mapped[str] = mapped_column(String, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Role(Base):
+    """A job being hired for; `criteria_version` is bumped by every criteria write."""
+
+    __tablename__ = "roles"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    job_description: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum("draft", "approved", name="role_status", create_type=False),
+        nullable=False,
+        server_default="draft",
+    )
+    criteria_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Criterion(Base):
+    """One scoring criterion of a role; retired rows stay so scores keep their target."""
+
+    __tablename__ = "criteria"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("roles.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    kind: Mapped[str] = mapped_column(
+        Enum("must_have", "nice_to_have", name="criterion_kind", create_type=False),
+        nullable=False,
+    )
+    weight: Mapped[Decimal] = mapped_column(Numeric(6, 3), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class RubricLevel(Base):
+    """The descriptor for one score level 0 to 4 of a criterion."""
+
+    __tablename__ = "rubric_levels"
+
+    criterion_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("criteria.id", ondelete="CASCADE"), primary_key=True
+    )
+    level: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    descriptor: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Candidate(Base):
+    """One uploaded resume for one role (the columns the upload writes)."""
+
+    __tablename__ = "candidates"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    candidate_no: Mapped[int] = mapped_column(BigInteger, Identity(always=True), nullable=False)
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("roles.id", ondelete="RESTRICT"), nullable=False
+    )
+    file_name: Mapped[str] = mapped_column(String, nullable=False)  # personal data
+    content_hash: Mapped[str] = mapped_column(String, nullable=False)
+    duplicate_of_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("candidates.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ResumeFile(Base):
+    """The uploaded bytes, held until extraction succeeds (ADR-0008)."""
+
+    __tablename__ = "resume_files"
+
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidates.id", ondelete="CASCADE"), primary_key=True
+    )
+    media_type: Mapped[str] = mapped_column(String, nullable=False)
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)  # personal data
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

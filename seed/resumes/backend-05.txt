@@ -1,0 +1,28 @@
+Carlos Mendoza
+Cloud and Platform Engineer
+Houston, Texas
+carlos.mendoza@example.com
+555-0105
+example.com/in/carlosmendoza
+
+About me
+I have spent eight years building and running platforms for backend teams, mostly in Java. People at work call me Carlo. I want to move closer to Python services.
+
+Skills
+Area | Tools | Years
+Containers | Docker, Kubernetes, Helm | 6
+Cloud | AWS, Terraform | 7
+Observability | Prometheus, Grafana, alerting | 6
+Languages | Java, Go, some Python | 8
+Databases | PostgreSQL basics | 3
+Testing | JUnit, smoke tests | 5
+
+Experience
+Platform Engineer, Ironbridge Cloud, 2019 to present
+I built the container build and deployment pipeline for 30 Java services: images, Helm charts, canary releases and rollbacks. I wrote the Terraform modules for the network, databases and clusters, and led the move of the platform to a second AWS region, which cut cloud cost by 22 percent. I set the service level objectives with the product teams, built the alerts and the on-call runbooks, and led incident reviews; outages per quarter fell from nine to three.
+I use Python for glue scripts and a small internal tool with a Flask endpoint that lists deployments. I have not built a customer-facing API in Python.
+I use PostgreSQL as a user: I create databases, set up backups and read query plans with the app teams, but I do not design schemas.
+I write JUnit tests for the Java libraries I maintain and smoke tests that run after every deploy.
+
+Software Engineer, Tamsin Software, 2016 to 2019
+Java backend developer on a booking platform.

@@ -1,0 +1,25 @@
+{
+ "note": "DRAFT for engineer approval: one criterion per job description.",
+ "cases": [
+  {
+   "id": "backend",
+   "role_file": "../seed/roles/backend.md",
+   "criterion": "Python and API development"
+  },
+  {
+   "id": "support",
+   "role_file": "../seed/roles/support.md",
+   "criterion": "Customer communication and de-escalation"
+  },
+  {
+   "id": "vague",
+   "role_file": "evals/roles/vague.md",
+   "criterion": "Getting things done"
+  },
+  {
+   "id": "injection",
+   "role_file": "evals/roles/injection.md",
+   "criterion": "SQL and data analysis"
+  }
+ ]
+}

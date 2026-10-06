@@ -109,4 +109,8 @@ def test_many_matches_are_applied_quickly() -> None:
     raw = "a@b.co " * 14_000
     result = anonymize(raw)
     assert result.text.value == "[EMAIL] " * 14_000
-    assert result.report.repaired == 14_000
+    assert result.report.repaired == 0  # the contact pass got them all, the scan had none
+
+
+def test_the_version_was_bumped_for_the_title_religion_and_name_changes() -> None:
+    assert ANONYMIZER_VERSION == 3

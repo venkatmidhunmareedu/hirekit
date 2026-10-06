@@ -1,0 +1,15 @@
+{
+  "input_sha256": "b004030094245944b4ccca123e4ad26f2d03736367ac38f9a2bd2df46f38e52c",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "7a32680dcf3ea7c913b5579a687365f9b30f047fc62c4d86196e11846bbf052b",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1140,
+    "output_tokens": 1359,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":2,\"quote\":\"I also maintain a few small Flask endpoints that expose reports to the support team.\"},{\"criterion\":2,\"value\":4,\"quote\":\"I redesigned the appointments schema (normalised six overlapping tables into three, added partial indexes) and cut the busiest query from 3 s to 120 ms.\"},{\"criterion\":3,\"value\":1,\"quote\":\"Tests for my work are mostly SQL scripts I run by hand before a release; the team has asked me to move them into pytest.\"},{\"criterion\":4,\"value\":1,\"quote\":\"Docker, a shared CI server\"},{\"criterion\":5,\"value\":2,\"quote\":\"review every slow query report\"}]}"
+  },
+  "schema_retry": 1
+}

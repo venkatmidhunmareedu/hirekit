@@ -1,0 +1,31 @@
+Michael Brennan
+Senior Software Engineer
+Manchester, England
+michael.brennan@example.com
+555-0110
+example.com/in/michaelbrennan
+
+Summary
+Generalist backend engineer with ten years across startups and mid-size companies. I have built APIs, tuned databases, set up pipelines and carried the pager. I am usually called Mike.
+
+Skills
+Area | Tools | Years
+Backend | Python, FastAPI, Django, Celery | 10
+Data | PostgreSQL, Redis, query tuning | 9
+Quality | pytest, contract tests, CI | 8
+Cloud | AWS, Docker, Terraform, ECS | 6
+Operations | Prometheus, Grafana, on-call | 7
+
+Experience
+Senior Software Engineer, Tallis Health, 2020 to present
+I am the technical owner of the appointments service, a FastAPI application with 70 endpoints and 1,200 requests per second at peak. I introduced typed request models and a deprecation policy, and wrote the API guide for partners. I designed the schema for the new billing module in PostgreSQL (eight tables, row level history, partial indexes) and used EXPLAIN to cut the checkout query from 900 ms to 60 ms. The suite for the service has 2,100 tests and a CI job that gates every merge; I run a short testing clinic for new joiners twice a year.
+I built the ECS deployment with Terraform modules for three services, including blue-green releases, and led a cost review that cut the cloud bill by 18 percent. I added metrics, structured logs and alerts, and I led the incident review process: outages in a year went from eleven to four.
+
+Software Engineer, Ravenscar Retail, 2016 to 2020
+Built Django and Celery services for orders and stock, wrote migrations and added a CI pipeline.
+
+Software Developer, Pennant Studios, 2014 to 2016
+Worked on a Python content API and its PostgreSQL database.
+
+Education
+BSc Computer Science, Halden Technical University, 2014

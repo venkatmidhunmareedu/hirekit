@@ -1,0 +1,15 @@
+{
+  "input_sha256": "3510eb2f4cb0ac158226ef8fbefba7e3419f80af9a4f0b630d420bc024c3eb5e",
+  "key_version": 1,
+  "model": "deepseek-flash",
+  "prompt_version": "scoring-v1",
+  "purpose": "scoring",
+  "request_key": "b32c74f5fd01a458129657fecf697f64d28fc08fbca09bfcccaa7878e5c7a565",
+  "response": {
+    "finish_reason": "stop",
+    "input_tokens": 1164,
+    "output_tokens": 1244,
+    "text": "{\"scores\":[{\"criterion\":1,\"value\":2,\"quote\":\"Add endpoints to the service in FastAPI under the guidance of the tech lead, usually one or two a sprint.\"},{\"criterion\":2,\"value\":2,\"quote\":\"Write plain SQL for reports and changes to existing tables; the schema was designed by the data team.\"},{\"criterion\":3,\"value\":4,\"quote\":\"Own the test suite of the ticket validation service (Python, 1,400 tests, runs in 6 minutes in CI).\"},{\"criterion\":4,\"value\":2,\"quote\":\"Wrote the integration test harness with a disposable PostgreSQL container\"},{\"criterion\":5,\"value\":0,\"quote\":null}]}"
+  },
+  "schema_retry": 0
+}
