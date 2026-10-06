@@ -555,6 +555,9 @@ paths:
     post:
       operationId: assignInterviewer
       summary: Assign an interviewer (idempotent)
+      description: >-
+        The target must be an interviewer, else 422 validation_error. A repeat returns 201 again
+        and changes nothing. An unknown candidate is 404.
       tags: [candidates]
       x-story-ids: [US-00-016]
       x-roles: [recruiter]
@@ -579,6 +582,9 @@ paths:
     delete:
       operationId: removeAssignment
       summary: Remove an assignment
+      description: >-
+        The candidate leaves that interviewer's list at once. Removing an absent pair is 204; an
+        unknown candidate is 404.
       tags: [candidates]
       x-story-ids: [US-00-016]
       x-roles: [recruiter]
@@ -779,7 +785,8 @@ paths:
       description: >-
         For an interviewer, resume scores and overrides are hidden for a candidate they have not
         submitted feedback on, only their own feedback is returned, no quote is ever selected, and
-        one unassigned id makes the whole request 404.
+        one unassigned id makes the whole request 404. The candidates must be distinct and belong to
+        one role (else 422 validation_error); a role without criteria is 422 no_criteria.
       tags: [compare]
       x-story-ids: [US-00-015]
       x-roles: [recruiter, interviewer]
@@ -1360,6 +1367,10 @@ components:
         created_at: 2026-09-30T10:00:00Z
     CandidateDetail:
       type: object
+      description: >-
+        A recruiter gets every field. An interviewer gets only id, candidate_no, role_id and
+        has_submitted until they submit feedback, then scores too; stage, processing_status and
+        audit are left out for them, not sent as null.
       required: [id, candidate_no, role_id]
       properties:
         id: { type: string, format: uuid }

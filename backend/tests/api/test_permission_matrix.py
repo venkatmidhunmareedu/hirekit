@@ -14,10 +14,14 @@ from fastapi.routing import APIRoute, _EffectiveRouteContext, _IncludedRouter
 from httpx import AsyncClient
 from starlette.routing import BaseRoute
 
+from app.api.candidates.router import get_candidates
 from app.core.auth import CurrentUser, InterviewerUser, RecruiterUser, current_session
 from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
+from tests.api.fake_assignments import FakeAssignments
+from tests.api.fake_candidates import FakeCandidates
+from tests.api.fake_compare import FakeCompare
 from tests.api.fake_decisions import FakeAudit, FakeDecisions
 from tests.api.fakes import (
     FakeCost,
@@ -65,6 +69,13 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ),
     ("POST", "/v1/candidates/{candidate_id}/stage"): frozenset({"recruiter"}),
     ("POST", "/v1/candidates/{candidate_id}:reveal-identity"): frozenset({"recruiter"}),
+    ("GET", "/v1/roles/{role_id}/candidates"): frozenset({"recruiter"}),
+    ("GET", "/v1/candidates/{candidate_id}"): frozenset({"recruiter", "interviewer"}),
+    ("GET", "/v1/candidates/{candidate_id}/text"): frozenset({"recruiter"}),
+    ("GET", "/v1/compare"): frozenset({"recruiter", "interviewer"}),
+    ("GET", "/v1/me/candidates"): frozenset({"interviewer"}),
+    ("POST", "/v1/candidates/{candidate_id}/assignments"): frozenset({"recruiter"}),
+    ("DELETE", "/v1/candidates/{candidate_id}/assignments/{user_id}"): frozenset({"recruiter"}),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -93,6 +104,10 @@ def register_test_routes(app: FastAPI) -> None:
 @pytest.fixture(autouse=True)
 def _routes(app: FastAPI) -> None:
     register_test_routes(app)
+    fake = FakeCandidates(
+        permissive=True
+    )  # the matrix checks roles; row visibility has its own tests
+    app.dependency_overrides[get_candidates] = lambda: fake
 
 
 FULL_RUBRIC = [{"level": n, "descriptor": f"level {n}"} for n in range(5)]
@@ -108,6 +123,7 @@ BODIES: dict[tuple[str, str], dict[str, object]] = {
         "note": "Seen in the interview notes",
     },
     ("POST", "/v1/candidates/{candidate_id}/stage"): {"stage": "screened"},
+    ("POST", "/v1/candidates/{candidate_id}/assignments"): {"user_id": "{user_id}"},
 }
 # Routes whose body is multipart: a JSON body would be a 422 for them.
 FILES: dict[tuple[str, str], list[tuple[str, tuple[str, bytes, str]]]] = {
@@ -131,6 +147,8 @@ async def test_matrix_cell(
     costs: FakeCost,
     decisions: FakeDecisions,
     audit: FakeAudit,
+    compare: FakeCompare,
+    assignments: FakeAssignments,
     method: str,
     path: str,
     who: str,
@@ -139,20 +157,29 @@ async def test_matrix_cell(
     criterion = criteria.seed(role.id, "Python")
     question_id = kit.seed_question(role.id)
     _, candidate_id, criterion_id = decisions.seed()
-    # One candidate id that both the decisions and the scoring fakes know.
+    # One candidate id that the decisions, scoring and assignments fakes all know.
     scoring_jobs.candidates[candidate_id] = (role.id, 1)
     scoring_jobs.needs.add(candidate_id)
+    assignments.seed_candidate(candidate_id=candidate_id)
+    target = users.add(email="target@example.com", role="interviewer")
     url = (
         path.replace("{role_id}", str(role.id))
         .replace("{question_id}", str(question_id))
         .replace("{candidate_id}", str(candidate_id))
         .replace("{criterion_id}", str(criterion_id))
+        .replace("{user_id}", str(target.id))
     )
+    two = [compare.seed(role.id), compare.seed(role.id)]
+    body = BODIES.get((method, path))
+    if body:
+        body = {k: str(target.id) if v == "{user_id}" else v for k, v in body.items()}
     headers: dict[str, str] = {}
     if who != "anonymous":
         user = users.add(email=f"{who}@example.com", role=who)
         headers = (await sessions.sign_in(user)).unsafe_headers
         roles.assigned.add((role.id, user.id))  # lets an interviewer read the role
+        for compared in two:
+            compare.assigned.add((compared, user.id))
     # Feedback routes: the same candidate, assigned to the caller, and the rows each route expects.
     feedback.role_of[candidate_id] = role.id
     feedback.assigned |= {(candidate_id, u.id) for u in users.rows}
@@ -169,8 +196,9 @@ async def test_matrix_cell(
         method,
         url,
         headers=headers,
-        json={"items": [item]} if "/feedback" in path else BODIES.get((method, path)),
+        json={"items": [item]} if "/feedback" in path else body,
         files=FILES.get((method, path)),
+        params={"ids": ",".join(map(str, two))} if path == "/v1/compare" else None,
     )
 
     if who == "anonymous":
