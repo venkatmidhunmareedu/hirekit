@@ -10,6 +10,7 @@ import {
   getQueue,
   listCandidates,
   overrideScore,
+  rescoreRole,
   revealIdentity,
   unassignInterviewer,
   uploadResumes,
@@ -54,6 +55,14 @@ export function useUpload(roleId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (files: File[]) => uploadResumes(roleId, files),
+    onSuccess: async () => queryClient.invalidateQueries({ queryKey: candidateKeys.role(roleId) }),
+  });
+}
+
+export function useRescore(roleId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => rescoreRole(roleId),
     onSuccess: async () => queryClient.invalidateQueries({ queryKey: candidateKeys.role(roleId) }),
   });
 }

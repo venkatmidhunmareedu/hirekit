@@ -1,9 +1,28 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, Outlet } from "@tanstack/react-router";
 
 import { AlertIcon } from "../components/AlertIcon";
 import { Logo } from "../components/Logo";
 import { sessionQueryOptions, useLogout } from "../features/auth/hooks";
+import { budgetQueryOptions } from "../features/cost/hooks";
+
+/** Model spend against the USD limit: icon and text, never color alone. Not a link: no call log page exists. */
+function BudgetPill() {
+  const budget = useQuery(budgetQueryOptions);
+  if (!budget.data) return null;
+  const { spent_usd: spent, limit_usd: limit, model_actions_allowed: allowed } = budget.data;
+  const reached = !allowed || spent >= limit;
+  const warn = !reached && spent >= limit * 0.75;
+  const text = reached
+    ? "Budget reached"
+    : `Budget USD ${spent.toFixed(2)} of ${limit.toFixed(2)}${warn ? ", nearly used" : ""}`;
+  return (
+    <span className={`pill${reached ? " pill-danger" : warn ? " pill-warning" : ""}`}>
+      {(reached || warn) && <AlertIcon />}
+      <span>{text}</span>
+    </span>
+  );
+}
 
 /** Authenticated layout (Design.md section 5): sidebar, top bar with the user, content. */
 export function AppShell() {
@@ -31,6 +50,7 @@ export function AppShell() {
             <span>{session.user.name}</span>
             <span className="muted">{session.user.role}</span>
           </span>
+          {session.user.role === "recruiter" && <BudgetPill />}
           <button
             type="button"
             className="btn btn-secondary"
@@ -53,15 +73,5 @@ export function AppShell() {
         </main>
       </div>
     </div>
-  );
-}
-
-/** The signed-in landing page. The role list (Design.md section 8.1) is a later task. */
-export function HomePage() {
-  return (
-    <>
-      <h1>Roles</h1>
-      <p className="muted">Your roles will appear here.</p>
-    </>
   );
 }

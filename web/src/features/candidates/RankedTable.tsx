@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import type { RankedCandidate, ScoreCell } from "./api";
 
 const STAGE_LABEL: Record<RankedCandidate["stage"], string> = {
@@ -50,9 +52,13 @@ function ScoreChip({ cell }: { cell: ScoreCell }) {
 export function RankedTable({
   candidates,
   offset,
+  selected,
+  onToggle,
 }: {
   candidates: RankedCandidate[];
   offset: number;
+  selected: string[];
+  onToggle: (id: string) => void;
 }) {
   const criteria = new Map<string, string>();
   for (const candidate of candidates) {
@@ -71,6 +77,7 @@ export function RankedTable({
               Rank
             </th>
             <th scope="col">Candidate</th>
+            <th scope="col">Compare</th>
             <th scope="col" className="num" aria-sort="descending">
               Weighted score
             </th>
@@ -94,7 +101,9 @@ export function RankedTable({
               <tr key={candidate.id}>
                 <td className="num">{offset + index + 1}</td>
                 <th scope="row">
-                  {candidateLabel(candidate.candidate_no)}
+                  <Link to="/candidates/$candidateId" params={{ candidateId: candidate.id }}>
+                    {candidateLabel(candidate.candidate_no)}
+                  </Link>
                   {candidate.duplicate_of_candidate_no !== null && (
                     <small className="muted">
                       {" "}
@@ -102,6 +111,16 @@ export function RankedTable({
                     </small>
                   )}
                 </th>
+                <td>
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${candidateLabel(candidate.candidate_no)} to compare`}
+                    checked={selected.includes(candidate.id)}
+                    onChange={() => {
+                      onToggle(candidate.id);
+                    }}
+                  />
+                </td>
                 <td className="num">
                   {ready
                     ? candidate.total.toFixed(1)

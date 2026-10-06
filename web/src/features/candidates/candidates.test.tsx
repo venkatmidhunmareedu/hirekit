@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { setCsrfToken } from "../../lib/api";
 import { json, networkDown, session, stubFetch } from "../../test/fetch";
@@ -214,6 +214,129 @@ describe("candidates page", () => {
     renderApp(PATH);
 
     expect(await screen.findByText(/12 waiting, 4 running/)).toBeInTheDocument();
+  });
+});
+
+const COST = "GET /v1/cost-log?limit=1";
+const budget = (allowed: boolean) => () =>
+  json(200, {
+    budget: { spent_usd: "1.00", limit_usd: "8.00", mode: "live", model_actions_allowed: allowed },
+    data: [],
+    page: { next_cursor: null, has_more: false },
+  });
+const RESCORE = `POST /v1/roles/${ROLE_ID}:rescore`;
+
+describe("re-run scoring", () => {
+  const stale = () => json(200, page([candidate(1, { stale: true })]));
+
+  it("posts the rescore and reports queued and skipped", async () => {
+    const { calls } = stubFetch({
+      ...approved,
+      ...idle,
+      [LIST]: stale,
+      [COST]: budget(true),
+      [RESCORE]: () => json(202, { job_ids: [41, 42], skipped_candidate_nos: [7] }),
+    });
+    renderApp(PATH);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Re-run scoring" }));
+
+    expect(await screen.findByText("Re-scoring 2 candidates; 1 skipped")).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "POST" && c.path.endsWith(":rescore"))).toBe(true);
+  });
+
+  it("explains a refusal", async () => {
+    stubFetch({
+      ...approved,
+      ...idle,
+      [LIST]: stale,
+      [COST]: budget(true),
+      [RESCORE]: () =>
+        json(409, {
+          error: { code: "budget_reached", message: "x", details: {}, request_id: null },
+        }),
+    });
+    renderApp(PATH);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Re-run scoring" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("model budget has been reached");
+  });
+
+  it("is disabled when the budget blocks model actions", async () => {
+    stubFetch({ ...approved, ...idle, [LIST]: stale, [COST]: budget(false) });
+    renderApp(PATH);
+
+    const button = await screen.findByRole("button", { name: "Re-run scoring" });
+    await vi.waitFor(() => {
+      expect(button).toBeDisabled();
+    });
+  });
+});
+
+describe("ranked list filters and navigation", () => {
+  const rows = () =>
+    json(
+      200,
+      page([
+        candidate(1, { scores: [cell("c1", "Python experience", { flag_reason: "vague" })] }),
+        candidate(2, { scores: [cell("c1", "Python experience", { override_score: 4 })] }),
+        candidate(3),
+      ]),
+    );
+
+  it("shows flagged candidates only", async () => {
+    stubFetch({ ...approved, ...idle, [LIST]: rows });
+    renderApp(PATH);
+
+    await userEvent.click(await screen.findByLabelText("Flagged only"));
+
+    expect(screen.getByText("C-001")).toBeInTheDocument();
+    expect(screen.queryByText("C-002")).not.toBeInTheDocument();
+    expect(screen.queryByText("C-003")).not.toBeInTheDocument();
+  });
+
+  it("shows candidates with overrides only, and says when none match", async () => {
+    stubFetch({ ...approved, ...idle, [LIST]: rows });
+    renderApp(PATH);
+
+    await userEvent.click(await screen.findByLabelText("Has overrides"));
+    expect(screen.getByText("C-002")).toBeInTheDocument();
+    expect(screen.queryByText("C-001")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByLabelText("Flagged only"));
+    expect(screen.getByText("No candidates on this page match the filters.")).toBeInTheDocument();
+  });
+
+  it("links each label to the candidate detail", async () => {
+    stubFetch({ ...approved, ...idle, [LIST]: rows });
+    renderApp(PATH);
+
+    const link = await screen.findByRole("link", { name: "C-001" });
+
+    expect(link).toHaveAttribute("href", "/candidates/30000000-0000-4000-8000-000000000001");
+  });
+
+  it("enables Compare only for two to four selected candidates", async () => {
+    const five = () => json(200, page([1, 2, 3, 4, 5].map((n) => candidate(n))));
+    stubFetch({ ...approved, ...idle, [LIST]: five });
+    renderApp(PATH);
+
+    const box = async (no: number) =>
+      screen.findByRole("checkbox", { name: `Select C-00${no} to compare` });
+    const compare = () => screen.getByRole("link", { name: "Compare" });
+
+    await userEvent.click(await box(1));
+    expect(compare()).toHaveAttribute("aria-disabled", "true");
+
+    await userEvent.click(await box(2));
+    expect(compare()).not.toHaveAttribute("aria-disabled");
+    expect(compare().getAttribute("href")).toContain(
+      "ids=30000000-0000-4000-8000-000000000001%2C30000000-0000-4000-8000-000000000002",
+    );
+
+    for (const n of [3, 4, 5]) await userEvent.click(await box(n));
+    expect(compare()).toHaveAttribute("aria-disabled", "true");
   });
 });
 
