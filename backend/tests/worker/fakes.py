@@ -16,7 +16,14 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.repositories.jobs import Job
+from app.gateway.text import (
+    AnonymizedText,
+    JobDescriptionText,
+    mint_anonymized,
+    mint_job_description,
+)
 from app.worker.errors import LeaseLostError
+from app.worker.ports import CriterionSpec
 
 START = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
 
@@ -84,6 +91,8 @@ class FakeJobs:
     lease_gone: bool = False
     claim_error: bool = False
     lease_expires_at: datetime | None = None
+    fail_session: AsyncSession | None = None
+    status_sessions: list[AsyncSession] = field(default_factory=list)
 
     async def claim(self, session: AsyncSession, *, lease_seconds: int) -> Job | None:
         self.calls.append(("claim", lease_seconds))
@@ -119,7 +128,46 @@ class FakeJobs:
         self, session: AsyncSession, job_id: int, lease_token: UUID, *, code: str
     ) -> None:
         self.calls.append(("fail", job_id, code))
+        self.fail_session = session
+
+    async def set_status(
+        self,
+        session: AsyncSession,
+        candidate_id: UUID,
+        status: str,
+        failure_reason: str | None = None,
+    ) -> None:
+        """Stands in for `worker_writes.set_status`, which the loop calls beside `fail`."""
+        self.calls.append(("set_status", candidate_id, status, failure_reason))
+        self.status_sessions.append(session)
+
+    def statuses(self) -> list[tuple[object, ...]]:
+        """Only the candidate status writes."""
+        return [c for c in self.calls if c[0] == "set_status"]
 
     def writes(self) -> list[tuple[object, ...]]:
         """Only the end-state writes, without claims, fences and renewals."""
         return [c for c in self.calls if c[0] in {"reschedule", "fail"}]
+
+
+@dataclass
+class FakeAnonymizedLoader:
+    """Stands in for `app.anonymizer.load_anonymized`, minting like the real one."""
+
+    texts: dict[UUID, str] = field(default_factory=dict)
+
+    async def __call__(self, session: AsyncSession, candidate_id: UUID) -> AnonymizedText:
+        return mint_anonymized(self.texts[candidate_id])
+
+
+@dataclass
+class FakeJobDescriptionLoader:
+    """Stands in for the job-description loader, which has no package yet."""
+
+    descriptions: dict[UUID, str] = field(default_factory=dict)
+
+    async def __call__(
+        self, session: AsyncSession, role_id: UUID, criterion: CriterionSpec | None = None
+    ) -> JobDescriptionText:
+        suffix = "" if criterion is None else f"\n{criterion.name}"
+        return mint_job_description(self.descriptions[role_id] + suffix)

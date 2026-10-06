@@ -11,10 +11,12 @@ next one, so the loop only ever sees a job to run or nothing.
 import asyncio
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import datetime
-from typing import Final
+from typing import Final, Protocol
+from uuid import UUID
 
 import structlog
 from sqlalchemy.exc import InterfaceError, OperationalError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.worker.context import JobContext, JobsRepository, SessionFactory
 from app.worker.errors import LeaseLostError
@@ -25,6 +27,19 @@ log = structlog.get_logger()
 
 NO_HANDLER: Final = "no_handler"
 
+
+class CandidateWrites(Protocol):
+    """The part of `app.db.repositories.worker_writes` the loop calls (Q8a)."""
+
+    async def set_status(
+        self,
+        session: AsyncSession,
+        candidate_id: UUID,
+        status: str,
+        failure_reason: str | None = None,
+    ) -> None: ...
+
+
 Handler = Callable[[JobContext], Awaitable[Outcome]]
 Clock = Callable[[], datetime]
 Sleep = Callable[[float], Awaitable[None]]
@@ -34,6 +49,7 @@ async def run_worker(
     *,
     sessions: SessionFactory,
     jobs: JobsRepository,
+    writes: CandidateWrites,
     handlers: Mapping[str, Handler],
     stop: asyncio.Event,
     now: Clock,
@@ -54,7 +70,7 @@ async def run_worker(
             continue
         ctx = JobContext(job, sessions, jobs, lease_seconds)
         try:
-            await _run_one(ctx, handlers, jobs, now)
+            await _run_one(ctx, handlers, jobs, writes, now)
         except LeaseLostError:
             log.info("lease_lost", job_id=job.id, type=job.type)
         except (OperationalError, InterfaceError) as error:
@@ -63,7 +79,11 @@ async def run_worker(
 
 
 async def _run_one(
-    ctx: JobContext, handlers: Mapping[str, Handler], jobs: JobsRepository, now: Clock
+    ctx: JobContext,
+    handlers: Mapping[str, Handler],
+    jobs: JobsRepository,
+    writes: CandidateWrites,
+    now: Clock,
 ) -> None:
     job = ctx.job
     handler = handlers.get(job.type)
@@ -86,3 +106,6 @@ async def _run_one(
     elif isinstance(outcome, Failed):
         async with ctx.sessions() as session:
             await jobs.fail(session, job.id, job.lease_token, code=outcome.code)
+            # Same transaction (T5). A failed rescore leaves the candidate done with its old scores.
+            if job.type == "process_resume" and job.candidate_id is not None:
+                await writes.set_status(session, job.candidate_id, "failed", outcome.reason)

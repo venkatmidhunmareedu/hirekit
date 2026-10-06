@@ -27,6 +27,7 @@ async def drive(
     await run_worker(
         sessions=sessions.begin,
         jobs=jobs,
+        writes=jobs,
         handlers=handlers,
         stop=stop,
         now=clock.now,
@@ -105,6 +106,7 @@ async def test_loop_stops_claiming_after_sigterm_and_finishes_the_current_job() 
     await run_worker(
         sessions=sessions.begin,
         jobs=jobs,
+        writes=jobs,
         handlers={"process_resume": handler},
         stop=stop,
         now=clock.now,
@@ -206,3 +208,35 @@ async def test_no_transaction_is_open_while_a_handler_runs() -> None:
 
     await drive(jobs, clock, sessions, {"process_resume": handler})
     assert open_during == [0]
+
+
+async def test_failing_a_resume_job_fails_the_candidate_in_the_same_transaction() -> None:
+    job = make_job(1)
+    jobs, clock, sessions = setup(job)
+
+    async def handler(ctx: JobContext) -> Outcome:
+        return Failed("extraction_failed", "No text could be read")
+
+    await drive(jobs, clock, sessions, {"process_resume": handler})
+    assert jobs.statuses() == [("set_status", job.candidate_id, "failed", "No text could be read")]
+    assert jobs.status_sessions == [jobs.fail_session]  # one transaction, so both or neither
+
+
+async def test_a_failed_rescore_leaves_the_candidate_done() -> None:
+    jobs, clock, sessions = setup(make_job(1, job_type="rescore"))
+    await drive(jobs, clock, sessions, {})
+    assert jobs.writes() == [("fail", 1, "no_handler")]
+    assert jobs.statuses() == []  # a failed rescore leaves the candidate done
+
+
+async def test_a_job_that_raises_fails_its_candidate_with_the_plain_sentence() -> None:
+    job = make_job(1)
+    jobs, clock, sessions = setup(job)
+
+    async def handler(ctx: JobContext) -> Outcome:
+        raise ValueError("resume text must not leak")
+
+    await drive(jobs, clock, sessions, {"process_resume": handler})
+    assert jobs.statuses() == [
+        ("set_status", job.candidate_id, "failed", "Something went wrong. Try again.")
+    ]
