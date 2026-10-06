@@ -52,6 +52,7 @@ resume_raw_texts,raw_text,text,No,,,,,Yes,"Extracted text with names, contacts a
 resume_raw_texts,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
 resume_texts,candidate_id,uuid,No,"PK, FK",,candidates.id,CASCADE,No,The candidate this text belongs to.,"AC-US-00-005-1: stored in its own row, apart from the raw text."
 resume_texts,anonymized_text,text,No,,,,,Yes,Text after identity signals were removed. [personal data: derived from a resume; proxy signals can remain],"AC-US-00-005-2 and AC-US-00-007-1: scoring reads only this, and every quote must appear in it. Marked personal data because proxy signals can remain (PRD section 13)."
+resume_texts,anonymizer_version,smallint,No,,1,,,No,"Which anonymizer version produced the text, so text from before a fix can be told from new text.","Anonymizer LLD work item 10: a stored text must say which version made it. Added by migration 3."
 resume_texts,created_at,timestamptz,No,,now(),,,No,When the row was written.,Rule: audit columns (postgres.md).
 scores,candidate_id,uuid,No,"PK, FK",,candidates.id,CASCADE,No,The candidate scored.,AC-US-00-006-1: a score belongs to a candidate; removing the candidate removes its scores.
 scores,criterion_id,uuid,No,"PK, FK",,criteria.id,CASCADE,No,The criterion scored.,AC-US-00-006-1: one score per approved criterion.

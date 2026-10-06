@@ -303,6 +303,7 @@ Writers: the Worker only. The Api reads it for recruiters; interviewer routes ne
 | --- | --- | --- | --- | --- | --- | --- |
 | `candidate_id` | `uuid` | No | PK, FK candidates.id |  | The candidate this text belongs to. | AC-US-00-005-1: stored in its own row, apart from the raw text. |
 | `anonymized_text` | `text` | No |  |  | Text after identity signals were removed. **(personal data: derived from a resume; proxy signals can remain)** | AC-US-00-005-2 and AC-US-00-007-1: scoring reads only this, and every quote must appear in it. Marked personal data because proxy signals can remain (PRD section 13). |
+| `anonymizer_version` | `smallint` | No |  | `1` | Which anonymizer version produced the text, so text from before a fix can be told from new text. | Anonymizer LLD work item 10: a stored text must say which version made it. Added by migration 3. |
 | `created_at` | `timestamptz` | No |  | `now()` | When the row was written. | Rule: audit columns (postgres.md). |
 
 **Constraints**
@@ -721,7 +722,7 @@ Each entry: what, the table, the consequence, owner and date. Owner for all: mid
 10. **[settled 2026-09-30]** The approve-edit route should address (candidate, interviewer), and the audit row should keep the old comment; `audit_events` has no old-comment column. (`feedback`, `audit_events`) Decision: `audit_events.old_comment` added; the route is `POST /v1/candidates/{id}/feedback/{interviewer}:approve-edit`, to be written in the OpenAPI spec. Blocks development: no.
 11. **[settled 2026-09-30]** Stage protection needs database roles with a column-level GRANT (migration 2). Decision: migration 2 creates `hirekit_api` and `hirekit_worker` with column-level grants; until it is applied tenet 4 rests on code review. (`candidates`) By 2026-10-14. Blocks development: no.
 12. **[gap]** After a scoring job is discarded as stale, the candidate's `processing_status` has no state for it; modelled as `done` with stale scores and a re-run offered. (`candidates`, `jobs`) By 2026-10-14. Blocks development: no.
-13. **[gap]** `resume_texts` has no anonymizer version, so after an anonymizer fix, text verified under the old one cannot be told from new text. (`resume_texts`) By 2026-10-14. Blocks development: no.
+13. **[settled 2026-10-03]** `resume_texts` had no anonymizer version, so after an anonymizer fix, text verified under the old one could not be told from new text. Decision: migration 3 adds `anonymizer_version smallint NOT NULL DEFAULT 1`; the Worker writes it with the text. (`resume_texts`) Blocks development: no.
 14. **[gap]** Nothing reconciles `reserved` `call_log` rows left by timeouts (HLD section 16 already lists who reconciles the budget). No index on status; add one if a report needs it. (`call_log`) By 2026-10-14. Blocks development: no.
 15. **[scope]** Eval labels, name-swap pair links, recordings and the spend ledger are assumed to be committed files, not tables. (not modelled) By 2026-10-07. Blocks development: no.
 16. **[risk]** `audit_events` is protected against UPDATE only; DELETE is left possible for a future purge, and TRUNCATE is not addressed. Column grants in migration 2 should remove both from the application roles. (`audit_events`) By 2026-10-14. Blocks development: no.
