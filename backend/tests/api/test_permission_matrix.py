@@ -18,7 +18,7 @@ from app.core.auth import CurrentUser, InterviewerUser, RecruiterUser, current_s
 from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
-from tests.api.fakes import FakeCriteria, FakeRoles, FakeSessions, FakeUploads, FakeUsers
+from tests.api.fakes import FakeCriteria, FakeKit, FakeRoles, FakeSessions, FakeUploads, FakeUsers
 from tests.files import pdf_bytes
 
 # (method, path) -> roles allowed. An absent role gets 403; no sign-in gets 401.
@@ -35,6 +35,11 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("PUT", "/v1/roles/{role_id}/criteria"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/approve"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/resumes"): frozenset({"recruiter"}),
+    ("POST", "/v1/roles/{role_id}/kit:generate"): frozenset({"recruiter"}),
+    ("GET", "/v1/roles/{role_id}/kit"): frozenset({"recruiter", "interviewer"}),
+    ("PUT", "/v1/kit/questions/{question_id}"): frozenset({"recruiter"}),
+    ("DELETE", "/v1/kit/questions/{question_id}"): frozenset({"recruiter"}),
+    ("POST", "/v1/kit/questions/{question_id}:regenerate"): frozenset({"recruiter"}),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -72,6 +77,7 @@ BODIES: dict[tuple[str, str], dict[str, object]] = {
         "criteria": [{"name": "Python", "kind": "must_have", "weight": 3, "rubric": FULL_RUBRIC}]
     },
     ("POST", "/v1/roles/{role_id}/approve"): {"criteria_version": 1},
+    ("PUT", "/v1/kit/questions/{question_id}"): {"question_text": "Why Python?"},
 }
 # Routes whose body is multipart: a JSON body would be a 422 for them.
 FILES: dict[tuple[str, str], list[tuple[str, tuple[str, bytes, str]]]] = {
@@ -89,13 +95,15 @@ async def test_matrix_cell(
     roles: FakeRoles,
     criteria: FakeCriteria,
     uploads: FakeUploads,
+    kit: FakeKit,
     method: str,
     path: str,
     who: str,
 ) -> None:
     role = roles.seed(status="approved")
     criteria.seed(role.id, "Python")
-    url = path.replace("{role_id}", str(role.id))
+    question_id = kit.seed_question(role.id)
+    url = path.replace("{role_id}", str(role.id)).replace("{question_id}", str(question_id))
     headers: dict[str, str] = {}
     if who != "anonymous":
         user = users.add(email=f"{who}@example.com", role=who)

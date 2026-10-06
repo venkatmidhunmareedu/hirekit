@@ -89,6 +89,12 @@ class BudgetReachedError(ConflictError):
     code = "budget_reached"
 
 
+class JobAlreadyOpenError(ConflictError):
+    """A scoring, proposal or kit job for the same target is already queued or running."""
+
+    code = "job_already_open"
+
+
 class TooManyFilesError(DomainError):
     """More files in one upload than the limit allows."""
 

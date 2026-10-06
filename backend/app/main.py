@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from app import __version__
 from app.api.auth.router import router as auth_router
 from app.api.health.router import router as health_router
+from app.api.kit.router import router as kit_router
 from app.api.resumes.router import router as resumes_router
 from app.api.roles.router import router as roles_router
 from app.core.config import Settings, get_settings
@@ -61,4 +62,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(roles_router)
     app.include_router(resumes_router)
+    app.include_router(kit_router)
     return app
