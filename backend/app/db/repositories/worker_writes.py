@@ -1,11 +1,12 @@
 """SQL the handlers use to read inputs and write results (docs/design/worker-lld.md, Q5 to Q11).
 
 Methods take the caller's `AsyncSession` and never commit: `JobContext.fenced()` owns the
-transaction and has already locked the job row, so a Worker that lost its lease never gets here.
-A result writer takes the role lock first (Q5) and returns False, writing nothing, when the role
-is no longer what the job was enqueued against (the criteria changed, or the role was
-re-approved at a new version). Lock order after the role: `jobs`, `candidates`, then `criteria`,
-`rubric_levels`, `questions`, `scores`. Nothing here touches `candidates.stage` (tenet 4).
+transaction and has already locked the role, then the job row (`jobs.fence`), so a Worker that
+lost its lease never gets here. A result writer re-reads the role (Q5; the lock is already held)
+and returns False, writing nothing, when the role is no longer what the job was enqueued against
+(the criteria changed, or the role was re-approved at a new version). Lock order: `roles`,
+`jobs`, `candidates`, then `criteria`, `rubric_levels`, `questions`, `scores`. Nothing here
+touches `candidates.stage` (tenet 4).
 """
 
 from collections.abc import Sequence

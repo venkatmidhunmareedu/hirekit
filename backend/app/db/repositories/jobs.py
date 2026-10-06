@@ -1,9 +1,10 @@
 """All SQL on `jobs`: claim, reclaim, renew, fence, finish, reschedule, fail, stale.
 
 Methods take the caller's `AsyncSession` and never commit; the loop and `JobContext` own the
-transactions (docs/design/worker-lld.md section 5, Q1 to Q4). Lock order is `jobs`, then
-`candidates`. Every write after the claim is conditional on the lease token, so a Worker whose
-lease was lost writes nothing and finds out through `LeaseLostError`.
+transactions (docs/design/worker-lld.md section 5, Q1 to Q4). Lock order is `roles`, then `jobs`,
+then `candidates`; `fence` takes the role lock for the job's role before it locks the job row.
+Every write after the claim is conditional on the lease token, so a Worker whose lease was lost
+writes nothing and finds out through `LeaseLostError`.
 """
 
 from dataclasses import dataclass
@@ -14,13 +15,16 @@ from uuid import UUID, uuid4
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.repositories.worker_writes import set_status
+from app.db.repositories.worker_writes import read_role, set_status
 from app.worker.errors import LeaseLostError
 from app.worker.outcome import SOMETHING_WENT_WRONG
 from app.worker.policy import MAX_ATTEMPTS
 
 LEASE_EXPIRED: Final = "lease_expired"
 LEASE_LOST: Final = "The job lease is gone"
+_HELD = "FROM jobs WHERE id = :id AND lease_token = :token AND status = 'running'"
+_HELD_ROLE: Final = text("SELECT role_id " + _HELD)
+_HELD_LOCK: Final = text("SELECT id " + _HELD + " FOR UPDATE")
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,15 +107,21 @@ async def _fail_exhausted(
         await set_status(session, candidate_id, "failed", SOMETHING_WENT_WRONG)
 
 
-async def fence(session: AsyncSession, job_id: int, lease_token: UUID) -> None:
-    """Q3: lock the job row if this Worker still holds it; else raise `LeaseLostError`."""
-    found = await session.scalar(
-        text(
-            "SELECT id FROM jobs WHERE id = :id AND lease_token = :token "
-            "AND status = 'running' FOR UPDATE"
-        ),
-        {"id": job_id, "token": lease_token},
-    )
+async def fence(
+    session: AsyncSession, job_id: int, lease_token: UUID, *, exclusive: bool = False
+) -> None:
+    """Q5 then Q3: lock the job's role, then the job row, if this Worker still holds the job.
+
+    The role lock comes first (LLD section 5 lock order), `FOR SHARE` or `FOR UPDATE` when the
+    write changes the role. The unlocked read finds the role id (it never changes); the locked
+    read repeats the lease predicate. Raises `LeaseLostError` when the lease is gone.
+    """
+    params = {"id": job_id, "token": lease_token}
+    role_id = await session.scalar(_HELD_ROLE, params)
+    if role_id is None:
+        raise LeaseLostError(LEASE_LOST)
+    await read_role(session, role_id, exclusive=exclusive)
+    found = await session.scalar(_HELD_LOCK, params)
     if found is None:
         raise LeaseLostError(LEASE_LOST)
 

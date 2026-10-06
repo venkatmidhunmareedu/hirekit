@@ -1,7 +1,8 @@
 """`JobContext`: the claimed job, its lease, and the fenced-write helper every handler uses.
 
 `renew` is called before every gateway call so a job with many calls keeps its lease for the
-whole attempt. `fenced` opens a transaction and locks the job row first thing, so a Worker whose
+whole attempt. `fenced` opens a transaction and locks the job's role, then the job row, first
+thing (the LLD section 5 lock order), so a Worker whose
 lease is gone raises `LeaseLostError` and writes nothing (docs/design/worker-lld.md section 3).
 Repositories take the session; the context and the loop own the transactions.
 """
@@ -26,7 +27,9 @@ class JobsRepository(Protocol):
 
     async def claim(self, session: AsyncSession, *, lease_seconds: int) -> Job | None: ...
 
-    async def fence(self, session: AsyncSession, job_id: int, lease_token: UUID) -> None: ...
+    async def fence(
+        self, session: AsyncSession, job_id: int, lease_token: UUID, *, exclusive: bool = False
+    ) -> None: ...
 
     async def renew(
         self, session: AsyncSession, job_id: int, lease_token: UUID, *, lease_seconds: int
@@ -64,8 +67,11 @@ class JobContext:
             )
 
     @asynccontextmanager
-    async def fenced(self) -> AsyncIterator[AsyncSession]:
-        """A transaction that starts by locking the job row; every handler write goes in one."""
+    async def fenced(self, *, exclusive: bool = False) -> AsyncIterator[AsyncSession]:
+        """A transaction that locks the role, then the job row; every handler write goes in one.
+
+        `exclusive` takes the role `FOR UPDATE`, for a write that changes the role (propose).
+        """
         async with self.sessions() as session:
-            await self.jobs.fence(session, self.job.id, self.job.lease_token)
+            await self.jobs.fence(session, self.job.id, self.job.lease_token, exclusive=exclusive)
             yield session

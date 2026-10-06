@@ -93,6 +93,7 @@ class FakeJobs:
     lease_expires_at: datetime | None = None
     fail_session: AsyncSession | None = None
     status_sessions: list[AsyncSession] = field(default_factory=list)
+    fence_exclusive: list[bool] = field(default_factory=list)
 
     async def claim(self, session: AsyncSession, *, lease_seconds: int) -> Job | None:
         self.calls.append(("claim", lease_seconds))
@@ -100,8 +101,11 @@ class FakeJobs:
             raise OperationalError("STATEMENT", {}, Exception("database down"))
         return self.queue.pop(0) if self.queue else None
 
-    async def fence(self, session: AsyncSession, job_id: int, lease_token: UUID) -> None:
+    async def fence(
+        self, session: AsyncSession, job_id: int, lease_token: UUID, *, exclusive: bool = False
+    ) -> None:
         self.calls.append(("fence", job_id, lease_token))
+        self.fence_exclusive.append(exclusive)
         if self.lease_gone:
             raise LeaseLostError("The job lease is gone")
 
