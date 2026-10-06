@@ -18,6 +18,11 @@ export function AppShell() {
           <Link to="/" className="nav-link" activeOptions={{ exact: true }}>
             Roles
           </Link>
+          {session.user.role === "interviewer" && (
+            <Link to="/me/candidates" className="nav-link">
+              My candidates
+            </Link>
+          )}
         </nav>
       </aside>
       <div className="shell-main">
