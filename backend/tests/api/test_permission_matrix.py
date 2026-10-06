@@ -20,6 +20,7 @@ from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
 from tests.api.fake_candidates import FakeCandidates
+from tests.api.fake_compare import FakeCompare
 from tests.api.fake_decisions import FakeAudit, FakeDecisions
 from tests.api.fakes import (
     FakeCost,
@@ -70,6 +71,7 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("GET", "/v1/roles/{role_id}/candidates"): frozenset({"recruiter"}),
     ("GET", "/v1/candidates/{candidate_id}"): frozenset({"recruiter", "interviewer"}),
     ("GET", "/v1/candidates/{candidate_id}/text"): frozenset({"recruiter"}),
+    ("GET", "/v1/compare"): frozenset({"recruiter", "interviewer"}),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -140,6 +142,7 @@ async def test_matrix_cell(
     costs: FakeCost,
     decisions: FakeDecisions,
     audit: FakeAudit,
+    compare: FakeCompare,
     method: str,
     path: str,
     who: str,
@@ -157,11 +160,14 @@ async def test_matrix_cell(
         .replace("{candidate_id}", str(candidate_id))
         .replace("{criterion_id}", str(criterion_id))
     )
+    two = [compare.seed(role.id), compare.seed(role.id)]
     headers: dict[str, str] = {}
     if who != "anonymous":
         user = users.add(email=f"{who}@example.com", role=who)
         headers = (await sessions.sign_in(user)).unsafe_headers
         roles.assigned.add((role.id, user.id))  # lets an interviewer read the role
+        for compared in two:
+            compare.assigned.add((compared, user.id))
     # Feedback routes: the same candidate, assigned to the caller, and the rows each route expects.
     feedback.role_of[candidate_id] = role.id
     feedback.assigned |= {(candidate_id, u.id) for u in users.rows}
@@ -180,6 +186,7 @@ async def test_matrix_cell(
         headers=headers,
         json={"items": [item]} if "/feedback" in path else BODIES.get((method, path)),
         files=FILES.get((method, path)),
+        params={"ids": ",".join(map(str, two))} if path == "/v1/compare" else None,
     )
 
     if who == "anonymous":

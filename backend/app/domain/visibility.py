@@ -4,6 +4,8 @@ import uuid
 from dataclasses import dataclass
 from typing import Literal
 
+from app.db.models import User
+
 
 @dataclass(frozen=True, slots=True)
 class Viewer:
@@ -16,6 +18,14 @@ class Viewer:
     user_id: uuid.UUID
     role: Literal["recruiter", "interviewer"]
 
+    @classmethod
+    def of(cls, user: User) -> Viewer:
+        return cls(user.id, "recruiter" if user.role == "recruiter" else "interviewer")
+
     @property
     def is_recruiter(self) -> bool:
         return self.role == "recruiter"
+
+    @property
+    def is_interviewer(self) -> bool:
+        return self.role == "interviewer"
