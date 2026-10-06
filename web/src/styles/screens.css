@@ -1,139 +1,10 @@
-/* Screen styles: roles, candidates, detail, kit, compare, feedback. Tokens only.
-   Chips and tags are neutral unless they carry a state; never score-based color (Design.md 7.2, 9). */
-.dropzone:focus-within {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.role-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.role-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-3) var(--space-4);
-}
-
-.stepper {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-5);
-  border-bottom: 1px solid var(--border);
-}
-
-.step {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-2) 0;
-  border-bottom: 2px solid transparent;
-}
-
-.step a,
-.step > span {
-  color: var(--text-muted);
-  text-decoration: none;
-}
-
-.step a:hover {
-  color: var(--text);
-}
-
-.step-no {
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-}
-
-.step-done a,
-.step-open a {
-  color: var(--text);
-}
-
-.step-current {
-  border-bottom-color: var(--focus);
-}
-
-.step-current a {
-  color: var(--text);
-  font-weight: 500;
-}
-
-.step-locked > span {
-  cursor: not-allowed;
-}
-
-.job-description {
-  white-space: pre-line;
-  max-width: 75ch;
-}
-
-.criterion {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.criterion-meta {
-  display: flex;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-}
-
-.dropzone {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-card);
-}
-
-.file-results {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.file-results li {
-  display: flex;
-  gap: var(--space-4);
-  min-height: var(--control-h);
-  align-items: center;
-}
-
-.file-name {
-  font-family: var(--font-mono);
-  font-size: var(--text-mono);
-}
-
-/* One table style for the ranked list, my candidates and compare (Design.md 7.9). */
-.table-wrap,
-.table-scroll {
-  overflow-x: auto;
-}
-
-.table,
-.ranked {
+.table {
   width: 100%;
   border-collapse: collapse;
 }
 
 .table th,
-.table td,
-.ranked th,
-.ranked td {
+.table td {
   padding: var(--space-2) var(--space-3);
   text-align: left;
   vertical-align: top;
@@ -141,38 +12,15 @@
   font-weight: 400;
 }
 
-.table thead th,
-.ranked thead th {
+.table thead th {
   position: sticky;
   top: 0;
   background: var(--card);
   font-weight: 500;
 }
 
-.table tbody tr:hover,
-.ranked tbody tr:hover {
+.table tbody tr:hover {
   background: var(--row-hover);
-}
-
-.num {
-  text-align: right;
-  font-family: var(--font-mono);
-  font-size: var(--text-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.chip-cell {
-  display: flex;
-  flex-direction: column;
-}
-
-.chip-cell .chip {
-  align-self: flex-start;
-}
-
-progress {
-  width: 100%;
-  accent-color: var(--brand-deep);
 }
 
 .plain-list {
@@ -187,54 +35,10 @@ progress {
   gap: var(--space-5);
 }
 
-.criterion-row {
-  padding: var(--space-3) 0;
-  border-top: 1px solid var(--border);
-}
-
-.criterion-selected {
-  background: var(--row-hover);
-}
-
 .criterion-box {
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
   padding: var(--space-3);
-}
-
-.evidence {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  align-items: flex-start;
-}
-
-.quote {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border-left: 1px solid var(--border);
-  background: var(--row-hover);
-  font-style: italic;
-}
-
-.quote-clamped {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.resume-text {
-  white-space: pre-wrap;
-  max-height: 480px;
-  overflow: auto;
-  max-width: 75ch;
-}
-
-mark {
-  background: var(--mark-bg);
-  color: var(--mark-text);
-  outline: 1px solid var(--brand-deep);
 }
 
 .radio-row {
@@ -252,30 +56,8 @@ mark {
   min-height: var(--control-h);
 }
 
-.modal {
-  max-width: 560px;
-  width: calc(100% - 32px);
-  padding: var(--space-5);
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-modal);
-  box-shadow: var(--shadow-1);
-}
-
-.modal::backdrop {
-  background: var(--backdrop);
-}
-
-.answer-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-}
-
 @media (max-width: 1024px) {
-  .detail-grid,
-  .answer-pair {
+  .detail-grid {
     grid-template-columns: 1fr;
   }
 }

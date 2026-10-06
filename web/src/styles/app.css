@@ -27,8 +27,7 @@ h4 {
   font-weight: 500;
 }
 
-.sr-only,
-.visually-hidden {
+.sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -40,11 +39,6 @@ h4 {
 .mono {
   font-family: var(--font-mono);
   font-size: var(--text-mono);
-}
-
-.small {
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
 }
 
 :focus-visible {
@@ -67,11 +61,6 @@ h4 {
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   padding: var(--space-5);
-}
-
-/* Vertical rhythm for blocks that are not a flex stack. */
-.flow > * + * {
-  margin-top: var(--space-2);
 }
 
 /* A flat section: a rule and a heading, no box. Cards are for independent objects only. */
@@ -98,78 +87,10 @@ h4 {
   flex-wrap: wrap;
 }
 
-.page-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.breadcrumb {
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-}
-
-.breadcrumb a {
-  color: var(--text-muted);
-}
-
-.breadcrumb a:hover {
-  color: var(--text);
-}
-
-.page-header-purpose {
-  color: var(--text-muted);
-  max-width: 70ch;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-card);
-  color: var(--text-muted);
-}
-
-.loading {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--text-muted);
-}
-
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--border);
-  border-top-color: var(--focus);
-  border-radius: 50%;
-  animation: spin 800ms linear infinite;
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
-}
-
-/* Logo (Design.md section 2.2): wordmark 24px, weight 500, "Kit" in the accent. */
-.logo {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.logo-word {
-  font-size: var(--text-xl);
-  line-height: var(--leading-xl);
-  font-weight: 500;
-}
-
-.logo-accent {
-  color: var(--wordmark-accent);
 }
 
 /* Form controls: 8px radius, 40px minimum target (Design.md section 12). */
@@ -254,26 +175,6 @@ select:disabled {
   background: var(--nav-hover-bg);
 }
 
-.btn-ghost {
-  background: transparent;
-  color: var(--text-muted);
-}
-
-.btn-ghost:hover:not(:disabled) {
-  background: var(--nav-hover-bg);
-  color: var(--text);
-}
-
-.btn-destructive {
-  background: var(--card);
-  color: var(--status-danger);
-  border-color: var(--status-danger);
-}
-
-.btn-destructive:hover:not(:disabled) {
-  background: var(--status-danger-bg);
-}
-
 label.btn {
   cursor: pointer;
 }
@@ -300,24 +201,13 @@ label.btn {
   background: var(--status-danger-bg);
 }
 
-.notice-info {
-  border-color: var(--status-info);
-  background: var(--status-info-bg);
-}
-
-.notice-warning {
-  border-color: var(--status-warn);
-  background: var(--status-warn-bg);
-}
-
 .notice-success {
   border-color: var(--status-ok);
   background: var(--status-ok-bg);
 }
 
 /* Tags and chips: one pill, tones carry state (always with an icon or text). */
-.tag,
-.chip {
+.tag {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -329,32 +219,6 @@ label.btn {
   font-size: var(--text-sm);
   line-height: var(--leading-md);
   white-space: nowrap;
-}
-
-.tag-warning {
-  background: var(--status-warn-bg);
-  border-color: var(--status-warn);
-}
-
-.tag-success {
-  background: var(--status-ok-bg);
-  border-color: var(--status-ok);
-}
-
-.tag-danger {
-  background: var(--status-danger-bg);
-  border-color: var(--status-danger);
-}
-
-.tag-info {
-  background: var(--status-info-bg);
-  border-color: var(--status-info);
-}
-
-.chip {
-  font-family: var(--font-mono);
-  font-size: var(--text-mono);
-  margin-right: var(--space-1);
 }
 
 .auth-page {

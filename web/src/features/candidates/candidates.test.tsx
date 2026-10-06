@@ -175,7 +175,8 @@ describe("candidates page", () => {
     });
     renderApp(PATH);
 
-    await userEvent.selectOptions(await screen.findByLabelText("Hiring stage"), "interview");
+    await userEvent.click(await screen.findByLabelText("Hiring stage"));
+    await userEvent.click(await screen.findByRole("option", { name: "Interview" }));
 
     expect(await screen.findByText("No candidates are in this hiring stage.")).toBeInTheDocument();
     expect(calls.at(-1)?.path).toContain("filter%5Bstage%5D=interview");

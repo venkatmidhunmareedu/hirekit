@@ -136,14 +136,16 @@ describe("candidate detail, recruiter", () => {
     renderApp(`/candidates/${CAND}`);
     const select = await screen.findByLabelText("Hiring stage");
 
-    await userEvent.selectOptions(select, "interview");
+    await userEvent.click(select);
+    await userEvent.click(await screen.findByRole("option", { name: "Interview" }));
     await screen.findByLabelText("Hiring stage");
     expect(JSON.parse(calls.find((c) => c.method === "POST")?.body ?? "{}")).toEqual({
       stage: "interview",
     });
 
     const before = calls.filter((c) => c.method === "POST").length;
-    await userEvent.selectOptions(select, "rejected");
+    await userEvent.click(select);
+    await userEvent.click(await screen.findByRole("option", { name: "Rejected" }));
     const dialog = await screen.findByRole("dialog");
     expect(calls.filter((c) => c.method === "POST")).toHaveLength(before);
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
@@ -159,7 +161,8 @@ describe("candidate detail, recruiter", () => {
     );
     renderApp(`/candidates/${CAND}`);
 
-    await userEvent.selectOptions(await screen.findByLabelText("Hiring stage"), "rejected");
+    await userEvent.click(await screen.findByLabelText("Hiring stage"));
+    await userEvent.click(await screen.findByRole("option", { name: "Rejected" }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.type(within(dialog).getByLabelText(/Reason/), "role closed");
     await userEvent.click(within(dialog).getByRole("button", { name: "Reject candidate" }));

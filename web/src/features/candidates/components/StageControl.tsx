@@ -1,7 +1,28 @@
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+
 import { ErrorNotice } from "../../../components/ErrorNotice";
-import { Modal } from "../../../components/Modal";
 import { STAGES, type Stage } from "../api";
 import { useChangeStage } from "../hooks";
 import { STAGE_LABEL } from "../labels";
@@ -18,48 +39,52 @@ export function StageControl({ candidateId, stage }: { candidateId: string; stag
   const [reason, setReason] = useState("");
 
   return (
-    <div className="stack">
-      <div className="field">
-        <label htmlFor="stage">Hiring stage</label>
-        <select
-          id="stage"
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="stage">Hiring stage</Label>
+        <Select
           value={stage ?? ""}
           disabled={change.isPending}
-          onChange={(e) => {
-            const next = STAGES.find((s) => s === e.target.value);
+          onValueChange={(value) => {
+            const next = STAGES.find((s) => s === value);
             if (!next) return;
             if (next === "rejected") setConfirming(true);
             else change.mutate({ stage: next, reason: null });
           }}
         >
-          {stage === null && <option value="">Not set</option>}
-          <optgroup label="Hiring stages">
-            {MOVES.map((s) => (
-              <option key={s} value={s}>
-                {STAGE_LABEL[s]}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label="Reject">
-            <option value="rejected">{STAGE_LABEL.rejected}</option>
-          </optgroup>
-        </select>
+          <SelectTrigger id="stage" className="h-10 w-52">
+            <SelectValue placeholder="Not set" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectLabel>Hiring stages</SelectLabel>
+              {MOVES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {STAGE_LABEL[s]}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectSeparator />
+            <SelectGroup>
+              <SelectLabel>Reject</SelectLabel>
+              <SelectItem value="rejected">{STAGE_LABEL.rejected}</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       </div>
       {change.error && !confirming && <ErrorNotice error={change.error} />}
-      {confirming && (
-        <Modal
-          title="Reject this candidate?"
-          onClose={() => {
-            setConfirming(false);
-          }}
-        >
-          <p>
-            This is recorded under your name and can be reversed by a recruiter. Nothing is hidden
-            or removed from the list.
-          </p>
-          <div className="field">
-            <label htmlFor="reject-reason">Reason (optional)</label>
-            <textarea
+      <Dialog open={confirming} onOpenChange={setConfirming}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-medium">Reject this candidate?</DialogTitle>
+            <DialogDescription>
+              This is recorded under your name and can be reversed by a recruiter. Nothing is hidden
+              or removed from the list.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="reject-reason">Reason (optional)</Label>
+            <Textarea
               id="reject-reason"
               rows={2}
               value={reason}
@@ -69,19 +94,21 @@ export function StageControl({ candidateId, stage }: { candidateId: string; stag
             />
           </div>
           {change.error && <ErrorNotice error={change.error} />}
-          <div className="actions">
-            <button
+          <DialogFooter>
+            <Button
               type="button"
-              className="btn btn-secondary"
+              variant="outline"
+              className="h-10 px-4"
               onClick={() => {
                 setConfirming(false);
               }}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="btn btn-destructive"
+              variant="destructive"
+              className="h-10 px-4"
               disabled={change.isPending}
               onClick={() => {
                 change.mutate(
@@ -95,10 +122,10 @@ export function StageControl({ candidateId, stage }: { candidateId: string; stag
               }}
             >
               Reject candidate
-            </button>
-          </div>
-        </Modal>
-      )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

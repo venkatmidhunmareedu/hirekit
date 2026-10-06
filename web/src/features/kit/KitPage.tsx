@@ -1,11 +1,18 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { ArrowDown, ArrowUp, Check, Minus, Pencil, Printer, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 import { ErrorNotice } from "../../components/ErrorNotice";
 import { EmptyState } from "../../components/EmptyState";
-import { Icon } from "../../components/Icon";
 import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
 import { PageHeader } from "../../components/PageHeader";
+import { Section } from "../../components/Section";
 import { RoleTabs } from "../roles/RoleTabs";
 import { sessionQueryOptions } from "../auth/hooks";
 
@@ -44,139 +51,154 @@ function QuestionCard({
 
   if (draft) {
     return (
-      <li className="card">
-        <form
-          className="stack"
-          onSubmit={(event) => {
-            event.preventDefault();
-            edit.mutate(
-              {
-                id: question.id,
-                patch: {
-                  question_text: draft.question_text.trim(),
-                  strong_answer: draft.strong_answer.trim(),
-                  weak_answer: draft.weak_answer.trim(),
+      <li>
+        <Card className="px-5">
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              edit.mutate(
+                {
+                  id: question.id,
+                  patch: {
+                    question_text: draft.question_text.trim(),
+                    strong_answer: draft.strong_answer.trim(),
+                    weak_answer: draft.weak_answer.trim(),
+                  },
                 },
-              },
-              {
-                onSuccess: () => {
+                {
+                  onSuccess: () => {
+                    setDraft(null);
+                  },
+                },
+              );
+            }}
+          >
+            {(
+              [
+                ["question_text", "Question"],
+                ["strong_answer", "Strong answer"],
+                ["weak_answer", "Weak answer"],
+              ] as const
+            ).map(([field, label]) => (
+              <div className="flex flex-col gap-1.5" key={field}>
+                <Label htmlFor={`${field}-${question.id}`}>{label}</Label>
+                <Textarea
+                  id={`${field}-${question.id}`}
+                  rows={3}
+                  required
+                  value={draft[field]}
+                  onChange={(e) => {
+                    setDraft({ ...draft, [field]: e.target.value });
+                  }}
+                />
+              </div>
+            ))}
+            {edit.error && <ErrorNotice error={edit.error} />}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 px-4"
+                onClick={() => {
                   setDraft(null);
-                },
-              },
-            );
-          }}
-        >
-          {(
-            [
-              ["question_text", "Question"],
-              ["strong_answer", "Strong answer"],
-              ["weak_answer", "Weak answer"],
-            ] as const
-          ).map(([field, label]) => (
-            <div className="field" key={field}>
-              <label htmlFor={`${field}-${question.id}`}>{label}</label>
-              <textarea
-                id={`${field}-${question.id}`}
-                rows={3}
-                required
-                value={draft[field]}
-                onChange={(e) => {
-                  setDraft({ ...draft, [field]: e.target.value });
                 }}
-              />
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="h-10 px-4" disabled={edit.isPending}>
+                Save question
+              </Button>
             </div>
-          ))}
-          {edit.error && <ErrorNotice error={edit.error} />}
-          <div className="actions">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                setDraft(null);
-              }}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={edit.isPending}>
-              Save question
-            </button>
-          </div>
-        </form>
+          </form>
+        </Card>
       </li>
     );
   }
 
   return (
-    <li className="card stack">
-      <h3>{question.question_text}</h3>
-      <div className="answer-pair">
-        <div className="answer">
-          <p className="tag">
-            <Icon name="check" /> Strong answer
-          </p>
-          <p>{question.strong_answer}</p>
+    <li>
+      <Card className="gap-4 px-5">
+        <h3 className="text-lg font-medium">{question.question_text}</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-ok">
+              <Check aria-hidden="true" className="size-4" /> Strong answer
+            </p>
+            <p>{question.strong_answer}</p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+              <Minus aria-hidden="true" className="size-4" /> Weak answer
+            </p>
+            <p>{question.weak_answer}</p>
+          </div>
         </div>
-        <div className="answer">
-          <p className="tag">
-            <Icon name="minus" /> Weak answer
-          </p>
-          <p>{question.weak_answer}</p>
-        </div>
-      </div>
-      {failure && <ErrorNotice error={failure} />}
-      {recruiter && (
-        <div className="actions no-print">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            disabled={!neighbours.prev || swap.isPending}
-            onClick={() => {
-              if (neighbours.prev) swap.mutate([question, neighbours.prev]);
-            }}
-          >
-            Move up
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            disabled={!neighbours.next || swap.isPending}
-            onClick={() => {
-              if (neighbours.next) swap.mutate([question, neighbours.next]);
-            }}
-          >
-            Move down
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => {
-              setDraft(question);
-            }}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={regenerate.isPending}
-            onClick={() => {
-              regenerate.mutate(question.id, { onSuccess: onJob });
-            }}
-          >
-            Regenerate
-          </button>
-          <button
-            type="button"
-            className="btn btn-destructive"
-            disabled={remove.isPending}
-            onClick={() => {
-              remove.mutate(question.id);
-            }}
-          >
-            Delete
-          </button>
-        </div>
-      )}
+        {failure && <ErrorNotice error={failure} />}
+        {recruiter && (
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-10 px-3"
+              disabled={!neighbours.prev || swap.isPending}
+              onClick={() => {
+                if (neighbours.prev) swap.mutate([question, neighbours.prev]);
+              }}
+            >
+              <ArrowUp aria-hidden="true" />
+              Move up
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-10 px-3"
+              disabled={!neighbours.next || swap.isPending}
+              onClick={() => {
+                if (neighbours.next) swap.mutate([question, neighbours.next]);
+              }}
+            >
+              <ArrowDown aria-hidden="true" />
+              Move down
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 px-3"
+              onClick={() => {
+                setDraft(question);
+              }}
+            >
+              <Pencil aria-hidden="true" />
+              Edit
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 px-3"
+              disabled={regenerate.isPending}
+              onClick={() => {
+                regenerate.mutate(question.id, { onSuccess: onJob });
+              }}
+            >
+              <RefreshCw aria-hidden="true" />
+              Regenerate
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="h-10 px-3"
+              disabled={remove.isPending}
+              onClick={() => {
+                remove.mutate(question.id);
+              }}
+            >
+              <Trash2 aria-hidden="true" />
+              Delete
+            </Button>
+          </div>
+        )}
+      </Card>
     </li>
   );
 }
@@ -200,9 +222,8 @@ function QuestionGroups({
       .sort((a, b) => a.position - b.position);
     if (questions.length === 0) return null;
     return (
-      <section key={crit.id} aria-label={crit.name} className="section">
-        <h2>{crit.name}</h2>
-        <ul className="plain-list stack">
+      <Section key={crit.id} id={`criterion-${crit.id}`} title={crit.name}>
+        <ul className="flex flex-col gap-4">
           {questions.map((q, i) => (
             <QuestionCard
               key={q.id}
@@ -214,7 +235,7 @@ function QuestionGroups({
             />
           ))}
         </ul>
-      </section>
+      </Section>
     );
   });
 }
@@ -234,8 +255,8 @@ export function KitQuestions({ roleId }: { roleId: string }) {
       Number(b.kind === "must_have") - Number(a.kind === "must_have") || a.position - b.position,
   );
   return (
-    <div className="stack">
-      <h2>Interview kit</h2>
+    <div className="flex flex-col gap-6">
+      <h2 className="text-xl font-medium">Interview kit</h2>
       <QuestionGroups
         roleId={roleId}
         criteria={criteria}
@@ -288,55 +309,50 @@ export function KitPage({ roleId }: { roleId: string }) {
   const draftRole = role.data.status === "draft";
 
   return (
-    <div className="stack">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title={`Interview kit: ${role.data.title}`}
         action={
           recruiter ? (
-            <button
+            <Button
               type="button"
-              className="btn btn-primary"
+              className="h-10 px-4"
               disabled={draftRole || running || generate.isPending}
               onClick={() => {
                 generate.mutate(undefined, { onSuccess: setJobId });
               }}
             >
               {hasQuestions ? "Regenerate interview kit" : "Generate interview kit"}
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="button"
-              className="btn btn-secondary"
+              variant="outline"
+              className="h-10 px-4"
               onClick={() => {
                 window.print();
               }}
             >
+              <Printer aria-hidden="true" />
               Print interview kit
-            </button>
+            </Button>
           )
         }
       />
       {recruiter && <RoleTabs roleId={roleId} status={role.data.status} current="kit" />}
-      {draftRole && (
-        <p role="status" className="notice notice-info">
-          Approve the criteria to start generating the interview kit.
-        </p>
-      )}
+      {draftRole && <Notice>Approve the criteria to start generating the interview kit.</Notice>}
       {kit.data.stale && (
-        <p role="status" className="notice notice-warning">
-          <Icon name="triangle" color="var(--warning)" />
-          <span>
-            This interview kit was generated for older criteria. Regenerate it to match the current
-            ones.
-          </span>
-        </p>
+        <Notice tone="warning">
+          This interview kit was generated for older criteria. Regenerate it to match the current
+          ones.
+        </Notice>
       )}
       {running && <Loading label="Generating, this can take a minute" />}
       {job.data && isJobDone(job.data.status) && job.data.status !== "succeeded" && (
-        <p role="alert" className="notice notice-danger">
+        <Notice tone="danger">
           Generating the interview kit{" "}
           {job.data.status === "cancelled" ? "was cancelled" : "did not finish"}. Try again.
-        </p>
+        </Notice>
       )}
       {generate.error && <ErrorNotice error={generate.error} />}
       {!hasQuestions && !draftRole && (

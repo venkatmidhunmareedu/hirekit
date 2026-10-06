@@ -1,9 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
+import { Eye, UserMinus, UserPlus } from "lucide-react";
 import { type SubmitEvent, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
 import { ErrorNotice } from "../../../components/ErrorNotice";
-import { Icon } from "../../../components/Icon";
-import { Modal } from "../../../components/Modal";
+import { Loading } from "../../../components/Loading";
+import { Section } from "../../../components/Section";
 import { type AuditEvent, type Identity } from "../api";
 import { STAGE_LABEL } from "../labels";
 import { anonymizedTextQueryOptions, useAssign, useReveal, useUnassign } from "../hooks";
@@ -21,28 +34,27 @@ export function splitAtQuote(text: string, quote: string | null): [string, strin
 /** The anonymized resume text, with the selected criterion's quote highlighted (Design.md 8.4). */
 export function ResumeText({ candidateId, quote }: { candidateId: string; quote: string | null }) {
   const text = useQuery(anonymizedTextQueryOptions(candidateId));
-  if (text.isPending) return <p role="status">Loading the resume text</p>;
+  if (text.isPending) return <Loading label="Loading the resume text" />;
   if (text.isError) return <ErrorNotice error={text.error} />;
   const parts = splitAtQuote(text.data, quote);
   return (
-    <section aria-labelledby="resume-heading" className="section">
-      <h2 id="resume-heading">Anonymized resume text</h2>
-      <p className="muted">
-        Identity signals are removed by code. Some signals, such as schools or career gaps, can
-        remain.
-      </p>
-      <div className="resume-text">
+    <Section
+      id="resume-heading"
+      title="Anonymized resume text"
+      description="Identity signals are removed by code. Some signals, such as schools or career gaps, can remain."
+    >
+      <div className="max-h-120 max-w-prose overflow-auto rounded-lg border bg-card p-4 whitespace-pre-wrap">
         {parts ? (
           <>
             {parts[0]}
-            <mark>{parts[1]}</mark>
+            <mark className="rounded-sm bg-mark px-0.5 text-mark-foreground">{parts[1]}</mark>
             {parts[2]}
           </>
         ) : (
           text.data
         )}
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -55,45 +67,48 @@ export function RevealIdentity({ candidateId }: { candidateId: string }) {
   if (identity) {
     return (
       <p>
-        <span className="muted">Candidate name (shown, logged): </span>
+        <span className="text-muted-foreground">Candidate name (shown, logged): </span>
         <strong>{identity.identity_name ?? "No name found"}</strong>
-        <span className="muted"> from {identity.file_name}</span>
+        <span className="text-muted-foreground"> from {identity.file_name}</span>
       </p>
     );
   }
   return (
-    <div className="stack">
-      <button
+    <>
+      <Button
         type="button"
-        className="btn btn-secondary"
+        variant="outline"
+        className="h-10 px-4"
         onClick={() => {
           setAsking(true);
         }}
       >
-        <Icon name="eye" /> Show candidate name
-      </button>
-      {asking && (
-        <Modal
-          title="Show candidate name?"
-          onClose={() => {
-            setAsking(false);
-          }}
-        >
-          <p>Showing the name is recorded in the history under your name.</p>
+        <Eye aria-hidden="true" />
+        Show candidate name
+      </Button>
+      <Dialog open={asking} onOpenChange={setAsking}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-medium">Show candidate name?</DialogTitle>
+            <DialogDescription>
+              Showing the name is recorded in the history under your name.
+            </DialogDescription>
+          </DialogHeader>
           {reveal.error && <ErrorNotice error={reveal.error} />}
-          <div className="actions">
-            <button
+          <DialogFooter>
+            <Button
               type="button"
-              className="btn btn-secondary"
+              variant="outline"
+              className="h-10 px-4"
               onClick={() => {
                 setAsking(false);
               }}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="btn btn-primary"
+              className="h-10 px-4"
               disabled={reveal.isPending}
               onClick={() => {
                 reveal.mutate(undefined, {
@@ -104,11 +119,11 @@ export function RevealIdentity({ candidateId }: { candidateId: string }) {
               }}
             >
               Show candidate name
-            </button>
-          </div>
-        </Modal>
-      )}
-    </div>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -135,16 +150,16 @@ export function Assignments({ candidateId }: { candidateId: string }) {
   }
 
   return (
-    <section aria-labelledby="assign-heading" className="section">
-      <h2 id="assign-heading">Interviewers</h2>
-      <form onSubmit={onSubmit} className="stack">
-        <div className="field">
-          <label htmlFor="assign-user">Interviewer user id</label>
-          <span className="muted">
+    <Section id="assign-heading" title="Interviewers">
+      <form onSubmit={onSubmit} className="flex flex-col items-start gap-3">
+        <div className="flex w-full flex-col gap-1.5">
+          <Label htmlFor="assign-user">Interviewer user id</Label>
+          <span className="text-sm text-muted-foreground">
             Paste the interviewer's account id. The app cannot list users yet.
           </span>
-          <input
+          <Input
             id="assign-user"
+            className="h-10 font-mono"
             value={userId}
             required
             onChange={(e) => {
@@ -152,20 +167,22 @@ export function Assignments({ candidateId }: { candidateId: string }) {
             }}
           />
         </div>
-        <button type="submit" className="btn btn-secondary" disabled={assign.isPending}>
+        <Button type="submit" variant="outline" className="h-10 px-4" disabled={assign.isPending}>
+          <UserPlus aria-hidden="true" />
           Assign interviewer
-        </button>
+        </Button>
       </form>
       {assign.error && <ErrorNotice error={assign.error} />}
       {unassign.error && <ErrorNotice error={unassign.error} />}
       {assigned.length > 0 && (
-        <ul className="plain-list">
+        <ul className="flex flex-col divide-y rounded-lg border bg-card">
           {assigned.map((id) => (
-            <li key={id} className="row-between">
-              <span className="mono">{id}</span>
-              <button
+            <li key={id} className="flex items-center justify-between gap-3 py-1 pr-1 pl-3">
+              <span className="mono font-mono text-sm break-all">{id}</span>
+              <Button
                 type="button"
-                className="btn btn-ghost"
+                variant="ghost"
+                className="h-10 px-3"
                 aria-label={`Remove interviewer ${id}`}
                 disabled={unassign.isPending}
                 onClick={() => {
@@ -176,13 +193,14 @@ export function Assignments({ candidateId }: { candidateId: string }) {
                   });
                 }}
               >
+                <UserMinus aria-hidden="true" />
                 Remove
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </Section>
   );
 }
 
@@ -202,21 +220,22 @@ function describe(event: AuditEvent): string {
 /** Hiring stage and score change history (Design.md 8.4), newest first, as the API sends it. */
 export function AuditHistory({ events }: { events: AuditEvent[] }) {
   return (
-    <section aria-labelledby="history-heading" className="section">
-      <h2 id="history-heading">History</h2>
+    <Section id="history-heading" title="History">
       {events.length === 0 ? (
-        <p className="muted">No hiring stage moves or score changes yet.</p>
+        <p className="text-muted-foreground">No hiring stage moves or score changes yet.</p>
       ) : (
-        <ul className="plain-list">
+        <ul className="flex flex-col divide-y">
           {events.map((e) => (
-            <li key={e.id}>
-              <span>{describe(e)}</span>
-              {e.note && <span className="muted"> ({e.note})</span>}
-              <span className="muted mono"> {e.created_at}</span>
+            <li key={e.id} className="flex flex-col gap-0.5 py-2">
+              <span>
+                {describe(e)}
+                {e.note && <span className="text-muted-foreground"> ({e.note})</span>}
+              </span>
+              <span className="mono font-mono text-xs text-muted-foreground">{e.created_at}</span>
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </Section>
   );
 }

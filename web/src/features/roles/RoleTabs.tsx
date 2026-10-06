@@ -1,4 +1,8 @@
 import { Link } from "@tanstack/react-router";
+import { Check } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 type Step = "criteria" | "candidates" | "kit";
 
@@ -31,37 +35,51 @@ export function RoleTabs({
 
   return (
     <nav aria-label="Role">
-      <ol className="stepper">
+      <ol className="flex flex-wrap items-start gap-x-2 gap-y-1 border-b pb-3">
         {steps.map((step, index) => {
           const isCurrent = step.id === current;
-          const state = step.lock ? "locked" : step.done ? "done" : isCurrent ? "current" : "open";
-          const text = (
-            <>
-              <span className="step-no">{index + 1}</span> {step.label}
-            </>
+          const done = !step.lock && step.done;
+          const number = (
+            <Badge
+              variant={isCurrent && !step.lock ? "default" : "outline"}
+              className="size-5 justify-center rounded-full p-0 font-mono"
+            >
+              {done ? <Check aria-hidden="true" /> : index + 1}
+            </Badge>
           );
           return (
-            <li key={step.id} className={`step step-${state}`}>
+            <li key={step.id} className="flex flex-col">
               {step.lock ? (
                 <>
-                  <span aria-disabled="true">{text}</span>
-                  <small className="muted">{step.lock}</small>
+                  <span
+                    aria-disabled="true"
+                    className="flex h-9 cursor-not-allowed items-center gap-2 px-2.5 text-sm font-medium text-muted-foreground"
+                  >
+                    {number} {step.label}
+                  </span>
+                  <small className="px-2.5 text-xs text-muted-foreground">{step.lock}</small>
                 </>
               ) : (
-                <Link
-                  to={
-                    step.id === "criteria"
-                      ? "/roles/$roleId"
-                      : step.id === "candidates"
-                        ? "/roles/$roleId/candidates"
-                        : "/roles/$roleId/kit"
-                  }
-                  params={{ roleId }}
-                  aria-current={isCurrent ? "step" : undefined}
+                <Button
+                  asChild
+                  variant={isCurrent ? "secondary" : "ghost"}
+                  className="h-9 gap-2 px-2.5"
                 >
-                  {text}
-                  {state === "done" && <span className="visually-hidden"> (done)</span>}
-                </Link>
+                  <Link
+                    to={
+                      step.id === "criteria"
+                        ? "/roles/$roleId"
+                        : step.id === "candidates"
+                          ? "/roles/$roleId/candidates"
+                          : "/roles/$roleId/kit"
+                    }
+                    params={{ roleId }}
+                    aria-current={isCurrent ? "step" : undefined}
+                  >
+                    {number} {step.label}
+                    {done && <span className="sr-only"> (done)</span>}
+                  </Link>
+                </Button>
               )}
             </li>
           );
