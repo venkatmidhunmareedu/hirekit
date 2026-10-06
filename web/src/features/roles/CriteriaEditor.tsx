@@ -63,6 +63,11 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
   const problem = rows.map(rowError).find((e) => e !== null) ?? null;
   const failure = save.error ?? approve.error;
   const canApprove = !dirty && rows.length > 0 && role.status === "draft";
+  const approveBlocker = dirty
+    ? "Save your edits first."
+    : rows.length === 0
+      ? "Add at least one criterion first."
+      : null;
 
   function update(key: string, patch: Partial<Row>) {
     setRows((current) => current.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -222,7 +227,7 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
       <div className="actions">
         <button
           type="button"
-          className="btn btn-secondary"
+          className={dirty ? "btn btn-primary" : "btn btn-secondary"}
           disabled={!dirty || problem !== null || save.isPending}
           onClick={() => {
             save.mutate(rows.map(toInput));
@@ -232,7 +237,8 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
         </button>
         <button
           type="button"
-          className="btn btn-primary"
+          className={dirty ? "btn btn-secondary" : "btn btn-primary"}
+          aria-describedby={approveBlocker ? "approve-blocker" : undefined}
           disabled={!canApprove || approve.isPending}
           onClick={() => {
             setConfirming(true);
@@ -240,7 +246,11 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
         >
           Approve criteria
         </button>
-        {dirty && <span className="muted">Save the draft before approving.</span>}
+        {role.status === "draft" && approveBlocker && (
+          <span id="approve-blocker" className="muted">
+            {approveBlocker}
+          </span>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { AlertIcon } from "../../components/AlertIcon";
@@ -43,12 +43,17 @@ function Candidates({ roleId }: { roleId: string }) {
   return (
     <div className="stack">
       <PageHeader title={role.data.title} />
-      <RoleTabs roleId={roleId} />
+      <RoleTabs roleId={roleId} status={role.data.status} current="candidates" />
       {role.data.status === "draft" ? (
-        <p className="notice notice-info" role="status">
-          Approve the criteria to start uploading and scoring resumes. Candidates stay locked until
-          then.
-        </p>
+        <div className="notice notice-info" role="status">
+          <span>
+            Approve the criteria to start uploading and scoring resumes. Candidates stay locked
+            until then.
+          </span>
+          <Link to="/roles/$roleId" params={{ roleId }} className="btn btn-primary">
+            Go to criteria
+          </Link>
+        </div>
       ) : (
         <>
           <UploadZone roleId={roleId} />
@@ -76,6 +81,10 @@ function RankedList({ roleId }: { roleId: string }) {
         Scores are model suggestions until a recruiter overrides them. Names are hidden. Hiding
         names reduces some bias but does not remove it: schools, clubs, wording and career gaps can
         still point to who someone is. A person decides, not the ranking.
+      </p>
+      <p className="muted">
+        The stage filter asks the server. Flagged only and Has overrides filter the loaded page
+        only.
       </p>
       <div className="field filter">
         <label htmlFor="stage-filter">Stage</label>
@@ -204,6 +213,7 @@ function RankedBody({
   onToggle: (id: string) => void;
   onOffset: (offset: number) => void;
 }) {
+  const navigate = useNavigate();
   if (page.total === 0 && page.data.length === 0) {
     return (
       <EmptyState
@@ -227,14 +237,21 @@ function RankedBody({
   return (
     <>
       {anyStale && <StaleBanner roleId={roleId} />}
-      <Link
-        to="/compare"
-        search={{ ids: selected.join(",") }}
-        className="btn btn-secondary"
-        disabled={!canCompare}
-      >
-        Compare
-      </Link>
+      <div className="actions">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={!canCompare}
+          onClick={() => {
+            void navigate({ to: "/compare", search: { ids: selected.join(",") } });
+          }}
+        >
+          Compare
+        </button>
+        <span className="muted" aria-live="polite">
+          {selected.length} selected. Select 2 to 4 candidates to compare.
+        </span>
+      </div>
       {page.data.length === 0 ? (
         <EmptyState message="This page is past the last candidate. Go back to the previous page." />
       ) : shown.length === 0 ? (

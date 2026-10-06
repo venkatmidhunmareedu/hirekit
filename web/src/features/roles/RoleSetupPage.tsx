@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { AlertIcon } from "../../components/AlertIcon";
@@ -42,7 +42,7 @@ function RoleSetup({ roleId }: { roleId: string }) {
   return (
     <div className="stack">
       <PageHeader title={role.data.title} />
-      <RoleTabs roleId={roleId} />
+      <RoleTabs roleId={roleId} status={role.data.status} current="criteria" />
       <section className="section">
         <h2>Job description</h2>
         <p className="job-description">{role.data.job_description}</p>
@@ -52,9 +52,12 @@ function RoleSetup({ roleId }: { roleId: string }) {
           Draft. Approve the criteria to start uploading and scoring resumes.
         </p>
       ) : (
-        <p className="notice notice-info" role="status">
-          Approved. You can upload resumes on the Candidates tab.
-        </p>
+        <div className="notice notice-info" role="status">
+          <span>Approved. You can upload resumes on the Candidates step.</span>
+          <Link to="/roles/$roleId/candidates" params={{ roleId }} className="btn btn-primary">
+            Next: upload resumes
+          </Link>
+        </div>
       )}
       <Proposal role={role.data} />
       <CriteriaEditor

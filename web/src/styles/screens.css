@@ -18,34 +18,59 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
   padding: var(--space-3) var(--space-4);
 }
 
-.tabs {
+.stepper {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
   border-bottom: 1px solid var(--border);
 }
 
-.tabs a {
+.step {
   display: flex;
-  align-items: center;
-  padding: var(--space-2) var(--space-3);
-  min-height: var(--control-h);
-  color: var(--text-muted);
-  text-decoration: none;
+  flex-direction: column;
+  padding: var(--space-2) 0;
   border-bottom: 2px solid transparent;
 }
 
-.tabs a:hover {
-  color: var(--text);
-  border-bottom-color: var(--border);
+.step a,
+.step > span {
+  color: var(--text-muted);
+  text-decoration: none;
 }
 
-.tabs a[aria-current="page"] {
+.step a:hover {
+  color: var(--text);
+}
+
+.step-no {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.step-done a,
+.step-open a {
+  color: var(--text);
+}
+
+.step-current {
+  border-bottom-color: var(--focus);
+}
+
+.step-current a {
   color: var(--text);
   font-weight: 500;
-  border-bottom-color: var(--focus);
+}
+
+.step-locked > span {
+  cursor: not-allowed;
 }
 
 .job-description {

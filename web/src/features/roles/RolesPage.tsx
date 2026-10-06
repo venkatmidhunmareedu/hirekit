@@ -5,6 +5,7 @@ import { useState, type SubmitEvent } from "react";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorNotice } from "../../components/ErrorNotice";
 import { Loading } from "../../components/Loading";
+import { Modal } from "../../components/Modal";
 import { PageHeader } from "../../components/PageHeader";
 import { StatusTag } from "../../components/StatusTag";
 
@@ -13,14 +14,39 @@ import { rolesQueryOptions, useCreateRole } from "./hooks";
 /** Role list (Design.md 8.1) with the new-role form: title and job description (PRD step 1). */
 export function RolesPage() {
   const roles = useQuery(rolesQueryOptions);
+  const [creating, setCreating] = useState(false);
 
   return (
     <div className="stack">
       <PageHeader
         title="Roles"
         purpose="Each role has its own criteria, candidates and interview kit."
+        action={
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setCreating(true);
+            }}
+          >
+            New role
+          </button>
+        }
       />
-      <NewRoleForm />
+      {creating && (
+        <Modal
+          title="New role"
+          onClose={() => {
+            setCreating(false);
+          }}
+        >
+          <NewRoleForm
+            onCancel={() => {
+              setCreating(false);
+            }}
+          />
+        </Modal>
+      )}
       <section aria-labelledby="your-roles" className="stack">
         <h2 id="your-roles">Your roles</h2>
         {roles.isPending && <Loading label="Loading roles" />}
@@ -33,7 +59,7 @@ export function RolesPage() {
           />
         )}
         {roles.data?.length === 0 && (
-          <EmptyState message="No roles yet. Create one above to set its criteria." />
+          <EmptyState message="No roles yet. Choose New role to add one and set its criteria." />
         )}
         {roles.data && roles.data.length > 0 && (
           <ul className="role-list">
@@ -45,6 +71,15 @@ export function RolesPage() {
                 <StatusTag tone={role.status === "draft" ? "neutral" : "success"}>
                   {role.status === "draft" ? "Draft" : "Approved"}
                 </StatusTag>
+                {role.status === "draft" ? (
+                  <Link to="/roles/$roleId" params={{ roleId: role.id }}>
+                    Next: approve criteria
+                  </Link>
+                ) : (
+                  <Link to="/roles/$roleId/candidates" params={{ roleId: role.id }}>
+                    Next: upload and review candidates
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
@@ -54,7 +89,7 @@ export function RolesPage() {
   );
 }
 
-function NewRoleForm() {
+function NewRoleForm({ onCancel }: { onCancel: () => void }) {
   const navigate = useNavigate();
   const create = useCreateRole();
   const [title, setTitle] = useState("");
@@ -75,8 +110,7 @@ function NewRoleForm() {
   }
 
   return (
-    <form className="section" onSubmit={submit} aria-labelledby="new-role">
-      <h2 id="new-role">New role</h2>
+    <form className="stack" onSubmit={submit}>
       <div className="field">
         <label htmlFor="role-title">Role title</label>
         <input
@@ -102,7 +136,10 @@ function NewRoleForm() {
         </span>
       </div>
       {create.isError && <ErrorNotice error={create.error} />}
-      <div>
+      <div className="actions">
+        <button type="button" className="btn btn-secondary" onClick={onCancel}>
+          Cancel
+        </button>
         <button type="submit" className="btn btn-primary" disabled={!ready || create.isPending}>
           {create.isPending ? "Creating role" : "Create role"}
         </button>

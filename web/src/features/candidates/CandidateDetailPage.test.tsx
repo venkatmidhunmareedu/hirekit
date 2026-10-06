@@ -208,6 +208,41 @@ describe("candidate detail, recruiter", () => {
     expect(screen.queryByRole("button", { name: /Remove interviewer/ })).not.toBeInTheDocument();
   });
 
+  it("links back to the ranked list and on to the next ranked candidate", async () => {
+    const NEXT = "30000000-0000-4000-8000-000000000002";
+    stubFetch(
+      recruiterRoutes({
+        [`GET /v1/roles/${candidate.role_id}/candidates?limit=100&offset=0`]: () =>
+          json(200, {
+            data: [CAND, NEXT].map((id, i) => ({
+              id,
+              candidate_no: i + 1,
+              stage: "new",
+              processing_status: "done",
+              failure_reason: null,
+              total: 5,
+              must_have_covered: 1,
+              must_have_total: 1,
+              stale: false,
+              duplicate_of_candidate_no: null,
+              scores: [],
+            })),
+            page: { limit: 100, offset: 0, total: 2 },
+          }),
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+
+    expect(await screen.findByRole("link", { name: "Next candidate" })).toHaveAttribute(
+      "href",
+      `/candidates/${NEXT}`,
+    );
+    expect(screen.getByRole("link", { name: "Back to ranked candidates" })).toHaveAttribute(
+      "href",
+      `/roles/${candidate.role_id}/candidates`,
+    );
+  });
+
   it("shows an error when the candidate cannot be loaded", async () => {
     stubFetch({
       "GET /v1/auth/me": () => json(200, session),

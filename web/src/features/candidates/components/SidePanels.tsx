@@ -139,6 +139,9 @@ export function Assignments({ candidateId }: { candidateId: string }) {
       <form onSubmit={onSubmit} className="stack">
         <div className="field">
           <label htmlFor="assign-user">Interviewer user id</label>
+          <span className="muted">
+            Paste the interviewer's account id. The app cannot list users yet.
+          </span>
           <input
             id="assign-user"
             value={userId}

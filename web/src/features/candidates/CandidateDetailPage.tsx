@@ -14,7 +14,7 @@ import { OverrideDialog } from "./components/OverrideDialog";
 import { EvidenceBlock, ScoreChip, sourceLabel } from "./components/ScoreParts";
 import { Assignments, AuditHistory, ResumeText, RevealIdentity } from "./components/SidePanels";
 import { StageControl } from "./components/StageControl";
-import { candidateQueryOptions } from "./hooks";
+import { candidateQueryOptions, rankedQueryOptions } from "./hooks";
 
 const GROUPS: { kind: Kind; title: string }[] = [
   { kind: "must_have", title: "Must-have" },
@@ -78,6 +78,11 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
   const candidate = useQuery(candidateQueryOptions(candidateId));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [overriding, setOverriding] = useState<ScoreCell | null>(null);
+  // The first ranked page is enough to find the next candidate; no match means no link.
+  const ranked = useQuery({
+    ...rankedQueryOptions(candidate.data?.role_id ?? "", null, 0, false),
+    enabled: recruiter && candidate.data !== undefined,
+  });
 
   if (candidate.isPending) return <Loading label="Loading the candidate" />;
   if (candidate.isError) {
@@ -91,20 +96,40 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
     );
   }
   const c = candidate.data;
+  const list = ranked.data?.data ?? [];
+  const next = list[list.findIndex((r) => r.id === c.id) + 1];
   const selected = c.scores.find((s) => s.criterion_id === selectedId) ?? null;
 
   return (
     <div className="stack">
       <PageHeader
         title={`Candidate ${candidateLabel(c.candidate_no)}`}
+        breadcrumb={
+          recruiter && (
+            <Link to="/roles/$roleId/candidates" params={{ roleId: c.role_id }}>
+              Back to ranked candidates
+            </Link>
+          )
+        }
         action={
-          <Link
-            to="/roles/$roleId/kit"
-            params={{ roleId: c.role_id }}
-            className="btn btn-secondary"
-          >
-            Interview kit
-          </Link>
+          <>
+            {next && (
+              <Link
+                to="/candidates/$candidateId"
+                params={{ candidateId: next.id }}
+                className="btn btn-secondary"
+              >
+                Next candidate
+              </Link>
+            )}
+            <Link
+              to="/roles/$roleId/kit"
+              params={{ roleId: c.role_id }}
+              className="btn btn-secondary"
+            >
+              Interview kit
+            </Link>
+          </>
         }
       />
       {c.processing_status && c.processing_status !== "done" && (

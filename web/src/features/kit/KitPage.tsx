@@ -6,6 +6,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { Icon } from "../../components/Icon";
 import { Loading } from "../../components/Loading";
 import { PageHeader } from "../../components/PageHeader";
+import { RoleTabs } from "../roles/RoleTabs";
 import { sessionQueryOptions } from "../auth/hooks";
 
 import { type Question } from "./api";
@@ -249,6 +250,7 @@ export function KitPage({ roleId }: { roleId: string }) {
           )
         }
       />
+      {recruiter && <RoleTabs roleId={roleId} status={role.data.status} current="kit" />}
       {draftRole && (
         <p role="status" className="notice notice-info">
           Approve the criteria to start generating the kit.

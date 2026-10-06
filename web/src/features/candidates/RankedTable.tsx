@@ -66,7 +66,7 @@ export function RankedTable({
               Rank
             </th>
             <th scope="col">Candidate</th>
-            <th scope="col">Compare</th>
+            <th scope="col">Select</th>
             <th scope="col" className="num" aria-sort="descending">
               Weighted score
             </th>

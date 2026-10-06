@@ -81,6 +81,10 @@ describe("candidates page", () => {
     expect(await screen.findByText(/Approve the criteria to start uploading/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Choose files/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to criteria" })).toHaveAttribute(
+      "href",
+      `/roles/${ROLE_ID}`,
+    );
   });
 
   it("shows the empty state with one next action", async () => {
@@ -324,19 +328,18 @@ describe("ranked list filters and navigation", () => {
 
     const box = async (no: number) =>
       screen.findByRole("checkbox", { name: `Select C-00${no} to compare` });
-    const compare = () => screen.getByRole("link", { name: "Compare" });
+    const compare = () => screen.getByRole("button", { name: "Compare" });
 
     await userEvent.click(await box(1));
-    expect(compare()).toHaveAttribute("aria-disabled", "true");
+    expect(compare()).toBeDisabled();
+    expect(screen.getByText(/1 selected/)).toBeInTheDocument();
 
     await userEvent.click(await box(2));
-    expect(compare()).not.toHaveAttribute("aria-disabled");
-    expect(compare().getAttribute("href")).toContain(
-      "ids=30000000-0000-4000-8000-000000000001%2C30000000-0000-4000-8000-000000000002",
-    );
+    expect(compare()).toBeEnabled();
+    expect(screen.getByText(/2 selected/)).toBeInTheDocument();
 
     for (const n of [3, 4, 5]) await userEvent.click(await box(n));
-    expect(compare()).toHaveAttribute("aria-disabled", "true");
+    expect(compare()).toBeDisabled();
   });
 });
 
