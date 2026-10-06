@@ -4,9 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { createAppRouter } from "./app/router";
-import "./styles/tokens.css";
-import "./styles/app.css";
-import "./styles/screens.css";
+import "./index.css";
 
 const queryClient = new QueryClient();
 const router = createAppRouter(queryClient);

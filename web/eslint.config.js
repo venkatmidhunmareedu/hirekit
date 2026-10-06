@@ -7,7 +7,7 @@ import tseslint from "typescript-eslint";
 
 // Flat config: strict type-checked TypeScript, React hooks, jsx-a11y.
 export default tseslint.config(
-  { ignores: ["dist/**", "coverage/**", "node_modules/**"] },
+  { ignores: ["dist/**", "coverage/**", "node_modules/**", "src/components/ui/**"] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,

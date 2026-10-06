@@ -31,7 +31,7 @@ A recruiter works through a role in order: criteria, upload, ranked list, overri
 - The 40-resume agreement eval is a consistency check (one model family wrote the resumes, labels and scores) and must be labelled that way.
 - A verified quote proves the text exists in the resume, not that it supports the score; evidence copy must not imply otherwise.
 - Out of scope: job board posting, calendar scheduling, retention automation.
-- Open: whether the ranked list shows names or IDs (Design.md recommends IDs), whether interviewers see model scores before their own feedback, and whether a dark theme is required for launch.
+- Open: whether the ranked list shows names or IDs (Design.md recommends IDs), whether interviewers see model scores before their own feedback, and whether a dark theme is required for launch. The palette question is closed: "reading room" (Design.md section 3).
 
 ## Brand Commitments
 

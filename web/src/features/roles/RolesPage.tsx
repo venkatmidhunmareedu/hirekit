@@ -1,11 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
 import { useState, type SubmitEvent } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorNotice } from "../../components/ErrorNotice";
 import { Loading } from "../../components/Loading";
-import { Modal } from "../../components/Modal";
 import { PageHeader } from "../../components/PageHeader";
 import { StatusTag } from "../../components/StatusTag";
 
@@ -17,38 +31,42 @@ export function RolesPage() {
   const [creating, setCreating] = useState(false);
 
   return (
-    <div className="stack">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Roles"
         purpose="Each role has its own criteria, candidates and interview kit."
         action={
-          <button
+          <Button
             type="button"
-            className="btn btn-primary"
+            size="lg"
+            className="h-10 px-4"
             onClick={() => {
               setCreating(true);
             }}
           >
             New role
-          </button>
+          </Button>
         }
       />
-      {creating && (
-        <Modal
-          title="New role"
-          onClose={() => {
-            setCreating(false);
-          }}
-        >
+      <Dialog open={creating} onOpenChange={setCreating}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl font-medium">New role</DialogTitle>
+            <DialogDescription>
+              Paste the job description. You can ask for proposed criteria on the next screen.
+            </DialogDescription>
+          </DialogHeader>
           <NewRoleForm
             onCancel={() => {
               setCreating(false);
             }}
           />
-        </Modal>
-      )}
-      <section aria-labelledby="your-roles" className="stack">
-        <h2 id="your-roles">Your roles</h2>
+        </DialogContent>
+      </Dialog>
+      <section aria-labelledby="your-roles" className="flex flex-col gap-4">
+        <h2 id="your-roles" className="font-display text-xl font-medium">
+          Your roles
+        </h2>
         {roles.isPending && <Loading label="Loading roles" />}
         {roles.isError && (
           <ErrorNotice
@@ -62,24 +80,34 @@ export function RolesPage() {
           <EmptyState message="No roles yet. Choose New role to add one and set its criteria." />
         )}
         {roles.data && roles.data.length > 0 && (
-          <ul className="role-list">
+          <ul className="flex flex-col gap-3">
             {roles.data.map((role) => (
-              <li key={role.id} className="card role-row">
-                <Link to="/roles/$roleId" params={{ roleId: role.id }}>
-                  {role.title}
-                </Link>
-                <StatusTag tone={role.status === "draft" ? "neutral" : "success"}>
-                  {role.status === "draft" ? "Draft" : "Approved"}
-                </StatusTag>
-                {role.status === "draft" ? (
-                  <Link to="/roles/$roleId" params={{ roleId: role.id }}>
-                    Next: approve criteria
+              <li key={role.id}>
+                <Card className="flex-row flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+                  <Link
+                    to="/roles/$roleId"
+                    params={{ roleId: role.id }}
+                    className="font-display text-lg font-medium underline-offset-4 hover:underline"
+                  >
+                    {role.title}
                   </Link>
-                ) : (
-                  <Link to="/roles/$roleId/candidates" params={{ roleId: role.id }}>
-                    Next: upload and review candidates
-                  </Link>
-                )}
+                  <StatusTag tone={role.status === "draft" ? "neutral" : "success"}>
+                    {role.status === "draft" ? "Draft" : "Approved"}
+                  </StatusTag>
+                  <Button asChild variant="outline" className="ml-auto h-10 px-3">
+                    {role.status === "draft" ? (
+                      <Link to="/roles/$roleId" params={{ roleId: role.id }}>
+                        Next: approve criteria
+                        <ArrowRight aria-hidden="true" />
+                      </Link>
+                    ) : (
+                      <Link to="/roles/$roleId/candidates" params={{ roleId: role.id }}>
+                        Next: upload and review candidates
+                        <ArrowRight aria-hidden="true" />
+                      </Link>
+                    )}
+                  </Button>
+                </Card>
               </li>
             ))}
           </ul>
@@ -110,20 +138,21 @@ function NewRoleForm({ onCancel }: { onCancel: () => void }) {
   }
 
   return (
-    <form className="stack" onSubmit={submit}>
-      <div className="field">
-        <label htmlFor="role-title">Role title</label>
-        <input
+    <form className="flex flex-col gap-4" onSubmit={submit}>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="role-title">Role title</Label>
+        <Input
           id="role-title"
+          className="h-10"
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
           }}
         />
       </div>
-      <div className="field">
-        <label htmlFor="role-jd">Job description</label>
-        <textarea
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="role-jd">Job description</Label>
+        <Textarea
           id="role-jd"
           rows={8}
           value={description}
@@ -131,19 +160,16 @@ function NewRoleForm({ onCancel }: { onCancel: () => void }) {
             setDescription(e.target.value);
           }}
         />
-        <span className="muted">
-          Paste the job description. You can ask for proposed criteria on the next screen.
-        </span>
       </div>
       {create.isError && <ErrorNotice error={create.error} />}
-      <div className="actions">
-        <button type="button" className="btn btn-secondary" onClick={onCancel}>
+      <DialogFooter>
+        <Button type="button" variant="outline" className="h-10 px-4" onClick={onCancel}>
           Cancel
-        </button>
-        <button type="submit" className="btn btn-primary" disabled={!ready || create.isPending}>
+        </Button>
+        <Button type="submit" className="h-10 px-4" disabled={!ready || create.isPending}>
           {create.isPending ? "Creating role" : "Create role"}
-        </button>
-      </div>
+        </Button>
+      </DialogFooter>
     </form>
   );
 }

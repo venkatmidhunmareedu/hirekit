@@ -29,7 +29,7 @@ We will use shadcn/ui components, copied into `web/src/components/ui` with the s
 
 New dependencies:
 
-- Runtime: `tailwindcss`, `@tailwindcss/vite`, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `radix-ui`, `tw-animate-css`.
+- Runtime: `tailwindcss`, `@tailwindcss/vite`, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `radix-ui`, `tw-animate-css`, `cn` (shadcn-ui's own class merger, imported by the generated components in CLI 4.21.0).
 - Dev: `prettier-plugin-tailwindcss`.
 
 ## Consequences
