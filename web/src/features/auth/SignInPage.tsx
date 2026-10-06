@@ -17,7 +17,10 @@ export function SignInPage() {
     event.preventDefault();
     signIn.mutate(
       { email: email.trim(), password },
-      { onSuccess: () => void navigate({ to: "/" }) },
+      {
+        onSuccess: (session) =>
+          void navigate({ to: session.user.role === "interviewer" ? "/me/candidates" : "/" }),
+      },
     );
   }
 

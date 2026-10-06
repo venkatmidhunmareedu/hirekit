@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useBlocker } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Icon } from "../../components/Icon";
@@ -30,6 +31,21 @@ function FeedbackForm({
   const isDone = (c: RoleCriterion) =>
     scores[c.id] !== undefined && (comments[c.id] ?? "").trim() !== "";
   const done = criteria.filter(isDone).length;
+  const missing = criteria.length - done;
+  // Unsaved input: anything that differs from what the server holds. Leaving asks first.
+  const dirty =
+    !readOnly &&
+    !submit.isSuccess &&
+    criteria.some((c) => {
+      const saved = rows.find((r) => r.criterion_id === c.id);
+      return scores[c.id] !== saved?.score || (comments[c.id] ?? "") !== (saved?.comment ?? "");
+    });
+  useBlocker({
+    shouldBlockFn: () =>
+      dirty && !window.confirm("Leave this page? Your feedback is not submitted."),
+    enableBeforeUnload: () => dirty,
+    disabled: !dirty,
+  });
 
   return (
     <form
@@ -55,24 +71,38 @@ function FeedbackForm({
       {criteria.map((c) => (
         <fieldset key={c.id} className="criterion-box" disabled={readOnly}>
           <legend>{c.name}</legend>
-          <div className="radio-row" role="radiogroup" aria-label={`Score for ${c.name}`}>
+          <div
+            className="radio-row"
+            role="radiogroup"
+            aria-label={`Score for ${c.name}`}
+            aria-describedby={`rubric-${c.id}`}
+          >
+            {[0, 1, 2, 3, 4].map((n) => (
+              <label key={n} className="radio">
+                <input
+                  type="radio"
+                  name={`score-${c.id}`}
+                  checked={scores[c.id] === n}
+                  onChange={() => {
+                    setScores({ ...scores, [c.id]: n });
+                  }}
+                />
+                <span className="mono">{n}</span>
+              </label>
+            ))}
+          </div>
+          <ul id={`rubric-${c.id}`} className="plain-list muted">
             {[0, 1, 2, 3, 4].map((n) => {
               const descriptor = c.rubric.find((l) => l.level === n)?.descriptor;
               return (
-                <label key={n} className="radio" title={descriptor}>
-                  <input
-                    type="radio"
-                    name={`score-${c.id}`}
-                    checked={scores[c.id] === n}
-                    onChange={() => {
-                      setScores({ ...scores, [c.id]: n });
-                    }}
-                  />
-                  <span className="mono">{n}</span>
-                </label>
+                descriptor && (
+                  <li key={n} className={scores[c.id] === n ? "rubric-selected" : undefined}>
+                    <span className="mono">{n}</span> {descriptor}
+                  </li>
+                )
               );
             })}
-          </div>
+          </ul>
           <div className="field">
             <label htmlFor={`comment-${c.id}`}>Comment on {c.name}</label>
             <textarea
@@ -88,13 +118,24 @@ function FeedbackForm({
       ))}
       {submit.error && <ErrorNotice error={submit.error} />}
       {!readOnly && (
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={done < criteria.length || submit.isPending}
-        >
-          Submit feedback
-        </button>
+        <div className="stack">
+          <p id="submit-hint" className="muted">
+            {missing > 0
+              ? `${missing} ${missing === 1 ? "criterion still needs" : "criteria still need"} a score and a comment. `
+              : ""}
+            Locked after submit; a recruiter can approve an edit.
+          </p>
+          <div className="actions">
+            <button
+              type="submit"
+              className="btn btn-primary"
+              aria-describedby="submit-hint"
+              disabled={missing > 0 || submit.isPending}
+            >
+              Submit feedback
+            </button>
+          </div>
+        </div>
       )}
     </form>
   );

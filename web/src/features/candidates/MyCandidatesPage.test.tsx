@@ -40,6 +40,11 @@ describe("my candidates", () => {
       "href",
       "/candidates/c1",
     );
+    expect(screen.getByText("1 to review, 1 submitted")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Give feedback for C-009" })).toHaveAttribute(
+      "href",
+      "/candidates/c2",
+    );
     expect(screen.getByText("Submitted")).toBeInTheDocument();
     expect(screen.getByText("Not submitted")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "My candidates" })).toBeInTheDocument();
@@ -52,7 +57,7 @@ describe("my candidates", () => {
     });
     renderApp("/me/candidates");
 
-    expect(await screen.findByText(/No candidates are assigned to you yet/)).toBeInTheDocument();
+    expect(await screen.findByText(/When one is assigned, it appears here/)).toBeInTheDocument();
   });
 
   it("explains a failure", async () => {

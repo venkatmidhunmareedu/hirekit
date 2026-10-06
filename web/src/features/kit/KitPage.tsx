@@ -9,7 +9,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { RoleTabs } from "../roles/RoleTabs";
 import { sessionQueryOptions } from "../auth/hooks";
 
-import { type Question } from "./api";
+import { type Question, type RoleCriterion } from "./api";
 import {
   isJobDone,
   kitQueryOptions,
@@ -181,6 +181,72 @@ function QuestionCard({
   );
 }
 
+function QuestionGroups({
+  roleId,
+  criteria,
+  questions: all,
+  recruiter,
+  onJob,
+}: {
+  roleId: string;
+  criteria: RoleCriterion[];
+  questions: Question[];
+  recruiter: boolean;
+  onJob: (id: number) => void;
+}) {
+  return criteria.map((crit) => {
+    const questions = all
+      .filter((q) => q.criterion_id === crit.id)
+      .sort((a, b) => a.position - b.position);
+    if (questions.length === 0) return null;
+    return (
+      <section key={crit.id} aria-label={crit.name} className="section">
+        <h2>{crit.name}</h2>
+        <ul className="plain-list stack">
+          {questions.map((q, i) => (
+            <QuestionCard
+              key={q.id}
+              question={q}
+              neighbours={{ prev: questions[i - 1] ?? null, next: questions[i + 1] ?? null }}
+              roleId={roleId}
+              recruiter={recruiter}
+              onJob={onJob}
+            />
+          ))}
+        </ul>
+      </section>
+    );
+  });
+}
+
+/** The kit's questions for an interviewer, read-only, to sit beside the feedback form. */
+export function KitQuestions({ roleId }: { roleId: string }) {
+  const role = useQuery(roleCriteriaQueryOptions(roleId));
+  const kit = useQuery(kitQueryOptions(roleId));
+  if (role.isPending || kit.isPending) return <Loading label="Loading the interview kit" />;
+  if (role.isError) return <ErrorNotice error={role.error} />;
+  if (kit.isError) return <ErrorNotice error={kit.error} />;
+  if (kit.data.questions.length === 0) {
+    return <EmptyState message="The interview kit is not ready yet." />;
+  }
+  const criteria = [...role.data.criteria].sort(
+    (a, b) =>
+      Number(b.kind === "must_have") - Number(a.kind === "must_have") || a.position - b.position,
+  );
+  return (
+    <div className="stack">
+      <h2>Interview kit</h2>
+      <QuestionGroups
+        roleId={roleId}
+        criteria={criteria}
+        questions={kit.data.questions}
+        recruiter={false}
+        onJob={() => undefined}
+      />
+    </div>
+  );
+}
+
 /** Interview kit (Design.md 8.5): questions grouped by criterion. Recruiters edit; interviewers print. */
 export function KitPage({ roleId }: { roleId: string }) {
   const { data: session } = useSuspenseQuery(sessionQueryOptions);
@@ -280,29 +346,13 @@ export function KitPage({ roleId }: { roleId: string }) {
           }
         />
       )}
-      {criteria.map((crit) => {
-        const questions = kit.data.questions
-          .filter((q) => q.criterion_id === crit.id)
-          .sort((a, b) => a.position - b.position);
-        if (questions.length === 0) return null;
-        return (
-          <section key={crit.id} aria-label={crit.name} className="section">
-            <h2>{crit.name}</h2>
-            <ul className="plain-list stack">
-              {questions.map((q, i) => (
-                <QuestionCard
-                  key={q.id}
-                  question={q}
-                  neighbours={{ prev: questions[i - 1] ?? null, next: questions[i + 1] ?? null }}
-                  roleId={roleId}
-                  recruiter={recruiter}
-                  onJob={setJobId}
-                />
-              ))}
-            </ul>
-          </section>
-        );
-      })}
+      <QuestionGroups
+        roleId={roleId}
+        criteria={criteria}
+        questions={kit.data.questions}
+        recruiter={recruiter}
+        onJob={setJobId}
+      />
     </div>
   );
 }

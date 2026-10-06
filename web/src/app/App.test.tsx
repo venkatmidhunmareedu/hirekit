@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { setCsrfToken } from "../lib/api";
+import { INTERVIEWER } from "../test/fixtures";
 import { json, networkDown, session, stubFetch, unauthenticated } from "../test/fetch";
 
 import { createAppRouter } from "./router";
@@ -84,6 +85,25 @@ describe("route guard", () => {
 
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/sign-in");
+  });
+
+  it("sends an interviewer from Roles and recruiter-only routes to My candidates", async () => {
+    stubFetch({
+      "GET /v1/auth/me": () => json(200, INTERVIEWER),
+      "GET /v1/me/candidates": () => json(200, { data: [] }),
+    });
+    const router = renderApp("/");
+
+    expect(await screen.findByRole("heading", { name: "My candidates" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Roles" })).not.toBeInTheDocument();
+    await router.navigate({ to: "/roles/$roleId", params: { roleId: "r1" } });
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/me/candidates");
+    });
+    await router.navigate({ to: "/compare", search: { ids: "a,b" } });
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/me/candidates");
+    });
   });
 
   it("shows the shell with the user name when signed in", async () => {

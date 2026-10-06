@@ -34,9 +34,11 @@ export function AppShell() {
       <aside className="sidebar">
         <Logo />
         <nav aria-label="Main">
-          <Link to="/" className="nav-link" activeOptions={{ exact: true }}>
-            Roles
-          </Link>
+          {session.user.role === "recruiter" && (
+            <Link to="/" className="nav-link" activeOptions={{ exact: true }}>
+              Roles
+            </Link>
+          )}
           {session.user.role === "interviewer" && (
             <Link to="/me/candidates" className="nav-link">
               My candidates

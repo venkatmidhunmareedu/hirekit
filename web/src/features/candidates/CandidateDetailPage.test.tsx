@@ -30,7 +30,8 @@ function recruiterRoutes(extra: Record<string, () => Response> = {}) {
     "GET /v1/auth/me": () => json(200, session),
     [`GET /v1/candidates/${CAND}`]: () => json(200, candidate),
     [`GET /v1/candidates/${CAND}/text`]: () => json(200, text),
-    [`GET /v1/roles/${ROLE}`]: () => json(200, role),
+    [`GET /v1/roles/${ROLE}`]: () => json(200, withRubric),
+    [`GET /v1/roles/${ROLE}/kit`]: () => json(200, { stale: false, questions: [] }),
     [`GET /v1/candidates/${CAND}/feedback`]: () => json(200, { data: [] }),
     ...extra,
   };
@@ -255,12 +256,20 @@ describe("candidate detail, recruiter", () => {
   });
 });
 
+const withRubric = {
+  ...role,
+  criteria: role.criteria.map((c, i) =>
+    i === 0 ? { ...c, rubric: [{ level: 3, descriptor: "Owns services in production" }] } : c,
+  ),
+};
+
 describe("candidate detail, interviewer", () => {
   const interviewerRoutes = (extra: Record<string, () => Response> = {}) => ({
     "GET /v1/auth/me": () => json(200, INTERVIEWER),
     [`GET /v1/candidates/${CAND}`]: () =>
       json(200, { id: CAND, candidate_no: 14, role_id: ROLE, has_submitted: false }),
-    [`GET /v1/roles/${ROLE}`]: () => json(200, role),
+    [`GET /v1/roles/${ROLE}`]: () => json(200, withRubric),
+    [`GET /v1/roles/${ROLE}/kit`]: () => json(200, { stale: false, questions: [] }),
     [`GET /v1/candidates/${CAND}/feedback`]: () => json(200, { data: [] }),
     ...extra,
   });
@@ -273,6 +282,66 @@ describe("candidate detail, interviewer", () => {
     expect(screen.queryByLabelText("Stage")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reveal identity" })).not.toBeInTheDocument();
     expect(await screen.findByText("0 of 3 criteria scored")).toBeInTheDocument();
+  });
+
+  it("shows the rubric text and why submit is disabled", async () => {
+    stubFetch(interviewerRoutes());
+    renderApp(`/candidates/${CAND}`);
+
+    expect(await screen.findByText("Owns services in production")).toBeVisible();
+    expect(screen.getByText(/3 criteria still need a score and a comment/)).toBeInTheDocument();
+    expect(screen.getByText(/Locked after submit; a recruiter can approve an edit/)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Back to My candidates" })).toHaveAttribute(
+      "href",
+      "/me/candidates",
+    );
+    expect(screen.queryByText(/Anonymized resume text/)).not.toBeInTheDocument();
+  });
+
+  it("offers the next candidate to review after submitting", async () => {
+    let submitted = false;
+    const mine = () => [
+      {
+        candidate_id: CAND,
+        candidate_no: 14,
+        role_id: ROLE,
+        role_title: "Backend",
+        has_submitted: submitted,
+      },
+      {
+        candidate_id: "c9",
+        candidate_no: 9,
+        role_id: ROLE,
+        role_title: "Backend",
+        has_submitted: false,
+      },
+    ];
+    stubFetch(
+      interviewerRoutes({
+        "GET /v1/me/candidates": () => json(200, { data: mine() }),
+        [`POST /v1/candidates/${CAND}/feedback`]: () => {
+          submitted = true;
+          return json(201, { data: [] });
+        },
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+    await screen.findByText("0 of 3 criteria scored");
+    expect(
+      screen.queryByRole("link", { name: "Next candidate to review" }),
+    ).not.toBeInTheDocument();
+
+    for (const name of ["Backend experience", "Incident response", "Mentoring"]) {
+      const group = screen.getByRole("radiogroup", { name: `Score for ${name}` });
+      await userEvent.click(within(group).getByLabelText("3"));
+      await userEvent.type(screen.getByLabelText(`Comment on ${name}`), "solid");
+    }
+    await userEvent.click(screen.getByRole("button", { name: "Submit feedback" }));
+
+    expect(await screen.findByRole("link", { name: "Next candidate to review" })).toHaveAttribute(
+      "href",
+      "/candidates/c9",
+    );
   });
 
   it("keeps submit disabled until every criterion has a score and comment, then submits", async () => {

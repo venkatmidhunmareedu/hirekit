@@ -50,21 +50,30 @@ const appRoute = createRoute({
   component: AppShell,
 });
 
+// Recruiter-only screens: an interviewer is sent to their own list. The API still decides access.
+async function recruiterOnly({ context }: { context: { queryClient: QueryClient } }) {
+  const session = await context.queryClient.query(sessionQueryOptions);
+  if (session.user.role !== "recruiter") throw redirect({ to: "/me/candidates" });
+}
+
 const homeRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/",
+  beforeLoad: recruiterOnly,
   component: RolesPage,
 });
 
 const roleSetupRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/roles/$roleId",
+  beforeLoad: recruiterOnly,
   component: RoleSetupPage,
 });
 
 const roleCandidatesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/roles/$roleId/candidates",
+  beforeLoad: recruiterOnly,
   component: CandidatesPage,
 });
 
@@ -98,6 +107,7 @@ const kitRoute = createRoute({
 const compareRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/compare",
+  beforeLoad: recruiterOnly,
   validateSearch: (search: Record<string, unknown>) => ({
     ids: typeof search.ids === "string" ? search.ids : "",
   }),

@@ -15,7 +15,16 @@ export function MyCandidatesPage() {
   const mine = useQuery(myCandidatesQueryOptions);
   return (
     <div className="stack">
-      <PageHeader title="My candidates" />
+      <PageHeader
+        title="My candidates"
+        purpose="Give feedback on each candidate you interviewed. Model scores stay hidden until you submit."
+      />
+      {mine.data && mine.data.length > 0 && (
+        <p role="status" className="muted">
+          {mine.data.filter((c) => !c.has_submitted).length} to review,{" "}
+          {mine.data.filter((c) => c.has_submitted).length} submitted
+        </p>
+      )}
       {mine.isPending && <Loading label="Loading your candidates" />}
       {mine.isError && (
         <ErrorNotice
@@ -26,7 +35,7 @@ export function MyCandidatesPage() {
         />
       )}
       {mine.data?.length === 0 && (
-        <EmptyState message="No candidates are assigned to you yet. A recruiter assigns them." />
+        <EmptyState message="No candidates are assigned to you yet. A recruiter assigns them. When one is assigned, it appears here with a Give feedback button." />
       )}
       {mine.data && mine.data.length > 0 && (
         <table className="table">
@@ -35,6 +44,9 @@ export function MyCandidatesPage() {
               <th scope="col">Candidate</th>
               <th scope="col">Role</th>
               <th scope="col">Your feedback</th>
+              <th scope="col">
+                <span className="sr-only">Action</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -50,6 +62,16 @@ export function MyCandidatesPage() {
                   <StatusTag tone={c.has_submitted ? "success" : "neutral"}>
                     {c.has_submitted ? "Submitted" : "Not submitted"}
                   </StatusTag>
+                </td>
+                <td>
+                  <Link
+                    to="/candidates/$candidateId"
+                    params={{ candidateId: c.candidate_id }}
+                    className={c.has_submitted ? "btn btn-secondary" : "btn btn-primary"}
+                    aria-label={`${c.has_submitted ? "View feedback" : "Give feedback"} for ${candidateLabel(c.candidate_no)}`}
+                  >
+                    {c.has_submitted ? "View feedback" : "Give feedback"}
+                  </Link>
                 </td>
               </tr>
             ))}
