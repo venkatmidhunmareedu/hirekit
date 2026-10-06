@@ -38,6 +38,15 @@ _SIGNOFF = re.compile(
     re.I | re.M,
 )
 _LETTERS = re.compile(r"[^\W\d_]+")
+_NICK_WORD = r"[A-Z][a-z]{1,11}"
+_NICK_SUFFIX = re.compile(rf"[ \t]*[(\"\u201c']{_NICK_WORD}[)\"\u201d']\s*$")
+_NICK_PHRASE = re.compile(
+    r"(?:\b(?:is|am|was|also|usually|often|commonly)[ \t]+called|\b[Kk]nown[ \t]+as|\b[Nn]icknamed"
+    r"|\bgo(?:es)?[ \t]+by|\bcalls?[ \t]+(?:me|her|him|them)"
+    r"|\b(?:[Ff]riends|[Cc]olleagues|[Ee]veryone|[Pp]eople)[ \t]+use)"
+    rf"[ \t]+[\"'\u201c(]?({_NICK_WORD})\b"
+    rf"|\b({_NICK_WORD})[ \t]+to[ \t]+(?:my|her|his|their)[ \t]+(?:friends|colleagues|team)"
+)
 _HEADER_LINES = 5
 
 
@@ -77,7 +86,11 @@ def _plausible(segment: str) -> str | None:
 
 
 def _from_segments(line: str) -> list[str]:
-    return [name for seg in _SEGMENT_SPLIT.split(line) if (name := _plausible(seg))]
+    return [
+        name
+        for seg in _SEGMENT_SPLIT.split(line)
+        if (name := _plausible(_NICK_SUFFIX.sub("", seg)))
+    ]
 
 
 def _email_local(text: str) -> str:
@@ -124,18 +137,34 @@ def _tokens(name: str) -> list[str]:
     return [p for p in _LETTERS.findall(_lower(name)) if p not in _PARTICLES]
 
 
-def split_parts(full: str) -> tuple[frozenset[str], frozenset[str]]:
+def stated_nicknames(text: str, full: str) -> frozenset[str]:
+    """Single-word nicknames the document states: `known as Fati`, `go by Pri`, `called Ash`,
+    `nicknamed Han`, `friends call me Oly`, and `(Em)` or `"Em"` right after the name in the
+    header. Title case, two to twelve letters, never a stop-list word. Values are matched later
+    through `re.escape`, never as patterns."""
+    found = {m.group(1) or m.group(2) for m in _NICK_PHRASE.finditer(text)}
+    head = "\n".join([ln for ln in text.split("\n") if ln.strip()][:_HEADER_LINES])
+    after = rf"{re.escape(full)}[ \t]*[(\"\u201c']({_NICK_WORD})[)\"\u201d']"
+    found |= {m.group(1) for m in re.finditer(after, head)}
+    stop = _words("name_stoplist.txt")
+    return frozenset(n.lower() for n in found if n.lower() not in stop)
+
+
+def split_parts(
+    full: str, nicknames: frozenset[str] = frozenset()
+) -> tuple[frozenset[str], frozenset[str]]:
     """The lowercase words that identify `full`: (masked anywhere, masked in name positions only).
 
-    The second set holds common words and parts under three letters, nicknames included.
+    The second set holds common words and parts under three letters (a stated nickname of two
+    letters is masked anywhere unless it is a common word).
     """
-    parts = set(_tokens(full))
+    parts = set(_tokens(full)) | nicknames
     first = _tokens(full)[0] if _tokens(full) else ""
     for group in _nickname_groups():
         if first in group:
             parts |= group
     common = _words("common_word_names.txt")
-    position_only = {p for p in parts if p in common or len(p) < 3}
+    position_only = {p for p in parts if p in common or (len(p) < 3 and p not in nicknames)}
     return frozenset(parts - position_only), frozenset(position_only)
 
 
@@ -183,7 +212,7 @@ def mask_names(text: str, names: NameSet) -> list[Replacement]:
     """Replacements for the candidate's name in every form; none when no name was found."""
     if names.full is None or len(names.full) >= MAX_NAME_CHARS:
         return []
-    always, position_only = split_parts(names.full)
+    always, position_only = split_parts(names.full, stated_nicknames(text, names.full))
     words = _tokens(names.full)
     found: list[Replacement] = []
 
@@ -205,6 +234,10 @@ def mask_names(text: str, names: NameSet) -> list[Replacement]:
         add(_rx(rf"{initial}\.[ \t]*(?:[A-Za-z]\.[ \t]*)?{last}"))  # J. Doe
         add(_rx(rf"{last}[ \t]*,[ \t]*{initial}\.?"))  # Doe, J
     known = always | position_only | frozenset(words)
+    for m in _NICK_PHRASE.finditer(text):  # the phrase itself is a name position
+        g = 1 if m.group(1) else 2
+        if _lower(m.group(g)) in position_only and not _is_placeholder(text, m.start(g), m.end(g)):
+            found.append(Replacement(m.start(g), m.end(g), NAME, "name"))
     for start, end in _spans(text, known):
         if position_only:
             add(_rx(_alt(position_only)), start, end)

@@ -194,3 +194,76 @@ def _names_adversarial_input_finishes_quickly() -> None:
 def test_names_adversarial_input_finishes_quickly() -> None:
     """A regex runs in C and cannot be interrupted, so the proof is a subprocess with a timeout."""
     run_with_timeout(_names_adversarial_input_finishes_quickly, 60)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (
+            "Fatima Al-Mansouri\nShe is known as Fati to her colleagues.\n" + PAD + "Fati shipped.",
+            "[NAME]\n[PRONOUN] is known as [NAME] to [PRONOUN] colleagues.\n"
+            + PAD
+            + "[NAME] shipped.",
+        ),
+        (
+            "Aisha Rahman\n" + PAD + "I am usually called Ash. Ash led it.",
+            "[NAME]\n" + PAD + "I am usually called [NAME]. [NAME] led it.",
+        ),
+        (
+            "Priyanka Nair\n" + PAD + "I go by Pri. Pri built it.",
+            "[NAME]\n" + PAD + "I go by [NAME]. [NAME] built it.",
+        ),
+        (
+            "Olu Adeyemi\n" + PAD + "Friends call me Oly. Oly wrote it.",
+            "[NAME]\n" + PAD + "Friends call me [NAME]. [NAME] wrote it.",
+        ),
+        (
+            "Kenji Watanabe\n" + PAD + "Known as Ken at work. Ken shipped.",
+            "[NAME]\n" + PAD + "Known as [NAME] at work. [NAME] shipped.",
+        ),
+        (
+            "Hannah Schmidt\n" + PAD + "Hannah is nicknamed Han. Han shipped.",
+            "[NAME]\n" + PAD + "[NAME] is nicknamed [NAME]. [NAME] shipped.",
+        ),
+    ],
+)
+def test_a_nickname_the_resume_states_is_masked_everywhere(raw: str, expected: str) -> None:
+    assert out(raw) == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (
+            "Emily Carter (Em)\nSenior Engineer\n" + PAD + "Em led.",
+            "[NAME] ([NAME])\nSenior Engineer\n" + PAD + "[NAME] led.",
+        ),
+        (
+            'Emily Carter "Em"\nSenior Engineer\n' + PAD + "Em led.",
+            '[NAME] "[NAME]"\nSenior Engineer\n' + PAD + "[NAME] led.",
+        ),
+    ],
+)
+def test_a_nickname_in_brackets_or_quotes_after_the_header_name_is_masked(
+    raw: str, expected: str
+) -> None:
+    assert out(raw) == expected
+
+
+def test_known_as_followed_by_an_ordinary_word_masks_nothing() -> None:
+    raw = "Jane Doe\n" + PAD + "Known as the best reviewer. She is called a leader. Go by train."
+    assert "the best reviewer" in out(raw)
+    assert "called a leader" in out(raw)
+
+
+def test_a_stated_nickname_that_is_a_common_word_is_masked_where_stated_only() -> None:
+    raw = "Jane Doe\n" + PAD + "Known as Will to friends.\nI will lead a young team."
+    got = out(raw)
+    assert "I will lead a young team." in got
+    assert "Known as [NAME] to friends" in got  # the stated phrase is a name position
+
+
+def test_a_stated_nickname_that_is_a_stopword_or_too_long_is_ignored() -> None:
+    raw = "Jane Doe\n" + PAD + "Known as Engineer. Called Supercalifragilistic. Engineer wrote."
+    assert "Engineer wrote" in out(raw)
+    assert "Supercalifragilistic" in out(raw)
