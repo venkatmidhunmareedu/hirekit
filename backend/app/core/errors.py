@@ -89,6 +89,19 @@ class BudgetReachedError(ConflictError):
     code = "budget_reached"
 
 
+class FeedbackLockedError(ConflictError):
+    """The interviewer's feedback for this candidate is submitted and locked."""
+
+    code = "feedback_locked"
+
+
+class IncompleteFeedbackError(DomainError):
+    """A live criterion has no score or comment, or an item names no live criterion."""
+
+    status_code = 422
+    code = "incomplete_feedback"
+
+
 class TooManyFilesError(DomainError):
     """More files in one upload than the limit allows."""
 

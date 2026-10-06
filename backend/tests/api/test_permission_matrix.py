@@ -18,7 +18,14 @@ from app.core.auth import CurrentUser, InterviewerUser, RecruiterUser, current_s
 from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
-from tests.api.fakes import FakeCriteria, FakeRoles, FakeSessions, FakeUploads, FakeUsers
+from tests.api.fakes import (
+    FakeCriteria,
+    FakeFeedback,
+    FakeRoles,
+    FakeSessions,
+    FakeUploads,
+    FakeUsers,
+)
 from tests.files import pdf_bytes
 
 # (method, path) -> roles allowed. An absent role gets 403; no sign-in gets 401.
@@ -35,6 +42,12 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("PUT", "/v1/roles/{role_id}/criteria"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/approve"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/resumes"): frozenset({"recruiter"}),
+    ("POST", "/v1/candidates/{candidate_id}/feedback"): frozenset({"interviewer"}),
+    ("GET", "/v1/candidates/{candidate_id}/feedback"): frozenset({"recruiter", "interviewer"}),
+    ("PUT", "/v1/candidates/{candidate_id}/feedback"): frozenset({"interviewer"}),
+    ("POST", "/v1/candidates/{candidate_id}/feedback/{interviewer_id}:approve-edit"): frozenset(
+        {"recruiter"}
+    ),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -89,24 +102,37 @@ async def test_matrix_cell(
     roles: FakeRoles,
     criteria: FakeCriteria,
     uploads: FakeUploads,
+    feedback: FakeFeedback,
     method: str,
     path: str,
     who: str,
 ) -> None:
     role = roles.seed(status="approved")
-    criteria.seed(role.id, "Python")
+    criterion = criteria.seed(role.id, "Python")
     url = path.replace("{role_id}", str(role.id))
     headers: dict[str, str] = {}
     if who != "anonymous":
         user = users.add(email=f"{who}@example.com", role=who)
         headers = (await sessions.sign_in(user)).unsafe_headers
         roles.assigned.add((role.id, user.id))  # lets an interviewer read the role
+    # Feedback routes: a candidate assigned to the caller, and the rows each route expects.
+    candidate_id = feedback.candidate(role.id, *(u.id for u in users.rows))
+    submitted_by = users.add(email="submitted@example.com", role="interviewer")
+    caller = next((u for u in users.rows if u.email == f"{who}@example.com"), submitted_by)
+    feedback.assigned.add((candidate_id, submitted_by.id))
+    feedback_owner = submitted_by.id if "approve-edit" in path else caller.id
+    if method != "POST" or "approve-edit" in path:
+        feedback.seed(candidate_id, feedback_owner, criterion.id, locked="approve-edit" in path)
+    url = url.replace("{candidate_id}", str(candidate_id)).replace(
+        "{interviewer_id}", str(submitted_by.id)
+    )
+    item = {"criterion_id": str(criterion.id), "score": 3, "comment": "Solid"}
 
     response = await client.request(
         method,
         url,
         headers=headers,
-        json=BODIES.get((method, path)),
+        json={"items": [item]} if "/feedback" in path else BODIES.get((method, path)),
         files=FILES.get((method, path)),
     )
 
