@@ -771,7 +771,8 @@ paths:
       description: >-
         For an interviewer, resume scores and overrides are hidden for a candidate they have not
         submitted feedback on, only their own feedback is returned, no quote is ever selected, and
-        one unassigned id makes the whole request 404.
+        one unassigned id makes the whole request 404. The candidates must be distinct and belong to
+        one role (else 422 validation_error); a role without criteria is 422 no_criteria.
       tags: [compare]
       x-story-ids: [US-00-015]
       x-roles: [recruiter, interviewer]
