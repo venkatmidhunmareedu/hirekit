@@ -18,6 +18,7 @@ from app.core.auth import CurrentUser, InterviewerUser, RecruiterUser, current_s
 from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
+from tests.api.fake_compare import FakeCompare
 from tests.api.fakes import FakeCriteria, FakeRoles, FakeSessions, FakeUploads, FakeUsers
 from tests.files import pdf_bytes
 
@@ -35,6 +36,7 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("PUT", "/v1/roles/{role_id}/criteria"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/approve"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/resumes"): frozenset({"recruiter"}),
+    ("GET", "/v1/compare"): frozenset({"recruiter", "interviewer"}),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -89,6 +91,7 @@ async def test_matrix_cell(
     roles: FakeRoles,
     criteria: FakeCriteria,
     uploads: FakeUploads,
+    compare: FakeCompare,
     method: str,
     path: str,
     who: str,
@@ -96,11 +99,14 @@ async def test_matrix_cell(
     role = roles.seed(status="approved")
     criteria.seed(role.id, "Python")
     url = path.replace("{role_id}", str(role.id))
+    two = [compare.seed(role.id), compare.seed(role.id)]
     headers: dict[str, str] = {}
     if who != "anonymous":
         user = users.add(email=f"{who}@example.com", role=who)
         headers = (await sessions.sign_in(user)).unsafe_headers
         roles.assigned.add((role.id, user.id))  # lets an interviewer read the role
+        for candidate_id in two:
+            compare.assigned.add((candidate_id, user.id))
 
     response = await client.request(
         method,
@@ -108,6 +114,7 @@ async def test_matrix_cell(
         headers=headers,
         json=BODIES.get((method, path)),
         files=FILES.get((method, path)),
+        params={"ids": ",".join(map(str, two))} if path == "/v1/compare" else None,
     )
 
     if who == "anonymous":

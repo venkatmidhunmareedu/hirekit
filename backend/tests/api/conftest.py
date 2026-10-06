@@ -3,9 +3,11 @@
 import pytest
 from fastapi import FastAPI
 
+from app.api.compare.router import get_compare
 from app.api.resumes.router import get_uploads
 from app.api.roles.router import get_criteria, get_roles
 from app.core.auth import get_sessions, get_users
+from tests.api.fake_compare import FakeCompare
 from tests.api.fakes import FakeCriteria, FakeRoles, FakeSessions, FakeUploads, FakeUsers
 
 
@@ -41,4 +43,11 @@ def criteria(app: FastAPI) -> FakeCriteria:
 def uploads(app: FastAPI, roles: FakeRoles) -> FakeUploads:
     fake = FakeUploads(roles)
     app.dependency_overrides[get_uploads] = lambda: fake
+    return fake
+
+
+@pytest.fixture
+def compare(app: FastAPI) -> FakeCompare:
+    fake = FakeCompare()
+    app.dependency_overrides[get_compare] = lambda: fake
     return fake
