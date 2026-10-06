@@ -555,6 +555,9 @@ paths:
     post:
       operationId: assignInterviewer
       summary: Assign an interviewer (idempotent)
+      description: >-
+        The target must be an interviewer, else 422 validation_error. A repeat returns 201 again
+        and changes nothing. An unknown candidate is 404.
       tags: [candidates]
       x-story-ids: [US-00-016]
       x-roles: [recruiter]
@@ -579,6 +582,9 @@ paths:
     delete:
       operationId: removeAssignment
       summary: Remove an assignment
+      description: >-
+        The candidate leaves that interviewer's list at once. Removing an absent pair is 204; an
+        unknown candidate is 404.
       tags: [candidates]
       x-story-ids: [US-00-016]
       x-roles: [recruiter]

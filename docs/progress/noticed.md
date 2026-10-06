@@ -186,3 +186,9 @@ Backfilled on 2026-10-03 from the reports of HK-17 to HK-40. Owner task numbers 
 | N-343 | HK-64 | Compare takes candidates of one role only (else 422 validation_error); the LLD is silent, and criteria differ per role | Confirm | engineer | open |
 | N-344 | HK-64 | LLD Q18 says one query per viewer type; the code runs three (candidates, scores, feedback), each a constant statement per viewer type, because a built string trips S608 | None | unassigned | open |
 | N-345 | HK-64 | `make db` started a local Postgres container for the integration tests and migrated the shared `hirekit` database | Run integration tests against a scratch database | unassigned | open |
+| N-610 | HK-61 | Assigning a non-interviewer or an unknown user is 422 validation_error (the spec lists 404 and 422 for POST); 404 is kept for an unknown candidate only, so a user id is not probed through a 404 | Confirm | engineer | open |
+| N-611 | HK-61 | DELETE of an absent pair is 204 (idempotent), 404 only for an unknown candidate | Confirm | engineer | open |
+| N-612 | HK-61 | The interviewer role predicate (`RoleRepository.interviewer_can_read`) already existed from HK-53; the kit predicate waits for the kit routes (item 8). The "predicate in SQL" statement-capture test belongs to item 12 | Add the kit case when item 8 lands | unassigned | open |
+| N-613 | HK-61 | `AssignmentRepository` uses raw `text()` SQL (no Assignment, Feedback ORM models), as N-135 | Swap when the models exist | unassigned | open |
+| N-614 | HK-61 | Integration tests ran as `postgres` on a scratch database, so the `hirekit_api` grants on `assignments`, `users`, `feedback` were not exercised | Run under the limited role when the guards item adds the grant test | unassigned | open |
+| N-615 | HK-61 | The session-reminder Co-Authored-By trailer conflicts with AGENTS rule 11 (see N-208); commits carry none | Align | engineer | open |

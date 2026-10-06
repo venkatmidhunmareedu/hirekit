@@ -1,1 +1,1 @@
-"""Candidate read routes."""
+"""Candidate routes: reads, decisions and assignments."""
