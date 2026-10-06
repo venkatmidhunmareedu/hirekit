@@ -2,8 +2,6 @@
 own repair fails. It never puts what it found into a message (tenet 7)."""
 
 import ast
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -12,6 +10,7 @@ from app.anonymizer import verify
 from app.anonymizer.pipeline import Anonymized, _run
 from app.anonymizer.tokens import NameSet, Replacement
 from app.anonymizer.verify import AnonymizationLeakError, check
+from tests.timeout_helper import run_with_timeout
 
 
 def scan_only(raw: str) -> Anonymized:
@@ -120,18 +119,24 @@ def test_the_scan_shares_no_code_with_the_passes() -> None:
     assert imported <= {"app.anonymizer.tokens", "app.core.errors"}
 
 
+def _adversarial_input_finishes_quickly() -> None:
+    from app.anonymizer.pipeline import anonymize
+
+    n = 150_000
+    for s in [
+        "a" * n,
+        "1-" * (n // 2) + "x",
+        "a." * (n // 2),
+        "@" * n,
+        "age " * (n // 4),
+        "www." * (n // 4),
+        "http://" * (n // 7),
+        "1 " * (n // 2),
+        "a@" * (n // 2),
+    ]:
+        anonymize(s)
+
+
 def test_adversarial_input_finishes_quickly() -> None:
     """A regex runs in C and cannot be interrupted, so the proof is a subprocess with a timeout."""
-    code = (
-        "from app.anonymizer.pipeline import anonymize\n"
-        "n = 150_000\n"
-        "for s in ['a' * n, '1-' * (n // 2) + 'x', 'a.' * (n // 2), '@' * n, 'age ' * (n // 4),"
-        " 'www.' * (n // 4), 'http://' * (n // 7), '1 ' * (n // 2), 'a@' * (n // 2)]:\n"
-        "    anonymize(s)\n"
-    )
-    subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [sys.executable, "-c", code],
-        check=True,
-        timeout=60,
-        cwd=Path(__file__).parents[2],
-    )
+    run_with_timeout(_adversarial_input_finishes_quickly, 60)

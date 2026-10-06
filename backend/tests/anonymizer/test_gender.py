@@ -1,14 +1,11 @@
 """The gender pass: fields, titles and pronouns go; neutral titles and look-alike words stay."""
 
-import subprocess
-import sys
-from pathlib import Path
-
 import pytest
 
 from app.anonymizer import anonymize
 from app.anonymizer.gender import mask_gender
 from app.anonymizer.pipeline import PASSES
+from tests.timeout_helper import run_with_timeout
 
 
 def out(raw: str) -> str:
@@ -54,19 +51,24 @@ def test_neutral_titles_and_the_word_her_inside_another_word_are_kept() -> None:
     assert out(raw) == raw
 
 
+def _gender_adversarial_input_finishes_quickly() -> None:
+    from app.anonymizer.gender import mask_gender
+    from app.anonymizer.tokens import NameSet
+
+    n = 150_000
+    for s in [
+        "Mr" * (n // 2),
+        "Sir " * (n // 4),
+        "Gender:" * (n // 7),
+        "sex: " + "a" * n,
+        "he " * (n // 3),
+        "Miss." * (n // 5),
+        "Mr\n" * (n // 3),
+        "Ms " * (n // 3),
+    ]:
+        mask_gender(s, NameSet())
+
+
 def test_gender_adversarial_input_finishes_quickly() -> None:
     """A regex runs in C and cannot be interrupted, so the proof is a subprocess with a timeout."""
-    code = (
-        "from app.anonymizer.gender import mask_gender\n"
-        "from app.anonymizer.tokens import NameSet\n"
-        "n = 150_000\n"
-        "for s in ['Mr' * (n // 2), 'Sir ' * (n // 4), 'Gender:' * (n // 7), 'sex: ' + 'a' * n,"
-        " 'he ' * (n // 3), 'Miss.' * (n // 5), 'Mr\\n' * (n // 3), 'Ms ' * (n // 3)]:\n"
-        "    mask_gender(s, NameSet())\n"
-    )
-    subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [sys.executable, "-c", code],
-        check=True,
-        timeout=60,
-        cwd=Path(__file__).parents[2],
-    )
+    run_with_timeout(_gender_adversarial_input_finishes_quickly, 60)

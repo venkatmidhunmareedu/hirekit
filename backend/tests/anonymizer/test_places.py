@@ -1,14 +1,11 @@
 """The places pass: postal codes, addresses and gazetteer places go; skills and employers stay."""
 
-import subprocess
-import sys
-from pathlib import Path
-
 import pytest
 
 from app.anonymizer import anonymize
 from app.anonymizer.pipeline import PASSES
 from app.anonymizer.places import AMBIGUOUS, GAZETTEER, KEEP, mask_places
+from tests.timeout_helper import run_with_timeout
 
 
 def out(raw: str) -> str:
@@ -105,21 +102,29 @@ def test_the_ambiguity_list_stays_in_step_with_the_gazetteer() -> None:
     } <= AMBIGUOUS
 
 
+def _places_adversarial_input_finishes_quickly() -> None:
+    from app.anonymizer.places import mask_places
+    from app.anonymizer.tokens import NameSet
+
+    n = 150_000
+    for s in [
+        "1 " * (n // 2),
+        "1 Ab " * (n // 5),
+        "Main St " * (n // 8),
+        "new " * (n // 4),
+        "a, " * (n // 3),
+        "Mobile, " * (n // 8),
+        "in Reading " * (n // 11),
+        "12345 " * (n // 6),
+        "A1 " * (n // 3),
+        "Location:\n" * (n // 10),
+        "a" * n,
+        "Chennai - 1" * (n // 11),
+        "San " * (n // 4),
+    ]:
+        mask_places(s, NameSet())
+
+
 def test_places_adversarial_input_finishes_quickly() -> None:
     """A regex runs in C and cannot be interrupted, so the proof is a subprocess with a timeout."""
-    code = (
-        "from app.anonymizer.places import mask_places\n"
-        "from app.anonymizer.tokens import NameSet\n"
-        "n = 150_000\n"
-        "for s in ['1 ' * (n // 2), '1 Ab ' * (n // 5), 'Main St ' * (n // 8), 'new ' * (n // 4),"
-        " 'a, ' * (n // 3), 'Mobile, ' * (n // 8), 'in Reading ' * (n // 11), '12345 ' * (n // 6),"
-        " 'A1 ' * (n // 3), 'Location:\\n' * (n // 10), 'a' * n, 'Chennai - 1' * (n // 11),"
-        " 'San ' * (n // 4)]:\n"
-        "    mask_places(s, NameSet())\n"
-    )
-    subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [sys.executable, "-c", code],
-        check=True,
-        timeout=60,
-        cwd=Path(__file__).parents[2],
-    )
+    run_with_timeout(_places_adversarial_input_finishes_quickly, 60)

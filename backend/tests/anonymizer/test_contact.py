@@ -1,15 +1,12 @@
 """The contact pass: emails, phones, links and handles go; years, versions and skills stay."""
 
-import subprocess
-import sys
-from pathlib import Path
-
 import pytest
 
 from app.anonymizer import anonymize
 from app.anonymizer.contact import contact
 from app.anonymizer.pipeline import PASSES
 from app.anonymizer.tokens import EMAIL, PHONE, URL, NameSet
+from tests.timeout_helper import run_with_timeout
 
 
 @pytest.mark.parametrize(
@@ -62,20 +59,29 @@ def test_the_pass_is_registered_and_returns_contact_replacements() -> None:
     assert [(r.token, r.kind) for r in found] == [(EMAIL, "contact"), (PHONE, "contact")]
 
 
+def _contact_adversarial_input_finishes_quickly() -> None:
+    from app.anonymizer.contact import contact
+    from app.anonymizer.tokens import NameSet
+
+    n = 150_000
+    for s in [
+        "+" * n,
+        "(1" * (n // 2),
+        "1." * (n // 2),
+        "1 " * (n // 2),
+        "a@b." * (n // 4),
+        "a@" + "b" * n,
+        "x.com" * (n // 5),
+        "github.com/" * (n // 11),
+        "@a" * (n // 2),
+        "twitter:" * (n // 8),
+        "a." * (n // 2) + "@",
+        "http://" * (n // 7),
+        "a-" * (n // 2),
+    ]:
+        contact(s, NameSet())
+
+
 def test_contact_adversarial_input_finishes_quickly() -> None:
     """A regex runs in C and cannot be interrupted, so the proof is a subprocess with a timeout."""
-    code = (
-        "from app.anonymizer.contact import contact\n"
-        "from app.anonymizer.tokens import NameSet\n"
-        "n = 150_000\n"
-        "for s in ['+' * n, '(1' * (n // 2), '1.' * (n // 2), '1 ' * (n // 2), 'a@b.' * (n // 4),"
-        " 'a@' + 'b' * n, 'x.com' * (n // 5), 'github.com/' * (n // 11), '@a' * (n // 2),"
-        " 'twitter:' * (n // 8), 'a.' * (n // 2) + '@', 'http://' * (n // 7), 'a-' * (n // 2)]:\n"
-        "    contact(s, NameSet())\n"
-    )
-    subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [sys.executable, "-c", code],
-        check=True,
-        timeout=60,
-        cwd=Path(__file__).parents[2],
-    )
+    run_with_timeout(_contact_adversarial_input_finishes_quickly, 60)

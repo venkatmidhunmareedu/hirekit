@@ -1,14 +1,11 @@
 """The dates pass: birth dates, ages and graduation dates go; employment dates stay."""
 
-import subprocess
-import sys
-from pathlib import Path
-
 import pytest
 
 from app.anonymizer import anonymize
 from app.anonymizer.dates import mask_dates
 from app.anonymizer.pipeline import PASSES
+from tests.timeout_helper import run_with_timeout
 
 
 def out(raw: str) -> str:
@@ -88,21 +85,29 @@ def test_employment_dates_are_kept() -> None:
     assert out(raw) == raw
 
 
+def _dates_adversarial_input_finishes_quickly() -> None:
+    from app.anonymizer.dates import mask_dates
+    from app.anonymizer.tokens import NameSet
+
+    n = 150_000
+    for s in [
+        "1/" * (n // 2),
+        "1 " * (n // 2),
+        "march " * (n // 6),
+        "Born " * (n // 5),
+        "DOB:" + " " * n,
+        "age:" * (n // 4),
+        "12 " * (n // 3),
+        "graduated " * (n // 10),
+        "Education\n" + "University 2012\n" * (n // 16),
+        "1990-" * (n // 5),
+        "9" * n,
+        "aged " * (n // 5),
+        "1-" * (n // 2),
+    ]:
+        mask_dates(s, NameSet())
+
+
 def test_dates_adversarial_input_finishes_quickly() -> None:
     """A regex runs in C and cannot be interrupted, so the proof is a subprocess with a timeout."""
-    code = (
-        "from app.anonymizer.dates import mask_dates\n"
-        "from app.anonymizer.tokens import NameSet\n"
-        "n = 150_000\n"
-        "for s in ['1/' * (n // 2), '1 ' * (n // 2), 'march ' * (n // 6), 'Born ' * (n // 5),"
-        " 'DOB:' + ' ' * n, 'age:' * (n // 4), '12 ' * (n // 3), 'graduated ' * (n // 10),"
-        " 'Education\\n' + 'University 2012\\n' * (n // 16), '1990-' * (n // 5), '9' * n,"
-        " 'aged ' * (n // 5), '1-' * (n // 2)]:\n"
-        "    mask_dates(s, NameSet())\n"
-    )
-    subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [sys.executable, "-c", code],
-        check=True,
-        timeout=60,
-        cwd=Path(__file__).parents[2],
-    )
+    run_with_timeout(_dates_adversarial_input_finishes_quickly, 60)

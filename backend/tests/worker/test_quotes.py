@@ -1,12 +1,9 @@
 """The quote verifier: whitespace normalization only, never fuzzy (REQ-020)."""
 
-import subprocess
-import sys
-from pathlib import Path
-
 from app.gateway.text import mint_anonymized
 from app.worker.ports import QuoteVerifier
 from app.worker.quotes import WhitespaceQuoteVerifier
+from tests.timeout_helper import run_with_timeout
 
 NBSP = chr(0xA0)
 CURLY = chr(0x2019)
@@ -114,20 +111,17 @@ def test_a_substring_with_one_character_changed_is_never_verified() -> None:
             assert _verify(changed, text) is False, changed
 
 
+def _quotes_adversarial_input_finishes_quickly() -> None:
+    from app.gateway.text import mint_anonymized
+    from app.worker.quotes import WhitespaceQuoteVerifier
+
+    v = WhitespaceQuoteVerifier()
+    for unit in ["a ", "a \n\u00a0 ", "ab", " "]:
+        text = mint_anonymized((unit * 500_000)[:500_000])
+        for quote in [("a " * 5_000), "a" * 10_000, "ab" * 5_000 + "c", " " * 10_000]:
+            assert isinstance(v.verify(quote, text), bool)
+
+
 def test_quotes_adversarial_input_finishes_quickly() -> None:
     """Linear in the input: a subprocess with a hard timeout proves it."""
-    code = (
-        "from app.gateway.text import mint_anonymized\n"
-        "from app.worker.quotes import WhitespaceQuoteVerifier\n"
-        "v = WhitespaceQuoteVerifier()\n"
-        "for unit in ['a ', 'a \\n\\u00a0 ', 'ab', ' ']:\n"
-        "    text = mint_anonymized((unit * 500_000)[:500_000])\n"
-        "    for quote in [('a ' * 5_000), 'a' * 10_000, 'ab' * 5_000 + 'c', ' ' * 10_000]:\n"
-        "        assert isinstance(v.verify(quote, text), bool)\n"
-    )
-    subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [sys.executable, "-c", code],
-        check=True,
-        timeout=30,
-        cwd=Path(__file__).parents[2],
-    )
+    run_with_timeout(_quotes_adversarial_input_finishes_quickly, 30)
