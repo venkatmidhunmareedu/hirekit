@@ -31,6 +31,8 @@ SCALAR_RETURN = re.compile(r"^(None|bool|int|str|(uuid\.)?UUID)(\s*\|\s*None)?$"
 VIEWER_EXCEPTIONS = {
     "app.db.repositories.candidates.ranked": "recruiter-only route; the role is the scope",
     "app.db.repositories.assignments.for_interviewer": "keyed by the interviewer's own user id",
+    "app.db.repositories.jobs_api.get": "recruiter-only route; a job and its candidate's status",
+    "app.db.repositories.jobs_api.queue": "recruiter-only route; the role's per-file queue",
 }
 
 

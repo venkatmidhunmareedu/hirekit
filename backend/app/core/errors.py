@@ -154,6 +154,18 @@ class IncompleteRubricError(DomainError):
     code = "incomplete_rubric"
 
 
+class RoleNotDraftError(ConflictError):
+    """Criteria can be proposed only for a Draft role."""
+
+    code = "role_not_draft"
+
+
+class JobNotCancellableError(ConflictError):
+    """The job already finished, failed, went stale or was cancelled."""
+
+    code = "job_not_cancellable"
+
+
 class ServiceUnavailableError(DomainError):
     """A dependency the request needs is not reachable."""
 

@@ -27,6 +27,7 @@ from tests.api.fakes import (
     FakeCost,
     FakeCriteria,
     FakeFeedback,
+    FakeJobs,
     FakeKit,
     FakeRoles,
     FakeScoringJobs,
@@ -76,6 +77,10 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("GET", "/v1/me/candidates"): frozenset({"interviewer"}),
     ("POST", "/v1/candidates/{candidate_id}/assignments"): frozenset({"recruiter"}),
     ("DELETE", "/v1/candidates/{candidate_id}/assignments/{user_id}"): frozenset({"recruiter"}),
+    ("POST", "/v1/roles/{role_id}/criteria:propose"): frozenset({"recruiter"}),
+    ("GET", "/v1/roles/{role_id}/queue"): frozenset({"recruiter"}),
+    ("GET", "/v1/jobs/{job_id}"): frozenset({"recruiter"}),
+    ("POST", "/v1/jobs/{job_id}:cancel"): frozenset({"recruiter"}),
 }
 # Routes that need no session. Docs and openapi routes are not APIRoutes and never reach the check.
 PUBLIC = frozenset({("POST", "/v1/auth/login"), ("GET", "/healthz"), ("GET", "/readyz")})
@@ -149,12 +154,15 @@ async def test_matrix_cell(
     audit: FakeAudit,
     compare: FakeCompare,
     assignments: FakeAssignments,
+    jobs: FakeJobs,
     method: str,
     path: str,
     who: str,
 ) -> None:
     role = roles.seed(status="approved")
+    draft = roles.seed(status="draft")  # criteria:propose accepts only a Draft role
     criterion = criteria.seed(role.id, "Python")
+    job = jobs.seed(role.id, kind="generate_kit")
     question_id = kit.seed_question(role.id)
     _, candidate_id, criterion_id = decisions.seed()
     # One candidate id that the decisions, scoring and assignments fakes all know.
@@ -163,7 +171,8 @@ async def test_matrix_cell(
     assignments.seed_candidate(candidate_id=candidate_id)
     target = users.add(email="target@example.com", role="interviewer")
     url = (
-        path.replace("{role_id}", str(role.id))
+        path.replace("{role_id}", str(draft.id if path.endswith(":propose") else role.id))
+        .replace("{job_id}", str(job.id))
         .replace("{question_id}", str(question_id))
         .replace("{candidate_id}", str(candidate_id))
         .replace("{criterion_id}", str(criterion_id))

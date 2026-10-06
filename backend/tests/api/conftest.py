@@ -8,6 +8,7 @@ from app.api.candidates.decisions import get_audit, get_decisions
 from app.api.compare.router import get_compare
 from app.api.cost.router import get_costs
 from app.api.feedback.router import get_feedback
+from app.api.jobs.deps import get_jobs
 from app.api.kit.router import get_kits
 from app.api.resumes.router import get_uploads
 from app.api.roles.router import get_criteria, get_roles
@@ -20,6 +21,7 @@ from tests.api.fakes import (
     FakeCost,
     FakeCriteria,
     FakeFeedback,
+    FakeJobs,
     FakeKit,
     FakeRoles,
     FakeScoringJobs,
@@ -117,4 +119,11 @@ def audit(app: FastAPI) -> FakeAudit:
 def compare(app: FastAPI) -> FakeCompare:
     fake = FakeCompare()
     app.dependency_overrides[get_compare] = lambda: fake
+    return fake
+
+
+@pytest.fixture
+def jobs(app: FastAPI) -> FakeJobs:
+    fake = FakeJobs()
+    app.dependency_overrides[get_jobs] = lambda: fake
     return fake

@@ -20,6 +20,7 @@ from app.api.compare.router import router as compare_router
 from app.api.cost.router import router as cost_router
 from app.api.feedback.router import router as feedback_router
 from app.api.health.router import router as health_router
+from app.api.jobs.router import jobs_router, queue_router
 from app.api.kit.router import router as kit_router
 from app.api.resumes.router import router as resumes_router
 from app.api.roles.router import router as roles_router
@@ -68,6 +69,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(roles_router)
+    app.include_router(jobs_router)
+    app.include_router(queue_router)
     app.include_router(resumes_router)
     app.include_router(candidates_router)
     app.include_router(decisions_router)

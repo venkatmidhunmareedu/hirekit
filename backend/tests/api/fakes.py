@@ -10,6 +10,7 @@ from app.core.errors import FeedbackLockedError
 from app.db.models import Criterion, Role, RubricLevel, User, UserSession
 from app.db.repositories.cost import CallRow
 from app.db.repositories.feedback import StoredFeedback
+from app.db.repositories.jobs_api import JobView, QueueRow
 from app.db.repositories.kit import QuestionRef
 from app.db.repositories.scoring_jobs import CandidateState, RescoreTarget
 from app.db.repositories.sessions import hash_token
@@ -493,3 +494,71 @@ class FakeFeedback:
                 self.stored.remove(entry)
                 self.stored.append((entry[0], replace(entry[1], locked=False)))
             self.audit.append({"kind": "feedback_edit_approved", "actor": actor_id})
+
+
+OPEN = ("queued", "running")
+
+
+class FakeJobs:
+    """In-memory stand-in for the jobs repository of the Api."""
+
+    def __init__(self) -> None:
+        self.rows: dict[int, JobView] = {}
+        self.targets: dict[int, uuid.UUID] = {}  # job id -> candidate id
+        self.candidate_failures: dict[uuid.UUID, str] = {}
+        self.spent_usd: Decimal | None = None
+        self.queue_rows: list[QueueRow] = []
+        self.counts: tuple[int, int] = (0, 0)
+
+    def seed(
+        self,
+        role_id: uuid.UUID,
+        *,
+        kind: str = "propose_criteria",
+        status: str = "queued",
+        candidate_id: uuid.UUID | None = None,
+    ) -> JobView:
+        job = JobView(
+            id=len(self.rows) + 1,
+            type=kind,
+            status=status,
+            role_id=role_id,
+            candidate_no=None,
+            criteria_version=1,
+            attempt=0,
+            last_error=None,
+            created_at=datetime.now(UTC),
+        )
+        self.rows[job.id] = job
+        if candidate_id is not None:
+            self.targets[job.id] = candidate_id
+        return job
+
+    async def spent(self) -> Decimal | None:
+        return self.spent_usd
+
+    async def enqueue_propose(self, role_id: uuid.UUID, criteria_version: int) -> int | None:
+        if any(
+            j.role_id == role_id and j.type == "propose_criteria" and j.status in OPEN
+            for j in self.rows.values()
+        ):
+            return None
+        return self.seed(role_id).id
+
+    async def get(self, job_id: int) -> JobView | None:
+        return self.rows.get(job_id)
+
+    async def cancel(self, job_id: int) -> bool:
+        job = self.rows.get(job_id)
+        if job is None or job.status not in OPEN:
+            return False
+        self.rows[job_id] = replace(job, status="cancelled")
+        if job.type == "process_resume" and job_id in self.targets:
+            self.candidate_failures[self.targets[job_id]] = "Cancelled by a recruiter"
+        return True
+
+    async def queue(self, role_id: uuid.UUID, limit: int) -> list[QueueRow]:
+        return self.queue_rows[:limit]
+
+    async def open_counts(self, role_id: uuid.UUID) -> tuple[int, int]:
+        return self.counts
