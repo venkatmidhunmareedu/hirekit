@@ -1,0 +1,26 @@
+Eszter Horvath
+Customer Support Specialist
+Budapest, Hungary
+Email: eszter.horvath@example.com
+Phone: 555-0118
+Profile: example.com/in/eszterhorvath
+
+SUMMARY
+Support specialist of five years in a software company, now leading a small group. A steady writer who likes clear help pages and clean reports.
+
+EXPERIENCE
+Senior Support Specialist, Dunmore Analytics, 2021 to present
+I lead a group of four agents for the billing product. I plan the week, check replies before sensitive ones go out and run short training sessions on new features; my one-to-ones are monthly. Two of the four joined after I helped interview them.
+I handle customer cases on billing errors and failed renewals. Most customers are satisfied, but I find long angry calls hard and pass them to my manager.
+I use the helpdesk daily: views, tags and a few macros I made for the most common billing answers.
+I produce a monthly report with volume, first response and satisfaction by product, and I presented it to the department three times. I found that 14 percent of tickets were about invoice downloads.
+That finding led me to rewrite the invoice help page and add a short video; invoice tickets fell by 40 percent in two months.
+
+Support Specialist, Dunmore Analytics, 2019 to 2021
+Answered email and chat in English and one other language.
+
+SKILLS:
+Helpdesk views and tags, macros, report writing, help center editing, spreadsheets, training sessions
+
+EDUCATION:
+BA English Studies, Riverlea University, 2019

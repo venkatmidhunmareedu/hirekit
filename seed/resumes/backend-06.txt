@@ -1,0 +1,17 @@
+Fatima Al-Mansouri
+Toronto, Canada
+fatima.almansouri@example.com
+555-0106
+example.com/in/fatimaalmansouri
+
+Fatima Al-Mansouri is a backend engineer with six years of experience building Python APIs for fintech and logistics teams. She is known as Fati to her colleagues. She has been the main author of two production FastAPI services and prefers a clear contract and a plain schema over clever abstractions.
+
+At Quillon Freight, 2020 to now, Fati built and owns the shipment tracking API, a FastAPI service with 45 endpoints used by 150 customers and two mobile apps. She designed the request and response models with strict validation, wrote the error handling that customers see, and introduced an API versioning policy that let the team retire two old versions without a single support ticket. The service handles about 800 requests per second.
+
+The service stores its data in PostgreSQL. Fati designed the tracking events table and its indexes, and rewrote the three slowest queries after reading their plans; the median response time dropped by a third. Migrations are written with Alembic and reviewed by one other engineer.
+
+She owns the test suite for the service: pytest unit tests, integration tests against a real database in a container, and a CI job that blocks a merge on failure. Coverage is at 85 percent. At Petrel Mobility, 2018 to 2020, her first backend job, She wrote smaller Flask endpoints and learned to review code.
+
+She has deployed to a virtual server with Docker Compose and a simple script, but has not worked with Kubernetes or a cloud provider's managed services. She joins the on-call rota and reads logs and a few dashboards when paged, and has added structured logging to the service, though alerting is run by another team.
+
+Education: BSc Information Systems, Halden Technical University, 2018.

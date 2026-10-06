@@ -22,7 +22,7 @@ define need_tool
 command -v $(UV) >/dev/null || $(call skip,$(1),uv); $(UV) run --quiet $(2) --version >/dev/null 2>&1 || $(call skip,$(1),$(2))
 endef
 
-.PHONY: help setup dev check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new vuln doctor db db-reset clean
+.PHONY: help setup dev check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed vuln doctor db db-reset clean
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
@@ -123,6 +123,9 @@ migrate-verify: ## Every Down runs and restores the schema: up, snapshot, down, 
 	DATABASE_URL=$(DATABASE_URL) $(UV) run alembic downgrade base >/dev/null && $(MAKE) --no-print-directory migrate >/dev/null && snap all || exit 1; \
 	diff -u $(STATE)/schema-up.txt $(STATE)/schema-all.txt || { echo "migrate-verify: running every downgrade and every upgrade again changed the schema" >&2; exit 1; }; \
 	echo "migrate-verify: $$n migrations, every downgrade ran, $$o schema objects identical after down and up"
+
+seed: ## Load the seed roles and resumes into the database (idempotent; needs make migrate)
+	DATABASE_URL=$(DATABASE_URL) $(UV) run python -m app.seed
 
 migrate-new: ## Autogenerate the next migration: make migrate-new name=add_invoices
 	@[ -n "$(name)" ] || { echo "usage: make migrate-new name=add_invoices" >&2; exit 2; }

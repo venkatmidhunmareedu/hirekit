@@ -1,0 +1,29 @@
+Maria Gonzalez
+Software Engineer, Quality Focus
+Madrid, Spain
+Email: maria.gonzalez@example.com
+Phone: 555-0109
+Profile: example.com/in/mariagonzalez
+Pronouns: she/her
+
+SUMMARY
+Backend engineer with four years of experience who cares about tests. Known as Mari at work. She writes code that other people can change safely.
+
+EXPERIENCE
+Software Engineer, Lumen Ticketing, 2022 to present
+- Own the test suite of the ticket validation service (Python, 1,400 tests, runs in 6 minutes in CI).
+- Introduced contract tests between the service and two partner systems and a mutation testing job that found 30 weak tests.
+- Wrote the integration test harness with a disposable PostgreSQL container; flaky tests fell from 12 percent to under 1 percent.
+- Run the weekly quality review for the team and wrote its code review checklist, adopted by three other teams.
+- Add endpoints to the service in FastAPI under the guidance of the tech lead, usually one or two a sprint.
+- Write plain SQL for reports and changes to existing tables; the schema was designed by the data team.
+
+Software Tester, Aldwych Games, 2020 to 2022
+- Wrote automated UI and API checks and reported defects.
+- Learned Python on the job.
+
+SKILLS:
+Python, pytest, FastAPI (working), PostgreSQL (queries), Docker (test containers only), GitHub Actions
+
+EDUCATION:
+BSc Computer Science, Ashford Institute of Technology, 2020

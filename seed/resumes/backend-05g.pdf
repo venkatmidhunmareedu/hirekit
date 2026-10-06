@@ -1,0 +1,123 @@
+%PDF-1.3
+%יכס¿
+1 0 obj
+<<
+/Count 1
+/Kids [3 0 R]
+/MediaBox [0 0 595.28 841.89]
+/Type /Pages
+>>
+endobj
+2 0 obj
+<<
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+/Pages 1 0 R
+/Type /Catalog
+>>
+endobj
+3 0 obj
+<<
+/Contents 4 0 R
+/Parent 1 0 R
+/Resources 6 0 R
+/Type /Page
+>>
+endobj
+4 0 obj
+<<
+/Length 3555
+>>
+stream
+2 J
+0.57 w
+BT /F1 11.00 Tf ET
+BT 31.18 801.74 Td (Ingrid Larsen) Tj ET
+BT 31.18 784.73 Td (Cloud and Platform Engineer) Tj ET
+BT 31.18 767.72 Td (Oslo, Norway) Tj ET
+BT 31.18 750.72 Td (ingrid.larsen@example.com) Tj ET
+BT 31.18 733.71 Td (555-0105) Tj ET
+BT 31.18 716.70 Td (example.com/in/ingridlarsen) Tj ET
+BT 31.18 682.68 Td (About me) Tj ET
+q BT 31.18 665.68 Td 1.030 Tw (I have spent eight years building and running platforms for backend teams, mostly in Java. People at work) Tj ET Q
+BT 31.18 648.67 Td (call me Inge. I want to move closer to Python services.) Tj ET
+BT 31.18 614.65 Td (Skills) Tj ET
+28.35 609.45 179.53 -17.01 re S BT 31.18 597.65 Td (Area) Tj ET
+207.88 609.45 179.53 -17.01 re S BT 210.71 597.65 Td (Tools) Tj ET
+387.40 609.45 179.53 -17.01 re S BT 390.24 597.65 Td (Years) Tj ET
+28.35 592.44 179.53 -17.01 re S BT 31.18 580.64 Td (Containers) Tj ET
+207.88 592.44 179.53 -17.01 re S BT 210.71 580.64 Td (Docker, Kubernetes, Helm) Tj ET
+387.40 592.44 179.53 -17.01 re S BT 390.24 580.64 Td (6) Tj ET
+28.35 575.43 179.53 -17.01 re S BT 31.18 563.63 Td (Cloud) Tj ET
+207.88 575.43 179.53 -17.01 re S BT 210.71 563.63 Td (AWS, Terraform) Tj ET
+387.40 575.43 179.53 -17.01 re S BT 390.24 563.63 Td (7) Tj ET
+28.35 558.43 179.53 -17.01 re S BT 31.18 546.62 Td (Observability) Tj ET
+207.88 558.43 179.53 -17.01 re S BT 210.71 546.62 Td (Prometheus, Grafana, alerting) Tj ET
+387.40 558.43 179.53 -17.01 re S BT 390.24 546.62 Td (6) Tj ET
+28.35 541.42 179.53 -17.01 re S BT 31.18 529.61 Td (Languages) Tj ET
+207.88 541.42 179.53 -17.01 re S BT 210.71 529.61 Td (Java, Go, some Python) Tj ET
+387.40 541.42 179.53 -17.01 re S BT 390.24 529.61 Td (8) Tj ET
+28.35 524.41 179.53 -17.01 re S BT 31.18 512.61 Td (Databases) Tj ET
+207.88 524.41 179.53 -17.01 re S BT 210.71 512.61 Td (PostgreSQL basics) Tj ET
+387.40 524.41 179.53 -17.01 re S BT 390.24 512.61 Td (3) Tj ET
+28.35 507.40 179.53 -17.01 re S BT 31.18 495.60 Td (Testing) Tj ET
+207.88 507.40 179.53 -17.01 re S BT 210.71 495.60 Td (JUnit, smoke tests) Tj ET
+387.40 507.40 179.53 -17.01 re S BT 390.24 495.60 Td (5) Tj ET
+BT 31.18 461.58 Td (Experience) Tj ET
+BT 31.18 444.57 Td (Platform Engineer, Ironbridge Cloud, 2019 to present) Tj ET
+q BT 31.18 427.57 Td 0.026 Tw (I built the container build and deployment pipeline for 30 Java services: images, Helm charts, canary releases) Tj ET Q
+q BT 31.18 410.56 Td 0.995 Tw (and rollbacks. I wrote the Terraform modules for the network, databases and clusters, and led the move of) Tj ET Q
+q BT 31.18 393.55 Td 0.954 Tw (the platform to a second AWS region, which cut cloud cost by 22 percent. I set the service level objectives) Tj ET Q
+q BT 31.18 376.54 Td 2.278 Tw (with the product teams, built the alerts and the on-call runbooks, and led incident reviews; outages per) Tj ET Q
+BT 31.18 359.53 Td (quarter fell from nine to three.) Tj ET
+q BT 31.18 342.53 Td 0.417 Tw (I use Python for glue scripts and a small internal tool with a Flask endpoint that lists deployments. I have not) Tj ET Q
+BT 31.18 325.52 Td (built a customer-facing API in Python.) Tj ET
+q BT 31.18 308.51 Td 0.855 Tw (I use PostgreSQL as a user: I create databases, set up backups and read query plans with the app teams,) Tj ET Q
+BT 31.18 291.50 Td (but I do not design schemas.) Tj ET
+BT 31.18 274.50 Td (I write JUnit tests for the Java libraries I maintain and smoke tests that run after every deploy.) Tj ET
+BT 31.18 240.48 Td (Software Engineer, Tamsin Software, 2016 to 2019) Tj ET
+BT 31.18 223.47 Td (Java backend developer on a booking platform.) Tj ET
+
+endstream
+endobj
+5 0 obj
+<<
+/BaseFont /Helvetica
+/Encoding /WinAnsiEncoding
+/Subtype /Type1
+/Type /Font
+>>
+endobj
+6 0 obj
+<<
+/Font <</F1 5 0 R>>
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+>>
+endobj
+7 0 obj
+<<
+/CreationDate (D:20260101000000Z)
+/Producer (hirekit-seed)
+/Title (Resume)
+>>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000015 00000 n 
+0000000102 00000 n 
+0000000205 00000 n 
+0000000285 00000 n 
+0000003892 00000 n 
+0000003989 00000 n 
+0000004076 00000 n 
+trailer
+<<
+/Size 8
+/Root 2 0 R
+/Info 7 0 R
+/ID [<0C3F0675A423A07B26F1FB0D78643971><0C3F0675A423A07B26F1FB0D78643971>]
+>>
+startxref
+4172
+%%EOF

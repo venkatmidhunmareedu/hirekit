@@ -1,0 +1,24 @@
+Connor Murphy
+Junior Software Developer
+Dublin, Ireland
+Email: connor.murphy@example.com
+Phone: 555-0104
+Profile: example.com/in/connormurphy
+Pronouns: he/him
+
+OBJECTIVE
+Recent graduate looking for a first backend role where I can learn from experienced engineers. I go by Con.
+
+EDUCATION
+BSc Computer Science, Ashford Institute of Technology, graduated 2025
+Relevant courses: Databases, Web Development, Software Engineering
+
+PROJECTS:
+Library app (final year project). A small web app to track book loans, written in Python with Flask. I followed a tutorial to build the pages and a few routes that return JSON. It uses SQLite and I wrote simple SELECT and INSERT queries.
+Weather bot. A script that fetches a forecast from a public service and prints it. I used the requests library.
+
+INTERNSHIP:
+Summer intern, Fenwick Digital, 2024. I helped the support team by fixing typos in the admin pages and running the existing test suite before releases. I attended code review meetings but did not review code myself.
+
+SKILLS:
+Python, Flask, SQL basics, Git, HTML, a little Docker from a class demo
