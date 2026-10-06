@@ -617,6 +617,9 @@ paths:
     get:
       operationId: getKit
       summary: The kit; stale when it was generated for older criteria
+      description: |
+        404 when the role has no kit yet, and for an interviewer when none of the role's
+        candidates is assigned to them. The same body for both roles; an edit shows read-only.
       tags: [kit]
       x-story-ids: [US-00-002, US-00-013]
       x-roles: [recruiter, interviewer]

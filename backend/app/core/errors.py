@@ -96,7 +96,7 @@ class NotRetryableError(ConflictError):
 
 
 class JobAlreadyOpenError(ConflictError):
-    """A scoring job for this candidate is already queued or running."""
+    """A scoring, proposal or kit job for the same target is already queued or running."""
 
     code = "job_already_open"
 

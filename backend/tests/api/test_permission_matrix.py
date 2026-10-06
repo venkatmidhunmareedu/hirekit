@@ -22,6 +22,7 @@ from tests.api.fake_decisions import FakeAudit, FakeDecisions
 from tests.api.fakes import (
     FakeCost,
     FakeCriteria,
+    FakeKit,
     FakeRoles,
     FakeScoringJobs,
     FakeSessions,
@@ -44,6 +45,11 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("PUT", "/v1/roles/{role_id}/criteria"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/approve"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/resumes"): frozenset({"recruiter"}),
+    ("POST", "/v1/roles/{role_id}/kit:generate"): frozenset({"recruiter"}),
+    ("GET", "/v1/roles/{role_id}/kit"): frozenset({"recruiter", "interviewer"}),
+    ("PUT", "/v1/kit/questions/{question_id}"): frozenset({"recruiter"}),
+    ("DELETE", "/v1/kit/questions/{question_id}"): frozenset({"recruiter"}),
+    ("POST", "/v1/kit/questions/{question_id}:regenerate"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}:rescore"): frozenset({"recruiter"}),
     ("POST", "/v1/candidates/{candidate_id}:retry"): frozenset({"recruiter"}),
     ("GET", "/v1/cost-log"): frozenset({"recruiter"}),
@@ -89,6 +95,7 @@ BODIES: dict[tuple[str, str], dict[str, object]] = {
         "criteria": [{"name": "Python", "kind": "must_have", "weight": 3, "rubric": FULL_RUBRIC}]
     },
     ("POST", "/v1/roles/{role_id}/approve"): {"criteria_version": 1},
+    ("PUT", "/v1/kit/questions/{question_id}"): {"question_text": "Why Python?"},
     ("PUT", "/v1/candidates/{candidate_id}/scores/{criterion_id}/override"): {
         "override_score": 4,
         "note": "Seen in the interview notes",
@@ -111,6 +118,7 @@ async def test_matrix_cell(
     roles: FakeRoles,
     criteria: FakeCriteria,
     uploads: FakeUploads,
+    kit: FakeKit,
     scoring_jobs: FakeScoringJobs,
     costs: FakeCost,
     decisions: FakeDecisions,
@@ -121,12 +129,14 @@ async def test_matrix_cell(
 ) -> None:
     role = roles.seed(status="approved")
     criteria.seed(role.id, "Python")
+    question_id = kit.seed_question(role.id)
     _, candidate_id, criterion_id = decisions.seed()
     # One candidate id that both the decisions and the scoring fakes know.
     scoring_jobs.candidates[candidate_id] = (role.id, 1)
     scoring_jobs.needs.add(candidate_id)
     url = (
         path.replace("{role_id}", str(role.id))
+        .replace("{question_id}", str(question_id))
         .replace("{candidate_id}", str(candidate_id))
         .replace("{criterion_id}", str(criterion_id))
     )

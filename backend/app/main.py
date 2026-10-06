@@ -16,6 +16,7 @@ from app.api.auth.router import router as auth_router
 from app.api.candidates.decisions import router as decisions_router
 from app.api.cost.router import router as cost_router
 from app.api.health.router import router as health_router
+from app.api.kit.router import router as kit_router
 from app.api.resumes.router import router as resumes_router
 from app.api.roles.router import router as roles_router
 from app.api.scoring.router import router as scoring_router
@@ -67,4 +68,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(decisions_router)
     app.include_router(scoring_router)
     app.include_router(cost_router)
+    app.include_router(kit_router)
     return app
