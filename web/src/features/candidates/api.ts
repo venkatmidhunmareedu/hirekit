@@ -299,3 +299,20 @@ export async function getMyCandidates(): Promise<MyCandidate[]> {
     has_submitted: c.bool("has_submitted"),
   }));
 }
+
+export interface Person {
+  id: string;
+  name: string;
+}
+
+/** GET /v1/users?role=interviewer: recruiter only, name and id. */
+export async function listInterviewers(): Promise<Person[]> {
+  const r = new Reader(await request("GET", "/v1/users?role=interviewer"), "interviewers");
+  return r.list("data", (u) => ({ id: u.str("id"), name: u.str("name") }));
+}
+
+/** GET /v1/candidates/{id}/assignments: who may see this candidate. Recruiter only. */
+export async function getCandidateAssignments(id: string): Promise<Person[]> {
+  const r = new Reader(await request("GET", `/v1/candidates/${id}/assignments`), "assignments");
+  return r.list("data", (a) => ({ id: a.str("user_id"), name: a.str("name") }));
+}

@@ -245,3 +245,35 @@ async def test_has_submitted_is_true_once_the_interviewer_has_feedback_on_the_ca
 
     assert [c["has_submitted"] for c in await mine(env.interviewer)] == [True]
     assert [c["has_submitted"] for c in await mine(env.other)] == [False]
+
+
+async def test_a_recruiter_lists_interviewers_without_email_and_not_recruiters(env: Env) -> None:
+    response = await env.recruiter.get("/v1/users", params={"role": "interviewer", "limit": 200})
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    mine_listed = [u for u in data if u["name"] == env.tag]
+    assert sorted(u["id"] for u in mine_listed) == sorted(
+        [str(env.interviewer_id), str(env.other_id)]
+    )
+    assert all(set(u) == {"id", "name"} for u in data)
+    assert (await env.recruiter.get("/v1/users", params={"role": "recruiter"})).status_code == 422
+    assert (await env.interviewer.get("/v1/users?role=interviewer")).status_code == 403
+
+
+async def test_assignments_persist_and_list_by_name_for_the_candidate(env: Env) -> None:
+    _, candidate_id = await make_candidate(env)
+    _, other_candidate = await make_candidate(env, "b")
+    await assign(env, candidate_id, env.interviewer_id)
+    await assign(env, other_candidate, env.other_id)
+    url = f"/v1/candidates/{candidate_id}/assignments"
+
+    listed = await env.recruiter.get(url)
+    await env.recruiter.delete(f"{url}/{env.interviewer_id}")
+    emptied = await env.recruiter.get(url)
+    unknown = await env.recruiter.get(f"/v1/candidates/{uuid4()}/assignments")
+    forbidden = await env.interviewer.get(url)
+
+    assert listed.json() == {"data": [{"user_id": str(env.interviewer_id), "name": env.tag}]}
+    assert emptied.json() == {"data": []}
+    assert (unknown.status_code, forbidden.status_code) == (404, 403)

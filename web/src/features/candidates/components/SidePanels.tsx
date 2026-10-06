@@ -11,15 +11,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { ErrorNotice } from "../../../components/ErrorNotice";
 import { Loading } from "../../../components/Loading";
+import { Notice } from "../../../components/Notice";
 import { Section } from "../../../components/Section";
 import { type AuditEvent, type Identity } from "../api";
 import { STAGE_LABEL } from "../labels";
-import { anonymizedTextQueryOptions, useAssign, useReveal, useUnassign } from "../hooks";
+import {
+  anonymizedTextQueryOptions,
+  assignmentsQueryOptions,
+  interviewersQueryOptions,
+  useAssign,
+  useReveal,
+  useUnassign,
+} from "../hooks";
 
 /** Split text around the quote, matching on whitespace-normalized words only (PRD: no fuzzy match). */
 export function splitAtQuote(text: string, quote: string | null): [string, string, string] | null {
@@ -133,78 +147,107 @@ export function RevealIdentity({ candidateId }: { candidateId: string }) {
 }
 
 /**
- * Assign interviewers. The contract has no call that lists users or a candidate's
- * assignments, so this takes an interviewer's user id and lists what was assigned
- * in this visit (see docs/progress/noticed.md).
+ * Assign interviewers: pick from the interviewer accounts not yet assigned. The server
+ * owns the assigned list, so it is read from the cache and never copied into state.
  */
 export function Assignments({ candidateId }: { candidateId: string }) {
+  const interviewers = useQuery(interviewersQueryOptions());
+  const assigned = useQuery(assignmentsQueryOptions(candidateId));
   const assign = useAssign(candidateId);
   const unassign = useUnassign(candidateId);
   const [userId, setUserId] = useState("");
-  const [assigned, setAssigned] = useState<string[]>([]);
 
-  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const id = userId.trim();
-    assign.mutate(id, {
-      onSuccess: () => {
-        setAssigned((prev) => (prev.includes(id) ? prev : [...prev, id]));
-        setUserId("");
-      },
-    });
+  let body;
+  if (interviewers.isPending || assigned.isPending) {
+    body = <Loading label="Loading interviewers" />;
+  } else if (interviewers.isError || assigned.isError) {
+    body = <ErrorNotice error={interviewers.error ?? assigned.error} />;
+  } else {
+    const taken = new Set(assigned.data.map((p) => p.id));
+    const available = interviewers.data.filter((p) => !taken.has(p.id));
+    body = (
+      <>
+        {interviewers.data.length === 0 ? (
+          <Notice tone="info">No interviewer accounts exist yet.</Notice>
+        ) : (
+          <form
+            className="flex flex-col items-start gap-3"
+            onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
+              event.preventDefault();
+              assign.mutate(userId, {
+                onSuccess: () => {
+                  setUserId("");
+                },
+              });
+            }}
+          >
+            <div className="flex w-full flex-col gap-1.5">
+              <Label htmlFor="assign-user">Interviewer</Label>
+              <Select value={userId} onValueChange={setUserId}>
+                <SelectTrigger
+                  id="assign-user"
+                  className="h-10 w-full"
+                  disabled={available.length === 0}
+                >
+                  <SelectValue
+                    placeholder={available.length === 0 ? "All assigned" : "Choose an interviewer"}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {available.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="submit"
+              variant="outline"
+              className="h-10 px-4"
+              disabled={userId === "" || assign.isPending}
+            >
+              <UserPlus aria-hidden="true" />
+              Assign interviewer
+            </Button>
+          </form>
+        )}
+        {assigned.data.length === 0 ? (
+          <Notice tone="info">
+            No interviewer assigned. They will see this candidate under My candidates.
+          </Notice>
+        ) : (
+          <ul className="flex flex-col divide-y rounded-lg border bg-card">
+            {assigned.data.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-3 py-1 pr-1 pl-3">
+                <span className="text-sm">{p.name}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-10 px-3"
+                  aria-label={`Remove ${p.name}`}
+                  disabled={unassign.isPending}
+                  onClick={() => {
+                    unassign.mutate(p.id);
+                  }}
+                >
+                  <UserMinus aria-hidden="true" />
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    );
   }
 
   return (
     <Section id="assign-heading" title="Interviewers">
-      <form onSubmit={onSubmit} className="flex flex-col items-start gap-3">
-        <div className="flex w-full flex-col gap-1.5">
-          <Label htmlFor="assign-user">Interviewer user id</Label>
-          <span className="text-sm text-muted-foreground">
-            Paste the interviewer's account id. The app cannot list users yet.
-          </span>
-          <Input
-            id="assign-user"
-            className="h-10 font-mono"
-            value={userId}
-            required
-            onChange={(e) => {
-              setUserId(e.target.value);
-            }}
-          />
-        </div>
-        <Button type="submit" variant="outline" className="h-10 px-4" disabled={assign.isPending}>
-          <UserPlus aria-hidden="true" />
-          Assign interviewer
-        </Button>
-      </form>
+      {body}
       {assign.error && <ErrorNotice error={assign.error} />}
       {unassign.error && <ErrorNotice error={unassign.error} />}
-      {assigned.length > 0 && (
-        <ul className="flex flex-col divide-y rounded-lg border bg-card">
-          {assigned.map((id) => (
-            <li key={id} className="flex items-center justify-between gap-3 py-1 pr-1 pl-3">
-              <span className="mono font-mono text-sm break-all">{id}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-10 px-3"
-                aria-label={`Remove interviewer ${id}`}
-                disabled={unassign.isPending}
-                onClick={() => {
-                  unassign.mutate(id, {
-                    onSuccess: () => {
-                      setAssigned((prev) => prev.filter((p) => p !== id));
-                    },
-                  });
-                }}
-              >
-                <UserMinus aria-hidden="true" />
-                Remove
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
     </Section>
   );
 }

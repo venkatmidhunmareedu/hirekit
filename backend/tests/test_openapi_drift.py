@@ -44,8 +44,8 @@ def test_the_detector_finds_a_route_missing_from_the_spec() -> None:
 
 
 def test_the_spec_has_the_operations_the_api_design_lists() -> None:
-    """A cheap floor: the design's route table (docs/design/api-lld.md) has 37 operations."""
-    assert len(spec_operations()) == 37
+    """A cheap floor: the design's route table (docs/design/api-lld.md) has 39 operations."""
+    assert len(spec_operations()) == 39
 
 
 def test_every_operation_declares_its_stories_and_an_operation_id() -> None:

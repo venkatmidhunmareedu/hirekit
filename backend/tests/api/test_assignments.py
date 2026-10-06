@@ -190,3 +190,78 @@ async def test_a_list_limit_outside_1_to_200_is_422(
 
     assert response.status_code == 422
     assert assignments.limits == []
+
+
+async def test_a_recruiter_lists_interviewers_with_id_and_name_only(
+    client: AsyncClient, users: FakeUsers, recruiter: dict[str, str]
+) -> None:
+    zed = users.add(email="z@example.com", role="interviewer", name="Zed")
+    ann = users.add(email="a@example.com", role="interviewer", name="Ann")
+    users.add(email="r9@example.com", role="recruiter", name="Boss")
+
+    response = await client.get("/v1/users?role=interviewer", headers=recruiter)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "data": [{"id": str(ann.id), "name": "Ann"}, {"id": str(zed.id), "name": "Zed"}]
+    }
+    assert response.headers["cache-control"] == "no-store"
+
+
+async def test_listing_interviewers_is_for_a_recruiter_with_a_session(
+    client: AsyncClient, users: FakeUsers, sessions: FakeSessions
+) -> None:
+    _, headers = await sign_in_interviewer(users, sessions, "i@example.com")
+
+    anonymous = await client.get("/v1/users?role=interviewer")
+    by_interviewer = await client.get("/v1/users?role=interviewer", headers=headers)
+
+    assert (anonymous.status_code, by_interviewer.status_code) == (401, 403)
+
+
+@pytest.mark.parametrize("query", ["", "?role=recruiter", "?role=interviewer&limit=201"])
+async def test_listing_users_needs_role_interviewer_and_a_bounded_limit(
+    client: AsyncClient, recruiter: dict[str, str], query: str
+) -> None:
+    response = await client.get(f"/v1/users{query}", headers=recruiter)
+
+    assert response.status_code == 422
+
+
+async def test_a_recruiter_lists_a_candidates_assigned_interviewers_by_name(
+    client: AsyncClient,
+    users: FakeUsers,
+    sessions: FakeSessions,
+    assignments: FakeAssignments,
+    recruiter: dict[str, str],
+) -> None:
+    candidate_id = assignments.seed_candidate()
+    other_id = assignments.seed_candidate(2)
+    ann = users.add(email="a@example.com", role="interviewer", name="Ann")
+    bob = users.add(email="b@example.com", role="interviewer", name="Bob")
+    await assignments.add(candidate_id, ann.id)
+    await assignments.add(other_id, bob.id)
+
+    response = await client.get(f"/v1/candidates/{candidate_id}/assignments", headers=recruiter)
+
+    assert response.status_code == 200
+    assert response.json() == {"data": [{"user_id": str(ann.id), "name": "Ann"}]}
+    assert response.headers["cache-control"] == "no-store"
+
+
+async def test_listing_assignments_is_404_for_an_unknown_candidate_and_403_for_an_interviewer(
+    client: AsyncClient,
+    users: FakeUsers,
+    sessions: FakeSessions,
+    assignments: FakeAssignments,
+    recruiter: dict[str, str],
+) -> None:
+    known = assignments.seed_candidate()
+    _, headers = await sign_in_interviewer(users, sessions, "i@example.com")
+
+    unknown = await client.get(f"/v1/candidates/{uuid.uuid4()}/assignments", headers=recruiter)
+    forbidden = await client.get(f"/v1/candidates/{known}/assignments", headers=headers)
+    anonymous = await client.get(f"/v1/candidates/{known}/assignments")
+
+    assert (unknown.status_code, unknown.json()["error"]["code"]) == (404, "not_found")
+    assert (forbidden.status_code, anonymous.status_code) == (403, 401)

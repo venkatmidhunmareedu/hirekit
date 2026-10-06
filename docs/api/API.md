@@ -14,18 +14,20 @@ Generated from `backend/api/openapi.yaml` by openapi-spec (scripts/api_doc.py). 
 | `csrf_failed` | 403 | The X-CSRF-Token header is missing or wrong |
 | `forbidden` | 403 | The caller's role may not use this route |
 | `not_found` | 404 | Missing, or not visible to this caller |
-| `budget_reached` | 409 | The model budget is reached in live mode |
-| `criteria_changed` | 409 | The criteria changed since the caller loaded them |
+| `budget_reached` | 409 | In live mode no further model call fits under the USD 8 limit: The model budget of $8.00 has been reached. No new model calls can be made. |
+| `criteria_changed` | 409 | The criteria changed since the caller loaded them; details.current_version has the current one |
 | `feedback_locked` | 409 | Feedback is already submitted and locked |
 | `job_already_open` | 409 | A scoring, proposal or kit job is already open |
 | `job_not_cancellable` | 409 | The job is already finished |
 | `not_retryable` | 409 | The candidate does not need scoring |
 | `role_not_approved` | 409 | The role is Draft; approve the criteria first |
+| `role_not_draft` | 409 | Criteria can be proposed only for a Draft role |
 | `same_stage` | 409 | The candidate is already in that stage |
 | `scores_stale` | 409 | The score belongs to an older criteria version |
 | `payload_too_large` | 413 | The request body is over the cap |
 | `incomplete_feedback` | 422 | A criterion has no score or comment |
-| `no_criteria` | 422 | The role has no criteria to approve |
+| `incomplete_rubric` | 422 | A live criterion lacks a descriptor for a level 0 to 4; details.criterion_ids lists them |
+| `no_criteria` | 422 | The role has no live criteria to approve |
 | `too_many_files` | 422 | More than 100 files in one upload |
 | `validation_error` | 422 | A field failed validation |
 | `internal` | 500 | An unexpected error; quote the request_id |
@@ -44,7 +46,7 @@ Generated from `backend/api/openapi.yaml` by openapi-spec (scripts/api_doc.py). 
 9. Removal is `deprecated: true` plus a `Sunset` header and at least 90 days. Why: a removed field breaks a client nobody told, and oasdiff can only warn about what is still in the spec.
 10. Every response carries the rate-limit headers and a 429 carries `Retry-After`. Why: a client that can see its budget backs off before it is throttled.
 11. No Idempotency-Key header on creating POSTs. Why: The design stops duplicates in the database instead (unique open-job indexes, content-hash duplicate flags, idempotent assignment, 409 on a repeat feedback submit). Only POST /v1/roles can double-create on a retry, and a duplicate role is harmless and visible; revisit if it is not.
-12. The ranked list and the job queue view use limit and offset, not cursors. Why: The order is a computed weighted total that no cursor can key on, and one role holds at most about 1,200 candidates (offset capped at 1,000); the cost log, which grows without bound, uses a cursor.
+12. The ranked list uses limit and offset, and the job queue view uses limit only, not cursors. Why: The order is a computed weighted total that no cursor can key on, and one role holds at most about 1,200 candidates (offset capped at 1,000); the cost log, which grows without bound, uses a cursor.
 13. No X-API-Version and no rate-limit headers in the first build. Why: One client, one maintainer, local demo (HLD section 1); a hosted deployment adds both.
 14. Errors carry details as an object, not a list. Why: The existing FastAPI envelope (app/core/errors.py) already returns an object and the generated client is built from it.
 
@@ -56,7 +58,7 @@ Serves US-00-012.
 
 | Method | Path | Does | Auth | Success | Errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/v1/auth/login` | Sign in and set the session cookie | none | 200 Signed in; the cookie is set and the CSRF token returned | 401 unauthenticated, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error, 500 internal |
+| POST | `/v1/auth/login` | Sign in and set the session cookie | none | 200 Signed in; the cookie is set and the CSRF token returned | 401 unauthenticated, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error, 500 internal |
 | POST | `/v1/auth/logout` | Sign out (deletes the session and clears the cookie) | cookieAuth or csrfToken | 204 Signed out | 401 unauthenticated, 403 csrf_failed, 403 forbidden |
 | GET | `/v1/auth/me` | The signed-in user and a CSRF token | cookieAuth | 200 The session | 401 unauthenticated |
 
@@ -74,11 +76,11 @@ Serves US-00-001, US-00-002, US-00-012.
 | Method | Path | Does | Auth | Success | Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/v1/roles` | List roles (at most 50, newest first) | cookieAuth or csrfToken | 200 The roles | 401 unauthenticated, 403 csrf_failed, 403 forbidden |
-| POST | `/v1/roles` | Create a Draft role | cookieAuth or csrfToken | 201 Created | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error |
+| POST | `/v1/roles` | Create a Draft role | cookieAuth or csrfToken | 201 Created | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
 | GET | `/v1/roles/{role_id}` | One role with its criteria and rubric | cookieAuth or csrfToken | 200 The role | 401 unauthenticated, 404 not_found |
-| POST | `/v1/roles/{role_id}/criteria:propose` | Ask the model to propose criteria (enqueues a job) | cookieAuth or csrfToken | 202 Job enqueued | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
-| PUT | `/v1/roles/{role_id}/criteria` | Replace the criteria set in place (a removed id is retired, never deleted) | cookieAuth or csrfToken | 200 The role with its new criteria | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error |
-| POST | `/v1/roles/{role_id}/approve` | Approve the criteria | cookieAuth or csrfToken | 200 Approved | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error |
+| POST | `/v1/roles/{role_id}/criteria:propose` | Ask the model to propose criteria (enqueues a job) | cookieAuth or csrfToken | 202 Job enqueued | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
+| PUT | `/v1/roles/{role_id}/criteria` | Replace the criteria set in place (a removed id is retired, never deleted) | cookieAuth or csrfToken | 200 The role with its new criteria | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
+| POST | `/v1/roles/{role_id}/approve` | Approve the criteria | cookieAuth or csrfToken | 200 Approved | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
 
 Idempotency:
 
@@ -95,7 +97,7 @@ Serves US-00-003.
 
 | Method | Path | Does | Auth | Success | Errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/v1/roles/{role_id}/resumes` | Upload up to 100 PDF or DOCX files | cookieAuth or csrfToken | 207 One result per file | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 413 payload_too_large, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error |
+| POST | `/v1/roles/{role_id}/resumes` | Upload up to 100 PDF or DOCX files | cookieAuth or csrfToken | 207 One result per file | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 413 payload_too_large, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
 | GET | `/v1/roles/{role_id}/queue` | Per-file job status for the whole role (at most 200, newest first) | cookieAuth or csrfToken | 200 The queue | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found |
 
 Idempotency:
@@ -106,18 +108,20 @@ Idempotency:
 
 The ranked list, detail, decisions and assignments.
 
-Serves US-00-008, US-00-009, US-00-012, US-00-016, US-00-014, US-00-005, US-00-010, US-00-011.
+Serves US-00-008, US-00-009, US-00-016, US-00-012, US-00-014, US-00-005, US-00-010, US-00-011.
 
 | Method | Path | Does | Auth | Success | Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/v1/roles/{role_id}/candidates` | The ranked list | cookieAuth or csrfToken | 200 One page of the ranked list | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found |
+| GET | `/v1/users` | The interviewers a recruiter can assign (at most 200) | cookieAuth or csrfToken | 200 The interviewers | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
 | GET | `/v1/me/candidates` | The interviewer's assigned candidates (at most 200) | cookieAuth or csrfToken | 200 The candidates assigned to the caller | 401 unauthenticated, 403 csrf_failed, 403 forbidden |
 | GET | `/v1/candidates/{candidate_id}` | One candidate | cookieAuth or csrfToken | 200 The candidate | 401 unauthenticated, 404 not_found |
 | GET | `/v1/candidates/{candidate_id}/text` | Raw and anonymized resume text | cookieAuth or csrfToken | 200 The texts (personal data, recruiters only) | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found |
-| PUT | `/v1/candidates/{candidate_id}/scores/{criterion_id}/override` | Override a criterion score with a note | cookieAuth or csrfToken | 200 The updated score cell | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error |
-| POST | `/v1/candidates/{candidate_id}/stage` | Change the stage (the only route that writes it) | cookieAuth or csrfToken | 200 The new stage | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error |
+| PUT | `/v1/candidates/{candidate_id}/scores/{criterion_id}/override` | Override a criterion score with a note | cookieAuth or csrfToken | 200 The updated score cell | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
+| POST | `/v1/candidates/{candidate_id}/stage` | Change the stage (the only route that writes it) | cookieAuth or csrfToken | 200 The new stage | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
 | POST | `/v1/candidates/{candidate_id}:reveal-identity` | Reveal the candidate's name (audited before it is returned) | cookieAuth or csrfToken | 200 The identity (personal data) | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found |
-| POST | `/v1/candidates/{candidate_id}/assignments` | Assign an interviewer (idempotent) | cookieAuth or csrfToken | 201 Assigned | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error |
+| GET | `/v1/candidates/{candidate_id}/assignments` | The interviewers assigned to a candidate | cookieAuth or csrfToken | 200 The assigned interviewers | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found |
+| POST | `/v1/candidates/{candidate_id}/assignments` | Assign an interviewer (idempotent) | cookieAuth or csrfToken | 201 Assigned | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
 | DELETE | `/v1/candidates/{candidate_id}/assignments/{user_id}` | Remove an assignment | cookieAuth or csrfToken | 204 Removed | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found |
 
 Idempotency:
@@ -136,11 +140,11 @@ Serves US-00-013, US-00-002.
 
 | Method | Path | Does | Auth | Success | Errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/v1/roles/{role_id}/kit:generate` | Generate the interview kit (enqueues a job, one model call per criterion) | cookieAuth or csrfToken | 202 Job enqueued | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
+| POST | `/v1/roles/{role_id}/kit:generate` | Generate the interview kit (enqueues a job, one model call per criterion) | cookieAuth or csrfToken | 202 Job enqueued | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
 | GET | `/v1/roles/{role_id}/kit` | The kit; stale when it was generated for older criteria | cookieAuth or csrfToken | 200 The kit | 401 unauthenticated, 404 not_found |
-| PUT | `/v1/kit/questions/{question_id}` | Edit or reorder a question in place | cookieAuth or csrfToken | 200 The question | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error |
+| PUT | `/v1/kit/questions/{question_id}` | Edit or reorder a question in place | cookieAuth or csrfToken | 200 The question | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
 | DELETE | `/v1/kit/questions/{question_id}` | Delete a question | cookieAuth or csrfToken | 204 Deleted | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found |
-| POST | `/v1/kit/questions/{question_id}:regenerate` | Regenerate one question (enqueues a job) | cookieAuth or csrfToken | 202 Job enqueued | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
+| POST | `/v1/kit/questions/{question_id}:regenerate` | Regenerate one question (enqueues a job) | cookieAuth or csrfToken | 202 Job enqueued | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
 
 Idempotency:
 
@@ -158,8 +162,8 @@ Serves US-00-014, US-00-015.
 | Method | Path | Does | Auth | Success | Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/v1/candidates/{candidate_id}/feedback` | Feedback (a recruiter sees every interviewer's, an interviewer only their own) | cookieAuth or csrfToken | 200 The feedback | 401 unauthenticated, 404 not_found |
-| POST | `/v1/candidates/{candidate_id}/feedback` | Submit feedback for every criterion (locks it) | cookieAuth or csrfToken | 201 Submitted | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error |
-| PUT | `/v1/candidates/{candidate_id}/feedback` | Save an approved edit and lock it again | cookieAuth or csrfToken | 200 Saved | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 422 incomplete_feedback, 422 too_many_files, 422 no_criteria, 422 validation_error |
+| POST | `/v1/candidates/{candidate_id}/feedback` | Submit feedback for every criterion (locks it) | cookieAuth or csrfToken | 201 Submitted | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
+| PUT | `/v1/candidates/{candidate_id}/feedback` | Save an approved edit and lock it again | cookieAuth or csrfToken | 200 Saved | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
 | POST | `/v1/candidates/{candidate_id}/feedback/{interviewer_id}:approve-edit` | Unlock one interviewer's feedback for an edit | cookieAuth or csrfToken | 200 Unlocked | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found |
 
 Idempotency:
@@ -176,7 +180,7 @@ Serves US-00-015.
 
 | Method | Path | Does | Auth | Success | Errors |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/v1/compare` | Compare two to four candidates by criterion | cookieAuth or csrfToken | 200 The comparison | 401 unauthenticated, 404 not_found, 422 no_criteria, 422 validation_error |
+| GET | `/v1/compare` | Compare two to four candidates by criterion | cookieAuth or csrfToken | 200 The comparison | 401 unauthenticated, 404 not_found, 422 no_criteria, 422 incomplete_rubric, 422 incomplete_feedback, 422 too_many_files, 422 validation_error |
 
 ## jobs
 
@@ -186,10 +190,10 @@ Serves US-00-002, US-00-006, US-00-003, US-00-001.
 
 | Method | Path | Does | Auth | Success | Errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/v1/roles/{role_id}:rescore` | Re-run scoring for every candidate that needs it | cookieAuth or csrfToken | 202 Jobs enqueued | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
-| POST | `/v1/candidates/{candidate_id}:retry` | Enqueue a new scoring job for a candidate that needs scoring | cookieAuth or csrfToken | 202 Job enqueued | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
+| POST | `/v1/roles/{role_id}:rescore` | Re-run scoring for every candidate that needs it | cookieAuth or csrfToken | 202 Jobs enqueued | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
+| POST | `/v1/candidates/{candidate_id}:retry` | Enqueue a new scoring job for a candidate that needs scoring | cookieAuth or csrfToken | 202 Job enqueued | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
 | GET | `/v1/jobs/{job_id}` | A job's status | cookieAuth or csrfToken | 200 The job | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found |
-| POST | `/v1/jobs/{job_id}:cancel` | Cancel a queued or running job | cookieAuth or csrfToken | 200 Cancelled | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
+| POST | `/v1/jobs/{job_id}:cancel` | Cancel a queued or running job | cookieAuth or csrfToken | 200 Cancelled | 401 unauthenticated, 403 csrf_failed, 403 forbidden, 404 not_found, 409 role_not_draft, 409 role_not_approved, 409 scores_stale, 409 same_stage, 409 job_already_open, 409 not_retryable, 409 job_not_cancellable, 409 feedback_locked, 409 criteria_changed, 409 budget_reached |
 
 Idempotency:
 

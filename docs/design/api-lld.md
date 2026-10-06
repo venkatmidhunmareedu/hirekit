@@ -78,6 +78,8 @@ Rules that shape the layout: a route parses, calls one service method and return
 | `PUT /v1/candidates/{id}/scores/{criterion}/override` | R | override with a note | 200 |
 | `POST /v1/candidates/{id}/stage` | R | change the stage | 200 |
 | `POST /v1/candidates/{id}:reveal-identity` | R | audited reveal; the only response that carries `identity_name` and `file_name` after the upload | 200 |
+| `GET /v1/users?role=interviewer` | R | the interviewers a recruiter can assign: `id` and `name` only, never the email; `role` required and only `interviewer` (else 422); bounded (max 200) | 200 |
+| `GET /v1/candidates/{id}/assignments` | R | the candidate's assigned interviewers (`user_id`, `name`); unknown candidate 404 | 200 |
 | `POST /v1/candidates/{id}/assignments` | R | assign an interviewer | 201 |
 | `DELETE /v1/candidates/{id}/assignments/{user}` | R | remove it | 204 |
 | `POST /v1/roles/{id}/kit:generate` | R | enqueue `generate_kit` | 202 |
@@ -288,8 +290,9 @@ All SQL is in repositories, parameterised, columns named, no `SELECT *`, every l
 
 Note (HK-57): the queue view returns the role's candidates, each with its latest `process_resume` or `rescore` job (LATERAL on `idx_jobs_candidate_id`), plus job-based counts, as `api/openapi.yaml` says; it is not a list of jobs.
 | Q20 | cost log page: `ORDER BY created_at DESC, id DESC LIMIT :n` with a keyset cursor `(created_at, id) < (:t, :i)` (max 100), and `read_spent` | keyset | `idx_call_log_created_at`, `budget_pkey` |
+| Q21 | assignment pickers (HK-81): `SELECT id, name FROM users WHERE role = :r ORDER BY name, id LIMIT :n` (max 200, `role` fixed to `interviewer` by the route) behind `GET /v1/users`, and `SELECT a.user_id, u.name FROM assignments a JOIN users u ON u.id = a.user_id WHERE a.candidate_id = :c ORDER BY u.name, a.user_id` behind `GET /v1/candidates/{id}/assignments`; the email is never selected | users under 10^2 rows; one candidate's pairs | `users_pkey`, `assignments_pkey` (the candidate lookup scans the pkey prefix); the users filter and sort have no index |
 
-Queries: 20 (without index: 2, both known bounded scans: Q3 under 10^2 rows and the computed sort in Q8).
+Queries: 21 (without index: 3, all known bounded scans: Q3 and Q21 under 10^2 rows and the computed sort in Q8).
 
 **Transactions**, opened in the service layer with `async with session.begin()`:
 

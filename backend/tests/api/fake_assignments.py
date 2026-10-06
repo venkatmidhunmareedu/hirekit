@@ -2,7 +2,7 @@
 
 import uuid
 
-from app.api.candidates.assignment_schemas import MyCandidate
+from app.api.candidates.assignment_schemas import CandidateAssignment, MyCandidate
 from tests.api.fakes import FakeUsers
 
 
@@ -47,3 +47,11 @@ class FakeAssignments:
             c.model_copy(update={"has_submitted": (c.candidate_id, user_id) in self.submitted})
             for c in sorted(mine, key=lambda c: c.candidate_no)[:limit]
         ]
+
+    async def for_candidate(self, candidate_id: uuid.UUID) -> list[CandidateAssignment]:
+        found: list[CandidateAssignment] = []
+        for cid, uid in self.pairs:
+            user = await self.users.by_id(uid)
+            if cid == candidate_id and user is not None:
+                found.append(CandidateAssignment(user_id=uid, name=user.name))
+        return sorted(found, key=lambda a: (a.name, a.user_id))
