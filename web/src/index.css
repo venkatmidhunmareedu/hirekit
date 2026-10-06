@@ -1,14 +1,9 @@
 /* HireKit theme: "reading room" (Design.md sections 3, 4, 13). Warm paper, ink-navy,
    a highlighter yellow reserved for evidence quotes. OKLCH throughout; dark follows
-   prefers-color-scheme. The legacy sheets stay importable until stage 4 and sit in a
-   layer between Tailwind's base and its utilities, so utilities always win and the
-   old element resets never fight Preflight. */
-@layer theme, base, legacy, components, utilities;
+   prefers-color-scheme. */
+@layer theme, base, components, utilities;
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "./styles/tokens.css" layer(legacy);
-@import "./styles/app.css" layer(legacy);
-@import "./styles/screens.css" layer(legacy);
 
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
@@ -140,5 +135,11 @@
   }
   ::selection {
     @apply bg-mark text-mark-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
   }
 }
