@@ -33,6 +33,8 @@ function recruiterRoutes(extra: Record<string, () => Response> = {}) {
     [`GET /v1/roles/${ROLE}`]: () => json(200, withRubric),
     [`GET /v1/roles/${ROLE}/kit`]: () => json(200, { stale: false, questions: [] }),
     [`GET /v1/candidates/${CAND}/feedback`]: () => json(200, { data: [] }),
+    "GET /v1/users?role=interviewer": () => json(200, { data: [] }),
+    [`GET /v1/candidates/${CAND}/assignments`]: () => json(200, { data: [] }),
     ...extra,
   };
 }
@@ -191,27 +193,77 @@ describe("candidate detail, recruiter", () => {
     expect(await screen.findByText("Jane Doe")).toBeInTheDocument();
   });
 
-  it("assigns and removes an interviewer", async () => {
-    const user = "00000000-0000-4000-8000-000000000002";
+  it("assigns an interviewer from the picker and removes them by name", async () => {
+    const ian = { id: INTERVIEWER.user.id, name: "Ian" };
+    let assigned: { user_id: string; name: string }[] = [];
     const { calls } = stubFetch(
       recruiterRoutes({
-        [`POST /v1/candidates/${CAND}/assignments`]: () =>
-          json(201, { candidate_id: CAND, user_id: user }),
-        [`DELETE /v1/candidates/${CAND}/assignments/${user}`]: () =>
-          new Response(null, { status: 204 }),
+        "GET /v1/users?role=interviewer": () => json(200, { data: [ian] }),
+        [`GET /v1/candidates/${CAND}/assignments`]: () => json(200, { data: assigned }),
+        [`POST /v1/candidates/${CAND}/assignments`]: () => {
+          assigned = [{ user_id: ian.id, name: ian.name }];
+          return json(201, { candidate_id: CAND, user_id: ian.id });
+        },
+        [`DELETE /v1/candidates/${CAND}/assignments/${ian.id}`]: () => {
+          assigned = [];
+          return new Response(null, { status: 204 });
+        },
       }),
     );
     renderApp(`/candidates/${CAND}`);
 
-    await userEvent.type(await screen.findByLabelText("Interviewer user id"), user);
-    await userEvent.click(screen.getByRole("button", { name: "Assign interviewer" }));
-    await userEvent.click(
-      await screen.findByRole("button", { name: `Remove interviewer ${user}` }),
-    );
+    expect(
+      await screen.findByText(
+        "No interviewer assigned. They will see this candidate under My candidates.",
+      ),
+    ).toBeInTheDocument();
+    const assignButton = screen.getByRole("button", { name: "Assign interviewer" });
+    expect(assignButton).toBeDisabled();
+    await userEvent.click(screen.getByLabelText("Interviewer"));
+    await userEvent.click(await screen.findByRole("option", { name: "Ian" }));
+    await userEvent.click(assignButton);
+    await userEvent.click(await screen.findByRole("button", { name: "Remove Ian" }));
 
-    await screen.findByLabelText("Interviewer user id");
+    expect(
+      await screen.findByText(
+        "No interviewer assigned. They will see this candidate under My candidates.",
+      ),
+    ).toBeInTheDocument();
+    expect(JSON.parse(calls.find((c) => c.method === "POST")?.body ?? "{}")).toEqual({
+      user_id: ian.id,
+    });
     expect(calls.map((c) => c.method).filter((m) => m !== "GET")).toEqual(["POST", "DELETE"]);
-    expect(screen.queryByRole("button", { name: /Remove interviewer/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(ian.id)).not.toBeInTheDocument();
+  });
+
+  it("shows the assignments the server already holds, and hides assigned people from the picker", async () => {
+    stubFetch(
+      recruiterRoutes({
+        "GET /v1/users?role=interviewer": () =>
+          json(200, {
+            data: [
+              { id: INTERVIEWER.user.id, name: "Ian" },
+              { id: "00000000-0000-4000-8000-000000000003", name: "Ivy" },
+            ],
+          }),
+        [`GET /v1/candidates/${CAND}/assignments`]: () =>
+          json(200, { data: [{ user_id: INTERVIEWER.user.id, name: "Ian" }] }),
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+
+    expect(await screen.findByRole("button", { name: "Remove Ian" })).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText("Interviewer"));
+    expect(await screen.findByRole("option", { name: "Ivy" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Ian" })).not.toBeInTheDocument();
+  });
+
+  it("says so when no interviewer accounts exist yet", async () => {
+    stubFetch(recruiterRoutes());
+    renderApp(`/candidates/${CAND}`);
+
+    expect(await screen.findByText("No interviewer accounts exist yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Assign interviewer" })).not.toBeInTheDocument();
   });
 
   it("links back to the ranked list and on to the next ranked candidate", async () => {

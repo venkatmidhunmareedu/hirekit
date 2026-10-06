@@ -6,8 +6,10 @@ import {
   changeStage,
   getAnonymizedText,
   getCandidate,
+  getCandidateAssignments,
   getMyCandidates,
   getQueue,
+  listInterviewers,
   listCandidates,
   overrideScore,
   rescoreRole,
@@ -23,6 +25,8 @@ export const candidateKeys = {
   queue: (roleId: string) => ["candidates", roleId, "queue"] as const,
   detail: (id: string) => ["candidates", id] as const,
   text: (id: string) => ["candidates", id, "text"] as const,
+  interviewers: () => ["users", "interviewers"] as const,
+  assignments: (id: string) => ["candidates", id, "assignments"] as const,
   mine: ["candidates", "mine"] as const,
 };
 
@@ -106,10 +110,29 @@ export function useReveal(candidateId: string) {
   });
 }
 
+export const interviewersQueryOptions = () =>
+  queryOptions({ queryKey: candidateKeys.interviewers(), queryFn: listInterviewers });
+
+export const assignmentsQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: candidateKeys.assignments(id),
+    queryFn: () => getCandidateAssignments(id),
+  });
+
 export function useAssign(candidateId: string) {
-  return useMutation({ mutationFn: (userId: string) => assignInterviewer(candidateId, userId) });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => assignInterviewer(candidateId, userId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: candidateKeys.assignments(candidateId) }),
+  });
 }
 
 export function useUnassign(candidateId: string) {
-  return useMutation({ mutationFn: (userId: string) => unassignInterviewer(candidateId, userId) });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => unassignInterviewer(candidateId, userId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: candidateKeys.assignments(candidateId) }),
+  });
 }
