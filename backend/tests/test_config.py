@@ -96,3 +96,34 @@ def test_model_base_url_rule_failures_do_not_echo_the_url(url: str, rule: str) -
     message = str(caught.value)
     assert "s3cret" not in message
     assert "proxy.example.com" not in message
+
+
+def test_upload_limits_default_to_5mb_100_files_and_100mb() -> None:
+    settings = Settings(_env_file=None, database_url=DB)
+
+    assert (
+        settings.max_upload_bytes,
+        settings.max_files_per_upload,
+        settings.max_request_bytes,
+    ) == (5_000_000, 100, 100_000_000)
+
+
+@pytest.mark.parametrize(
+    "variable", ["MAX_UPLOAD_BYTES", "MAX_FILES_PER_UPLOAD", "MAX_REQUEST_BYTES"]
+)
+@pytest.mark.parametrize("value", ["0", "-1"])
+def test_a_non_positive_upload_limit_is_rejected(
+    monkeypatch: pytest.MonkeyPatch, variable: str, value: str
+) -> None:
+    monkeypatch.setenv(variable, value)
+
+    with pytest.raises(ValidationError, match="must be greater than 0"):
+        Settings(_env_file=None, database_url=DB)
+
+
+def test_the_request_cap_may_not_be_below_the_file_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MAX_UPLOAD_BYTES", "2000")
+    monkeypatch.setenv("MAX_REQUEST_BYTES", "1000")
+
+    with pytest.raises(ValidationError, match="MAX_REQUEST_BYTES must be at least"):
+        Settings(_env_file=None, database_url=DB)

@@ -17,6 +17,7 @@ dependencies = [
   "pypdf>=6.19,<7",
   "defusedxml>=0.7,<1",
   "argon2-cffi>=25.1,<26",
+  "python-multipart>=0.0.20,<1",
 ]
 
 [dependency-groups]

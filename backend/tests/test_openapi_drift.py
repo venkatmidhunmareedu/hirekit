@@ -141,3 +141,27 @@ def test_the_field_detector_flags_a_field_missing_from_the_spec() -> None:
     missing = _missing_fields(app.openapi(), spec)
 
     assert any("checks" in fields for fields in missing.values())
+
+
+def test_the_upload_request_body_matches_the_spec() -> None:
+    """The route takes `Request`, so FastAPI emits no body; openapi_extra restates the spec's."""
+    app = create_app(Settings(_env_file=None, database_url=DB))
+    spec = yaml.safe_load(SPEC.read_text(encoding="utf-8"))
+    path = "/v1/roles/{role_id}/resumes"
+    committed = spec["paths"][path]["post"]["requestBody"]
+    media = committed["content"]["multipart/form-data"]
+    name = media["schema"]["$ref"].rsplit("/", 1)[-1]
+    expected = {
+        **committed,
+        "content": {"multipart/form-data": {"schema": spec["components"]["schemas"][name]}},
+    }
+
+    served = app.openapi()["paths"][path]["post"]["requestBody"]
+
+    assert _strip_examples(served) == _strip_examples(expected)
+
+
+def _strip_examples(node: Json) -> Json:
+    if isinstance(node, dict):
+        return {k: _strip_examples(v) for k, v in node.items() if k != "example"}
+    return node

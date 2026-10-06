@@ -158,3 +158,38 @@ class RubricLevel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class Candidate(Base):
+    """One uploaded resume for one role (the columns the upload writes)."""
+
+    __tablename__ = "candidates"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    candidate_no: Mapped[int] = mapped_column(BigInteger, Identity(always=True), nullable=False)
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("roles.id", ondelete="RESTRICT"), nullable=False
+    )
+    file_name: Mapped[str] = mapped_column(String, nullable=False)  # personal data
+    content_hash: Mapped[str] = mapped_column(String, nullable=False)
+    duplicate_of_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("candidates.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ResumeFile(Base):
+    """The uploaded bytes, held until extraction succeeds (ADR-0008)."""
+
+    __tablename__ = "resume_files"
+
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidates.id", ondelete="CASCADE"), primary_key=True
+    )
+    media_type: Mapped[str] = mapped_column(String, nullable=False)
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)  # personal data
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

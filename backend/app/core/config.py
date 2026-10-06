@@ -83,6 +83,11 @@ class Settings(BaseSettings):
     session_cookie_secure: bool | None = None
     session_ttl_hours: int = 12
 
+    # Upload (docs/design/api-lld.md section 6): per file, files per request, whole request.
+    max_upload_bytes: int = 5_000_000
+    max_files_per_upload: int = 100
+    max_request_bytes: int = 100_000_000
+
     # Worker (docs/design/worker-lld.md section 7).
     worker_poll_seconds: float = 1.0
     worker_lease_seconds: int = 180
@@ -117,6 +122,15 @@ class Settings(BaseSettings):
         """A zero or negative lifetime would issue sessions that are already expired."""
         if value <= 0:
             msg = "SESSION_TTL_HOURS must be greater than 0"
+            raise ValueError(msg)
+        return value
+
+    @field_validator("max_upload_bytes", "max_files_per_upload", "max_request_bytes")
+    @classmethod
+    def _positive_limit(cls, value: int) -> int:
+        """A zero or negative cap would refuse every upload."""
+        if value <= 0:
+            msg = "the MAX_UPLOAD_*, MAX_FILES_* and MAX_REQUEST_* limits must be greater than 0"
             raise ValueError(msg)
         return value
 
@@ -167,6 +181,14 @@ class Settings(BaseSettings):
             msg = "WORKER_POLL_SECONDS must be greater than 0"
             raise ValueError(msg)
         return value
+
+    @model_validator(mode="after")
+    def _request_cap_holds_a_file(self) -> Self:
+        """A request cap below the per-file cap would make the file cap meaningless."""
+        if self.max_request_bytes < self.max_upload_bytes:
+            msg = "MAX_REQUEST_BYTES must be at least MAX_UPLOAD_BYTES"
+            raise ValueError(msg)
+        return self
 
     @model_validator(mode="after")
     def _lease_outlasts_a_call(self) -> Self:

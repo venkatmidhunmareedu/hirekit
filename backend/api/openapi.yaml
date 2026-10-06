@@ -299,7 +299,11 @@ paths:
       description: >-
         Authenticated and CSRF-checked before the body is read. Each file is accepted or rejected
         on its own; the response has one result per file. An upload to a Draft role, or in live
-        mode at the budget cap, is refused as a whole before any file is written.
+        mode at the budget cap, is refused as a whole before any file is written. A role that
+        turns Draft while the request runs gives the files not yet stored a role_not_approved
+        result. The type comes from the file's first bytes, not its name or content type. A file
+        over the per-file limit is rejected on its own; a request over the whole-request limit is
+        413, and more than 100 files is 422 too_many_files.
       tags: [resumes]
       x-story-ids: [US-00-003]
       x-roles: [recruiter]
@@ -458,6 +462,11 @@ paths:
     post:
       operationId: retryCandidate
       summary: Enqueue a new scoring job for a candidate that needs scoring
+      description: >-
+        A candidate needs scoring when it has no score rows at the role's current criteria version,
+        a failed score row at its latest version, or a failed file. Otherwise 409 not_retryable.
+        409 job_already_open when a process_resume or rescore job is already queued or running for
+        it, and 409 budget_reached in live mode at the budget cap.
       tags: [jobs]
       x-story-ids: [US-00-003, US-00-006]
       x-roles: [recruiter]
@@ -546,6 +555,9 @@ paths:
     post:
       operationId: assignInterviewer
       summary: Assign an interviewer (idempotent)
+      description: >-
+        The target must be an interviewer, else 422 validation_error. A repeat returns 201 again
+        and changes nothing. An unknown candidate is 404.
       tags: [candidates]
       x-story-ids: [US-00-016]
       x-roles: [recruiter]
@@ -570,6 +582,9 @@ paths:
     delete:
       operationId: removeAssignment
       summary: Remove an assignment
+      description: >-
+        The candidate leaves that interviewer's list at once. Removing an absent pair is 204; an
+        unknown candidate is 404.
       tags: [candidates]
       x-story-ids: [US-00-016]
       x-roles: [recruiter]
@@ -608,6 +623,9 @@ paths:
     get:
       operationId: getKit
       summary: The kit; stale when it was generated for older criteria
+      description: |
+        404 when the role has no kit yet, and for an interviewer when none of the role's
+        candidates is assigned to them. The same body for both roles; an edit shows read-only.
       tags: [kit]
       x-story-ids: [US-00-002, US-00-013]
       x-roles: [recruiter, interviewer]
@@ -767,7 +785,8 @@ paths:
       description: >-
         For an interviewer, resume scores and overrides are hidden for a candidate they have not
         submitted feedback on, only their own feedback is returned, no quote is ever selected, and
-        one unassigned id makes the whole request 404.
+        one unassigned id makes the whole request 404. The candidates must be distinct and belong to
+        one role (else 422 validation_error); a role without criteria is 422 no_criteria.
       tags: [compare]
       x-story-ids: [US-00-015]
       x-roles: [recruiter, interviewer]
@@ -1348,6 +1367,10 @@ components:
         created_at: 2026-09-30T10:00:00Z
     CandidateDetail:
       type: object
+      description: >-
+        A recruiter gets every field. An interviewer gets only id, candidate_no, role_id and
+        has_submitted until they submit feedback, then scores too; stage, processing_status and
+        audit are left out for them, not sent as null.
       required: [id, candidate_no, role_id]
       properties:
         id: { type: string, format: uuid }
