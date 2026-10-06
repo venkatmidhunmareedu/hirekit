@@ -20,7 +20,18 @@ AUTH_MODULE = "app.core.auth"
 # A module whose last segment is `stage` is the stage route's code path (tenet 4).
 STAGE_MODULE = "stage"
 CANDIDATE_TABLES = re.compile(r"\b(candidates|scores|resume_texts|feedback|assignments)\b")
-STAGE_SQL = re.compile(r"\bUPDATE\s+candidates\b|\bSET\b[^;]*\bstage\s*=", re.I | re.S)
+# A write to the stage column: a SET list that assigns `stage`. Updates of other candidate columns
+# (processing_status, identity_name) are not stage writes.
+STAGE_SQL = re.compile(r"\bSET\b[^;]*\bstage\s*=", re.I | re.S)
+# A function that returns one of these answers a question about candidates but hands back no
+# candidate data: it writes (None), checks (bool) or looks one id up.
+SCALAR_RETURN = re.compile(r"^(None|bool|int|str|(uuid\.)?UUID)(\s*\|\s*None)?$")
+# Repository reads that return candidate data without a `viewer`, each with its reason. A stale
+# entry (the function is gone or now takes a viewer) fails `unused_viewer_exceptions`.
+VIEWER_EXCEPTIONS = {
+    "app.db.repositories.candidates.ranked": "recruiter-only route; the role is the scope",
+    "app.db.repositories.assignments.for_interviewer": "keyed by the interviewer's own user id",
+}
 
 
 def _depends_on_auth(dep: Dependant) -> bool:
@@ -69,9 +80,9 @@ def stage_writers(root: Path) -> list[str]:
     return hits
 
 
-def repository_functions_without_viewer(root: Path) -> list[str]:
-    """`module.function` of every public repository function whose source names a candidate
-    table but has no `viewer` parameter (tenet 6)."""
+def _candidate_reads_without_viewer(root: Path) -> list[str]:
+    """Every public repository function that names a candidate table, returns more than a
+    scalar (so it hands back candidate data) and has no `viewer` parameter."""
     hits = []
     for path in py_files(root / "db" / "repositories"):
         source = path.read_text(encoding="utf-8")
@@ -80,8 +91,28 @@ def repository_functions_without_viewer(root: Path) -> list[str]:
                 continue
             if node.name.startswith("_"):
                 continue
+            returns = ast.unparse(node.returns) if node.returns is not None else ""
+            if SCALAR_RETURN.match(returns):
+                continue
             params = {a.arg for a in node.args.posonlyargs + node.args.args + node.args.kwonlyargs}
             body = ast.get_source_segment(source, node) or ""
             if CANDIDATE_TABLES.search(body) and "viewer" not in params:
                 hits.append(f"{module_name(root, path)}.{node.name}")
     return sorted(hits)
+
+
+def repository_functions_without_viewer(
+    root: Path, exceptions: dict[str, str] = VIEWER_EXCEPTIONS
+) -> list[str]:
+    """`module.function` of every repository read of candidate data with no `viewer` parameter
+    and no entry in `exceptions` (tenet 6). Writes and bool or id lookups are not reads of
+    candidate data."""
+    return [name for name in _candidate_reads_without_viewer(root) if name not in exceptions]
+
+
+def unused_viewer_exceptions(
+    root: Path, exceptions: dict[str, str] = VIEWER_EXCEPTIONS
+) -> list[str]:
+    """Exceptions that no longer match a flagged function: delete them."""
+    flagged = set(_candidate_reads_without_viewer(root))
+    return sorted(name for name in exceptions if name not in flagged)

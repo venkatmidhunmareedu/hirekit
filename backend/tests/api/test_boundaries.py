@@ -44,6 +44,11 @@ def test_every_repository_function_returning_candidate_data_takes_a_viewer() -> 
     assert g.repository_functions_without_viewer(APP) == []
 
 
+def test_every_viewer_exception_still_names_a_candidate_read() -> None:
+    """A stale exception would hide a future leak under the same name."""
+    assert g.unused_viewer_exceptions(APP) == []
+
+
 # The detectors ---------------------------------------------------------------------------
 
 
@@ -81,6 +86,7 @@ def test_the_stage_scan_finds_sql_values_and_attribute_writes(tmp_path: Path) ->
             "b.py": "q = update(T).values(stage='x')\n",
             "c.py": "def f(c):\n    c.stage = 'x'\n",
             "d.py": "x = 1\n",
+            "e.py": 's = "UPDATE candidates SET processing_status = :p, identity_name = :n"\n',
             "api/stage.py": "def f(c):\n    c.stage = 'x'\n",
         },
     )
@@ -101,3 +107,36 @@ def test_the_viewer_scan_finds_a_candidate_query_without_a_viewer(tmp_path: Path
         },
     )
     assert g.repository_functions_without_viewer(app) == ["app.db.repositories.c.leak"]
+
+
+def test_the_viewer_scan_ignores_writes_and_scalar_lookups(tmp_path: Path) -> None:
+    app = tree(
+        tmp_path,
+        {
+            "db/repositories/__init__.py": "",
+            "db/repositories/c.py": (
+                "def write(session) -> None:\n    return 'UPDATE candidates SET x = 1'\n"
+                "def exists(session) -> bool:\n    return 'SELECT 1 FROM candidates'\n"
+                "def role_of(session) -> UUID | None:\n    return 'SELECT role FROM candidates'\n"
+                "def rows(session) -> list[Row]:\n    return 'SELECT * FROM candidates'\n"
+                "def unannotated(session):\n    return 'SELECT * FROM candidates'\n"
+            ),
+        },
+    )
+    assert g.repository_functions_without_viewer(app) == [
+        "app.db.repositories.c.rows",
+        "app.db.repositories.c.unannotated",
+    ]
+
+
+def test_a_named_exception_hides_one_read_and_a_stale_one_is_reported(tmp_path: Path) -> None:
+    app = tree(
+        tmp_path,
+        {
+            "db/repositories/__init__.py": "",
+            "db/repositories/c.py": "def rows(session) -> list[Row]:\n    return 'FROM scores'\n",
+        },
+    )
+    exceptions = {"app.db.repositories.c.rows": "why", "app.db.repositories.c.gone": "why"}
+    assert g.repository_functions_without_viewer(app, exceptions) == []
+    assert g.unused_viewer_exceptions(app, exceptions) == ["app.db.repositories.c.gone"]

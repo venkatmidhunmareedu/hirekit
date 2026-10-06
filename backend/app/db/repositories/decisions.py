@@ -11,6 +11,8 @@ from typing import Final
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.repositories.stage import write_stage as write_candidate_stage
+
 _ROLE_OF: Final = text("SELECT role_id FROM candidates WHERE id = :id")
 _ROLE_VERSION: Final = text("SELECT criteria_version FROM roles WHERE id = :id FOR SHARE")
 _CANDIDATE: Final = text(
@@ -26,10 +28,6 @@ _SCORE: Final = text(
 _OVERRIDE: Final = text(
     "UPDATE scores SET override_score = :score, override_note = :note, overridden_by = :user, "
     "updated_at = now() WHERE candidate_id = :c AND criterion_id = :k AND criteria_version = :v"
-)
-_STAGE: Final = text(
-    "UPDATE candidates SET stage = CAST(:stage AS candidate_stage), updated_at = now() "
-    "WHERE id = :id"
 )
 
 
@@ -118,5 +116,5 @@ class DecisionRepository:
         )
 
     async def write_stage(self, candidate_id: uuid.UUID, stage: str) -> None:
-        """The only statement in the Api that writes `candidates.stage`."""
-        await self._session.execute(_STAGE, {"id": candidate_id, "stage": stage})
+        """Delegates to `repositories.stage`, the only module that writes `candidates.stage`."""
+        await write_candidate_stage(self._session, candidate_id, stage)
