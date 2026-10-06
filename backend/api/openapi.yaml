@@ -1352,6 +1352,10 @@ components:
         created_at: 2026-09-30T10:00:00Z
     CandidateDetail:
       type: object
+      description: >-
+        A recruiter gets every field. An interviewer gets only id, candidate_no, role_id and
+        has_submitted until they submit feedback, then scores too; stage, processing_status and
+        audit are left out for them, not sent as null.
       required: [id, candidate_no, role_id]
       properties:
         id: { type: string, format: uuid }
