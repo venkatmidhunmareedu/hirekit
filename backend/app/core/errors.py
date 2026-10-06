@@ -89,6 +89,18 @@ class BudgetReachedError(ConflictError):
     code = "budget_reached"
 
 
+class ScoresStaleError(ConflictError):
+    """The score belongs to an older criteria version, or does not exist yet."""
+
+    code = "scores_stale"
+
+
+class SameStageError(ConflictError):
+    """The candidate is already in the requested stage."""
+
+    code = "same_stage"
+
+
 class TooManyFilesError(DomainError):
     """More files in one upload than the limit allows."""
 
