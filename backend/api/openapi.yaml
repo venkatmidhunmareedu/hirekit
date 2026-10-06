@@ -23,7 +23,7 @@ info:
   x-conventions:
     - rule: No Idempotency-Key header on creating POSTs.
       why: The design stops duplicates in the database instead (unique open-job indexes, content-hash duplicate flags, idempotent assignment, 409 on a repeat feedback submit). Only POST /v1/roles can double-create on a retry, and a duplicate role is harmless and visible; revisit if it is not.
-    - rule: The ranked list and the job queue view use limit and offset, not cursors.
+    - rule: The ranked list uses limit and offset, and the job queue view uses limit only, not cursors.
       why: The order is a computed weighted total that no cursor can key on, and one role holds at most about 1,200 candidates (offset capped at 1,000); the cost log, which grows without bound, uses a cursor.
     - rule: No X-API-Version and no rate-limit headers in the first build.
       why: One client, one maintainer, local demo (HLD section 1); a hosted deployment adds both.
@@ -208,6 +208,11 @@ paths:
     post:
       operationId: proposeCriteria
       summary: Ask the model to propose criteria (enqueues a job)
+      description: |
+        The role must be Draft (409 role_not_draft). In live mode at the budget cap the request is
+        refused with 409 budget_reached and the message "The model budget of $8.00 has been
+        reached. No new model calls can be made."; replay mode is never refused. A second
+        proposal while one is queued or running is 409 job_already_open.
       tags: [roles]
       x-story-ids: [US-00-001]
       x-roles: [recruiter]
@@ -941,6 +946,7 @@ components:
         - { code: csrf_failed, status: 403, meaning: "The X-CSRF-Token header is missing or wrong" }
         - { code: forbidden, status: 403, meaning: "The caller's role may not use this route" }
         - { code: not_found, status: 404, meaning: "Missing, or not visible to this caller" }
+        - { code: role_not_draft, status: 409, meaning: "Criteria can be proposed only for a Draft role" }
         - { code: role_not_approved, status: 409, meaning: "The role is Draft; approve the criteria first" }
         - { code: scores_stale, status: 409, meaning: "The score belongs to an older criteria version" }
         - { code: same_stage, status: 409, meaning: "The candidate is already in that stage" }
@@ -951,10 +957,9 @@ components:
         - { code: criteria_changed, status: 409, meaning: "The criteria changed since the caller loaded them; details.current_version has the current one" }
         - { code: no_criteria, status: 422, meaning: "The role has no live criteria to approve" }
         - { code: incomplete_rubric, status: 422, meaning: "A live criterion lacks a descriptor for a level 0 to 4; details.criterion_ids lists them" }
-        - { code: budget_reached, status: 409, meaning: "The model budget is reached in live mode" }
+        - { code: budget_reached, status: 409, meaning: "In live mode no further model call fits under the USD 8 limit: The model budget of $8.00 has been reached. No new model calls can be made." }
         - { code: incomplete_feedback, status: 422, meaning: "A criterion has no score or comment" }
         - { code: too_many_files, status: 422, meaning: "More than 100 files in one upload" }
-        - { code: no_criteria, status: 422, meaning: "The role has no criteria to approve" }
         - { code: validation_error, status: 422, meaning: "A field failed validation" }
         - { code: payload_too_large, status: 413, meaning: "The request body is over the cap" }
         - { code: internal, status: 500, meaning: "An unexpected error; quote the request_id" }
