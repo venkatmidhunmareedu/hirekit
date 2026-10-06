@@ -64,6 +64,39 @@ class ConflictError(DomainError):
     code = "conflict"
 
 
+class ValidationFailedError(DomainError):
+    """A request the shape check passed but the stored state refuses (same envelope as a 422)."""
+
+    status_code = 422
+    code = "validation_error"
+
+
+class CriteriaChangedError(ConflictError):
+    """The criteria changed since the caller loaded them; details carry current_version."""
+
+    code = "criteria_changed"
+
+
+class RoleNotApprovedError(ConflictError):
+    """The role is still Draft; the criteria must be approved first."""
+
+    code = "role_not_approved"
+
+
+class NoCriteriaError(DomainError):
+    """The role has no live criteria to approve."""
+
+    status_code = 422
+    code = "no_criteria"
+
+
+class IncompleteRubricError(DomainError):
+    """A live criterion lacks a descriptor for one of the levels 0 to 4."""
+
+    status_code = 422
+    code = "incomplete_rubric"
+
+
 class ServiceUnavailableError(DomainError):
     """A dependency the request needs is not reachable."""
 

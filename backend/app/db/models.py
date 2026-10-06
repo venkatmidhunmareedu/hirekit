@@ -17,6 +17,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Identity,
+    Integer,
     LargeBinary,
     Numeric,
     SmallInteger,
@@ -90,5 +91,70 @@ class UserSession(Base):
     csrf_token: Mapped[str] = mapped_column(String, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Role(Base):
+    """A job being hired for; `criteria_version` is bumped by every criteria write."""
+
+    __tablename__ = "roles"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    job_description: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum("draft", "approved", name="role_status", create_type=False),
+        nullable=False,
+        server_default="draft",
+    )
+    criteria_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Criterion(Base):
+    """One scoring criterion of a role; retired rows stay so scores keep their target."""
+
+    __tablename__ = "criteria"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("roles.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    kind: Mapped[str] = mapped_column(
+        Enum("must_have", "nice_to_have", name="criterion_kind", create_type=False),
+        nullable=False,
+    )
+    weight: Mapped[Decimal] = mapped_column(Numeric(6, 3), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class RubricLevel(Base):
+    """The descriptor for one score level 0 to 4 of a criterion."""
+
+    __tablename__ = "rubric_levels"
+
+    criterion_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("criteria.id", ondelete="CASCADE"), primary_key=True
+    )
+    level: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    descriptor: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

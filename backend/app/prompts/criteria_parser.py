@@ -12,17 +12,33 @@ from typing import Final
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, ValidationError
 
+from app.core.criteria_limits import (
+    KINDS as KINDS,
+)
+from app.core.criteria_limits import (
+    LEVELS as LEVELS,
+)
+from app.core.criteria_limits import (
+    MAX_CRITERIA as MAX_CRITERIA,
+)
+from app.core.criteria_limits import (
+    MAX_DESCRIPTOR_CHARS as MAX_DESCRIPTOR_CHARS,
+)
+from app.core.criteria_limits import (
+    MAX_NAME_CHARS as MAX_NAME_CHARS,
+)
+from app.core.criteria_limits import (
+    MAX_WEIGHT as MAX_WEIGHT,
+)
+from app.core.criteria_limits import (
+    MIN_CRITERIA as MIN_CRITERIA,
+)
+from app.core.criteria_limits import (
+    MIN_WEIGHT as MIN_WEIGHT,
+)
 from app.worker.errors import SchemaError
 from app.worker.ports import ProposedCriterion
 
-MIN_CRITERIA: Final = 1
-MAX_CRITERIA: Final = 8
-MIN_WEIGHT: Final = 1
-MAX_WEIGHT: Final = 5
-MAX_NAME_CHARS: Final = 80
-MAX_DESCRIPTOR_CHARS: Final = 200
-LEVELS: Final = (0, 1, 2, 3, 4)
-KINDS: Final = ("must_have", "nice_to_have")
 _MESSAGE: Final = "The criteria reply did not match the schema."
 
 
