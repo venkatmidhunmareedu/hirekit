@@ -19,7 +19,15 @@ from app.core.config import Settings
 from app.db.models import UserSession
 from app.main import create_app
 from tests.api.fake_decisions import FakeAudit, FakeDecisions
-from tests.api.fakes import FakeCriteria, FakeRoles, FakeSessions, FakeUploads, FakeUsers
+from tests.api.fakes import (
+    FakeCost,
+    FakeCriteria,
+    FakeRoles,
+    FakeScoringJobs,
+    FakeSessions,
+    FakeUploads,
+    FakeUsers,
+)
 from tests.files import pdf_bytes
 
 # (method, path) -> roles allowed. An absent role gets 403; no sign-in gets 401.
@@ -36,6 +44,9 @@ MATRIX: dict[tuple[str, str], frozenset[str]] = {
     ("PUT", "/v1/roles/{role_id}/criteria"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/approve"): frozenset({"recruiter"}),
     ("POST", "/v1/roles/{role_id}/resumes"): frozenset({"recruiter"}),
+    ("POST", "/v1/roles/{role_id}:rescore"): frozenset({"recruiter"}),
+    ("POST", "/v1/candidates/{candidate_id}:retry"): frozenset({"recruiter"}),
+    ("GET", "/v1/cost-log"): frozenset({"recruiter"}),
     ("PUT", "/v1/candidates/{candidate_id}/scores/{criterion_id}/override"): frozenset(
         {"recruiter"}
     ),
@@ -100,6 +111,8 @@ async def test_matrix_cell(
     roles: FakeRoles,
     criteria: FakeCriteria,
     uploads: FakeUploads,
+    scoring_jobs: FakeScoringJobs,
+    costs: FakeCost,
     decisions: FakeDecisions,
     audit: FakeAudit,
     method: str,
@@ -109,6 +122,9 @@ async def test_matrix_cell(
     role = roles.seed(status="approved")
     criteria.seed(role.id, "Python")
     _, candidate_id, criterion_id = decisions.seed()
+    # One candidate id that both the decisions and the scoring fakes know.
+    scoring_jobs.candidates[candidate_id] = (role.id, 1)
+    scoring_jobs.needs.add(candidate_id)
     url = (
         path.replace("{role_id}", str(role.id))
         .replace("{candidate_id}", str(candidate_id))

@@ -89,6 +89,18 @@ class BudgetReachedError(ConflictError):
     code = "budget_reached"
 
 
+class NotRetryableError(ConflictError):
+    """The candidate has nothing to score again (retry and rescore share one rule)."""
+
+    code = "not_retryable"
+
+
+class JobAlreadyOpenError(ConflictError):
+    """A scoring job for this candidate is already queued or running."""
+
+    code = "job_already_open"
+
+
 class ScoresStaleError(ConflictError):
     """The score belongs to an older criteria version, or does not exist yet."""
 
