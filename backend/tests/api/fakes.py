@@ -6,7 +6,9 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 from app.db.models import Criterion, Role, RubricLevel, User, UserSession
+from app.db.repositories.cost import CallRow
 from app.db.repositories.kit import QuestionRef
+from app.db.repositories.scoring_jobs import CandidateState, RescoreTarget
 from app.db.repositories.sessions import hash_token
 from app.db.repositories.uploads import RoleState
 
@@ -233,6 +235,89 @@ class FakeUploads:
         self, role_id: uuid.UUID, candidate_id: uuid.UUID, criteria_version: int
     ) -> None:
         self.jobs.append((role_id, candidate_id, criteria_version))
+
+
+class FakeScoringJobs:
+    """Retry and rescore state in memory; `needs` and `open_jobs` are set per candidate."""
+
+    def __init__(self, roles: FakeRoles) -> None:
+        self.roles = roles
+        self.spent: Decimal | None = Decimal(0)
+        self.candidates: dict[uuid.UUID, tuple[uuid.UUID, int]] = {}  # id -> (role_id, number)
+        self.needs: set[uuid.UUID] = set()
+        self.open_jobs: set[uuid.UUID] = set()
+        self.enqueued: list[tuple[str, uuid.UUID, uuid.UUID, int]] = []
+        self.reset: list[uuid.UUID] = []
+
+    def add(
+        self, role_id: uuid.UUID, *, needs: bool = True, open_job: bool = False
+    ) -> tuple[uuid.UUID, int]:
+        candidate_id, number = uuid.uuid4(), len(self.candidates) + 1
+        self.candidates[candidate_id] = (role_id, number)
+        if needs:
+            self.needs.add(candidate_id)
+        if open_job:
+            self.open_jobs.add(candidate_id)
+        return candidate_id, number
+
+    async def spent_usd(self) -> Decimal | None:
+        return self.spent
+
+    async def candidate_role_id(self, candidate_id: uuid.UUID) -> uuid.UUID | None:
+        found = self.candidates.get(candidate_id)
+        return None if found is None else found[0]
+
+    async def lock_role(self, role_id: uuid.UUID) -> RoleState | None:
+        role = self.roles.rows.get(role_id)
+        return None if role is None else RoleState(role.status, role.criteria_version)
+
+    async def lock_candidate(
+        self, candidate_id: uuid.UUID, criteria_version: int
+    ) -> CandidateState | None:
+        if candidate_id not in self.candidates:
+            return None
+        return CandidateState(candidate_id in self.needs, candidate_id in self.open_jobs)
+
+    async def lock_rescore_targets(
+        self, role_id: uuid.UUID, criteria_version: int
+    ) -> list[RescoreTarget]:
+        return [
+            RescoreTarget(i, number, i in self.open_jobs)
+            for i, (rid, number) in sorted(self.candidates.items(), key=lambda kv: kv[1][1])
+            if rid == role_id and i in self.needs
+        ]
+
+    async def enqueue(
+        self, job_type: str, role_id: uuid.UUID, candidate_id: uuid.UUID, criteria_version: int
+    ) -> int:
+        self.enqueued.append((job_type, role_id, candidate_id, criteria_version))
+        self.open_jobs.add(candidate_id)
+        return 100 + len(self.enqueued)
+
+    async def reset_candidate(self, candidate_id: uuid.UUID) -> None:
+        self.reset.append(candidate_id)
+
+
+class FakeCost:
+    """A call log in memory, newest first, with the same keyset rule as the repository."""
+
+    def __init__(self) -> None:
+        self.spent: Decimal | None = Decimal("0.412300")
+        self.calls: list[CallRow] = []
+
+    def add(self, call_id: int, created_at: datetime) -> None:
+        self.calls.append(
+            CallRow(call_id, "scoring", "settled", "m", 10, 5, Decimal("0.002700"), created_at)
+        )
+
+    async def spent_usd(self) -> Decimal | None:
+        return self.spent
+
+    async def page(self, limit: int, after: tuple[datetime, int] | None) -> list[CallRow]:
+        newest_first = sorted(self.calls, key=lambda c: (c.created_at, c.id), reverse=True)
+        if after is not None:
+            newest_first = [c for c in newest_first if (c.created_at, c.id) < after]
+        return newest_first[:limit]
 
 
 class FakeKit:
