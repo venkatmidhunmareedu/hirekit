@@ -81,6 +81,10 @@ describe("candidates page", () => {
     expect(await screen.findByText(/Approve the criteria to start uploading/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Choose files/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to criteria" })).toHaveAttribute(
+      "href",
+      `/roles/${ROLE_ID}`,
+    );
   });
 
   it("shows the empty state with one next action", async () => {
@@ -119,15 +123,15 @@ describe("candidates page", () => {
     const second = within(table).getByRole("row", { name: /^2 C-003/ });
     expect(within(first).getByText("C-014")).toBeInTheDocument();
     expect(within(first).getByText("4 / 4")).toBeInTheDocument();
-    expect(within(first).getByText("Recruiter override")).toBeInTheDocument();
+    expect(within(first).getByText("Changed by recruiter")).toBeInTheDocument();
     expect(within(first).getByText("No evidence found")).toBeInTheDocument();
     expect(within(first).getByText("11.5")).toBeInTheDocument();
     expect(within(first).getByText("2 of 3")).toBeInTheDocument();
     expect(within(first).getByText("Screened")).toBeInTheDocument();
     expect(within(second).getByText("C-003")).toBeInTheDocument();
     expect(within(second).getByText(/Possible duplicate of C-014/)).toBeInTheDocument();
-    expect(within(second).getByText("Model suggestion")).toBeInTheDocument();
-    expect(screen.getByText(/marked stale/)).toBeInTheDocument();
+    expect(within(second).getByText("AI suggestion")).toBeInTheDocument();
+    expect(screen.getByText(/The criteria changed after some resumes/)).toBeInTheDocument();
     expect(screen.queryByText("secret evidence quote")).not.toBeInTheDocument();
   });
 
@@ -157,7 +161,7 @@ describe("candidates page", () => {
     renderApp(PATH);
 
     expect(await screen.findByText("Scoring")).toBeInTheDocument();
-    expect(screen.getByText("Failed")).toBeInTheDocument();
+    expect(screen.getByText("Could not process")).toBeInTheDocument();
     expect(screen.getAllByText("Not scored yet")).toHaveLength(2);
   });
 
@@ -171,9 +175,10 @@ describe("candidates page", () => {
     });
     renderApp(PATH);
 
-    await userEvent.selectOptions(await screen.findByLabelText("Stage"), "interview");
+    await userEvent.click(await screen.findByLabelText("Hiring stage"));
+    await userEvent.click(await screen.findByRole("option", { name: "Interview" }));
 
-    expect(await screen.findByText("No candidates are in this stage.")).toBeInTheDocument();
+    expect(await screen.findByText("No candidates are in this hiring stage.")).toBeInTheDocument();
     expect(calls.at(-1)?.path).toContain("filter%5Bstage%5D=interview");
   });
 
@@ -226,7 +231,7 @@ const budget = (allowed: boolean) => () =>
   });
 const RESCORE = `POST /v1/roles/${ROLE_ID}:rescore`;
 
-describe("re-run scoring", () => {
+describe("re-score", () => {
   const stale = () => json(200, page([candidate(1, { stale: true })]));
 
   it("posts the rescore and reports queued and skipped", async () => {
@@ -239,7 +244,7 @@ describe("re-run scoring", () => {
     });
     renderApp(PATH);
 
-    await userEvent.click(await screen.findByRole("button", { name: "Re-run scoring" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Re-score" }));
 
     expect(await screen.findByText("Re-scoring 2 candidates; 1 skipped")).toBeInTheDocument();
     expect(calls.some((c) => c.method === "POST" && c.path.endsWith(":rescore"))).toBe(true);
@@ -258,16 +263,16 @@ describe("re-run scoring", () => {
     });
     renderApp(PATH);
 
-    await userEvent.click(await screen.findByRole("button", { name: "Re-run scoring" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Re-score" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("model budget has been reached");
+    expect(await screen.findByRole("alert")).toHaveTextContent("AI budget has been reached");
   });
 
   it("is disabled when the budget blocks model actions", async () => {
     stubFetch({ ...approved, ...idle, [LIST]: stale, [COST]: budget(false) });
     renderApp(PATH);
 
-    const button = await screen.findByRole("button", { name: "Re-run scoring" });
+    const button = await screen.findByRole("button", { name: "Re-score" });
     await vi.waitFor(() => {
       expect(button).toBeDisabled();
     });
@@ -289,7 +294,7 @@ describe("ranked list filters and navigation", () => {
     stubFetch({ ...approved, ...idle, [LIST]: rows });
     renderApp(PATH);
 
-    await userEvent.click(await screen.findByLabelText("Flagged only"));
+    await userEvent.click(await screen.findByLabelText("Needs a look only"));
 
     expect(screen.getByText("C-001")).toBeInTheDocument();
     expect(screen.queryByText("C-002")).not.toBeInTheDocument();
@@ -300,11 +305,11 @@ describe("ranked list filters and navigation", () => {
     stubFetch({ ...approved, ...idle, [LIST]: rows });
     renderApp(PATH);
 
-    await userEvent.click(await screen.findByLabelText("Has overrides"));
+    await userEvent.click(await screen.findByLabelText("Changed by recruiter"));
     expect(screen.getByText("C-002")).toBeInTheDocument();
     expect(screen.queryByText("C-001")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText("Flagged only"));
+    await userEvent.click(screen.getByLabelText("Needs a look only"));
     expect(screen.getByText("No candidates on this page match the filters.")).toBeInTheDocument();
   });
 
@@ -324,19 +329,18 @@ describe("ranked list filters and navigation", () => {
 
     const box = async (no: number) =>
       screen.findByRole("checkbox", { name: `Select C-00${no} to compare` });
-    const compare = () => screen.getByRole("link", { name: "Compare" });
+    const compare = () => screen.getByRole("button", { name: "Compare" });
 
     await userEvent.click(await box(1));
-    expect(compare()).toHaveAttribute("aria-disabled", "true");
+    expect(compare()).toBeDisabled();
+    expect(screen.getByText(/1 selected/)).toBeInTheDocument();
 
     await userEvent.click(await box(2));
-    expect(compare()).not.toHaveAttribute("aria-disabled");
-    expect(compare().getAttribute("href")).toContain(
-      "ids=30000000-0000-4000-8000-000000000001%2C30000000-0000-4000-8000-000000000002",
-    );
+    expect(compare()).toBeEnabled();
+    expect(screen.getByText(/2 selected/)).toBeInTheDocument();
 
     for (const n of [3, 4, 5]) await userEvent.click(await box(n));
-    expect(compare()).toHaveAttribute("aria-disabled", "true");
+    expect(compare()).toBeDisabled();
   });
 });
 

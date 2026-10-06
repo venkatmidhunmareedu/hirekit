@@ -1,9 +1,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { AlertIcon } from "../../components/AlertIcon";
-import { errorMessage } from "../../lib/errors";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+
+import { ErrorNotice } from "../../components/ErrorNotice";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
+import { PageHeader } from "../../components/PageHeader";
+import { Section } from "../../components/Section";
 
 import { CriteriaEditor } from "./CriteriaEditor";
 import { RoleTabs } from "./RoleTabs";
@@ -26,34 +32,38 @@ export function RoleSetupPage() {
 function RoleSetup({ roleId }: { roleId: string }) {
   const role = useQuery(roleQueryOptions(roleId));
 
-  if (role.isPending) return <p role="status">Loading role</p>;
+  if (role.isPending) return <Loading label="Loading role" />;
   if (role.isError) {
     return (
-      <p role="alert" className="notice notice-danger">
-        <AlertIcon />
-        <span>{errorMessage(role.error)}</span>
-        <button type="button" className="btn btn-secondary" onClick={() => void role.refetch()}>
-          Try again
-        </button>
-      </p>
+      <ErrorNotice
+        error={role.error}
+        retry={() => {
+          void role.refetch();
+        }}
+      />
     );
   }
   return (
-    <div className="stack">
-      <h1>{role.data.title}</h1>
-      <RoleTabs roleId={roleId} />
-      <div className="card stack">
-        <h2>Job description</h2>
-        <p className="job-description">{role.data.job_description}</p>
-      </div>
+    <div className="flex flex-col gap-8">
+      <PageHeader title={role.data.title} />
+      <RoleTabs roleId={roleId} status={role.data.status} current="criteria" />
+      <Section id="job-description" title="Job description">
+        <p className="max-w-prose whitespace-pre-line">{role.data.job_description}</p>
+      </Section>
       {role.data.status === "draft" ? (
-        <p className="notice notice-info" role="status">
-          Draft. Approve the criteria to start uploading and scoring resumes.
-        </p>
+        <Notice>Draft. Approve the criteria to start uploading and scoring resumes.</Notice>
       ) : (
-        <p className="notice notice-info" role="status">
-          Approved. You can upload resumes on the Candidates tab.
-        </p>
+        <Notice
+          action={
+            <Button asChild className="h-10 px-4">
+              <Link to="/roles/$roleId/candidates" params={{ roleId }}>
+                Next: upload resumes
+              </Link>
+            </Button>
+          }
+        >
+          Approved. You can upload resumes on the Candidates step.
+        </Notice>
       )}
       <Proposal role={role.data} />
       <CriteriaEditor
@@ -84,51 +94,52 @@ function Proposal({ role }: { role: RoleDetail }) {
       : null;
 
   return (
-    <div className="card stack">
-      <h2>Proposed criteria</h2>
-      <p className="muted">
-        The model suggests criteria from the job description. Review and edit every one before you
-        approve.
-      </p>
-      <div className="actions">
-        <button
+    <Section
+      id="proposed-criteria"
+      title="Proposed criteria"
+      description="The AI suggests criteria from the job description. Review and edit every one before you approve."
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
           type="button"
-          className="btn btn-secondary"
+          variant="outline"
+          className="h-10 px-4"
           disabled={propose.isPending || openJob !== null}
           onClick={() => {
             propose.mutate(undefined, { onSuccess: setJobId });
           }}
         >
           Propose criteria
-        </button>
+        </Button>
         {openJob !== null && (
-          <button
+          <Button
             type="button"
-            className="btn btn-secondary"
+            variant="outline"
+            className="h-10 px-4"
             disabled={cancel.isPending}
             onClick={() => {
               cancel.mutate(openJob);
             }}
           >
             Cancel
-          </button>
+          </Button>
         )}
       </div>
-      {openJob !== null && <progress aria-label="Proposing criteria" />}
+      {openJob !== null && (
+        <Progress
+          aria-label="Proposing criteria"
+          value={null}
+          className="h-2 animate-pulse bg-primary/30 motion-reduce:animate-none"
+        />
+      )}
       {status === "failed" && (
-        <p role="alert" className="notice notice-danger">
-          <AlertIcon />
-          <span>The proposal did not finish. Try again, or add criteria by hand.</span>
-        </p>
+        <Notice tone="danger">
+          The proposal did not finish. Try again, or add criteria by hand.
+        </Notice>
       )}
       {status === "succeeded" && <p role="status">Proposed criteria are below.</p>}
       {status === "cancelled" && <p role="status">Proposal cancelled.</p>}
-      {failure && (
-        <p role="alert" className="notice notice-danger">
-          <AlertIcon />
-          <span>{errorMessage(failure)}</span>
-        </p>
-      )}
-    </div>
+      {failure && <ErrorNotice error={failure} />}
+    </Section>
   );
 }

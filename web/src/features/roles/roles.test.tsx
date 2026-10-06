@@ -50,6 +50,13 @@ describe("role list", () => {
     expect(link).toHaveAttribute("href", `/roles/${ROLE_ID}`);
     expect(screen.getByText("Approved")).toBeInTheDocument();
     expect(screen.getByText("Draft")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Next: approve criteria" })).toHaveAttribute(
+      "href",
+      `/roles/${ROLE_ID}`,
+    );
+    expect(
+      screen.getByRole("link", { name: "Next: upload and review candidates" }),
+    ).toHaveAttribute("href", "/roles/x/candidates");
   });
 
   it("shows an empty state and an error with a retry", async () => {
@@ -80,6 +87,7 @@ describe("role list", () => {
     });
     const router = renderApp("/");
 
+    await userEvent.click(await screen.findByRole("button", { name: "New role" }));
     const create = await screen.findByRole("button", { name: "Create role" });
     expect(create).toBeDisabled();
     await userEvent.type(screen.getByLabelText("Role title"), "  Backend engineer ");
@@ -104,6 +112,7 @@ describe("role list", () => {
     });
     renderApp("/");
 
+    await userEvent.click(await screen.findByRole("button", { name: "New role" }));
     await userEvent.type(await screen.findByLabelText("Role title"), "T");
     await userEvent.type(screen.getByLabelText("Job description"), "D");
     await userEvent.click(screen.getByRole("button", { name: "Create role" }));
@@ -121,7 +130,10 @@ describe("role setup", () => {
     expect(screen.getByText(/Draft\. Approve the criteria/)).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("Python experience");
     expect(screen.getByLabelText("Score 4 looks like")).toHaveValue("Level 4 text");
-    expect(screen.getByRole("link", { name: "Candidates" })).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Locked until criteria are approved", { selector: "small" }),
+    ).toHaveLength(2);
+    expect(screen.queryByRole("link", { name: /Candidates/ })).not.toBeInTheDocument();
   });
 
   it("reports a missing role", async () => {
@@ -182,6 +194,10 @@ describe("role setup", () => {
     await userEvent.click(within(confirm).getByRole("button", { name: "Confirm approval" }));
 
     expect(await screen.findByText(/Approved\. You can upload/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Next: upload resumes" })).toHaveAttribute(
+      "href",
+      `/roles/${ROLE_ID}/candidates`,
+    );
     expect(calls.find((c) => c.path.endsWith("/approve"))?.body).toBe(
       JSON.stringify({ criteria_version: 2 }),
     );
@@ -213,7 +229,10 @@ describe("role setup", () => {
     expect(screen.getAllByLabelText(/Score \d looks like/)).toHaveLength(10);
     expect(screen.getByText("Give every criterion a name.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save draft" })).toBeDisabled();
-    expect(screen.getByText("Save the draft before approving.")).toBeInTheDocument();
+    expect(screen.getByText("Save your edits first.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve criteria" })).toHaveAccessibleDescription(
+      "Save your edits first.",
+    );
   });
 
   it("removes a criterion", async () => {

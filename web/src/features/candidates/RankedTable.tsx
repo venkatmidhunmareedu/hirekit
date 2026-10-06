@@ -1,49 +1,31 @@
 import { Link } from "@tanstack/react-router";
 
-import type { RankedCandidate, ScoreCell } from "./api";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-const STAGE_LABEL: Record<RankedCandidate["stage"], string> = {
-  new: "New",
-  screened: "Screened",
-  interview: "Interview",
-  offer: "Offer",
-  hired: "Hired",
-  rejected: "Rejected",
-  withdrawn: "Withdrawn",
-};
+import { type RankedCandidate, type ScoreCell, candidateLabel } from "./api";
+import { ScoreChip } from "./components/ScoreParts";
+import { PROCESSING_LABEL, STAGE_LABEL } from "./labels";
 
-const PROCESSING_LABEL: Record<RankedCandidate["processing_status"], string> = {
-  queued: "Queued",
-  parsing: "Parsing",
-  anonymizing: "Anonymizing",
-  scoring: "Scoring",
-  done: "Done",
-  failed: "Failed",
-};
-
-/** Anonymous label (Design.md section 9): the number, never a name. */
-export function candidateLabel(no: number): string {
-  return `C-${String(no).padStart(3, "0")}`;
-}
-
-/** A score chip (Design.md 7.2): neutral, mono numerals, labelled by source, never colored by value. */
-function ScoreChip({ cell }: { cell: ScoreCell }) {
+/** A score cell: the shared chip labelled by source, or the plain no-score state. */
+function ScoreCellView({ cell }: { cell: ScoreCell }) {
   if (cell.status === "failed") return <span>Scoring failed</span>;
-  if (cell.status === "no_evidence") return <span>No evidence found</span>;
-  const overridden = cell.override_score !== null;
   const value = cell.override_score ?? cell.model_score;
-  if (value === null) return <span>No evidence found</span>;
+  if (cell.status === "no_evidence" || value === null) return <span>No evidence found</span>;
   return (
-    <span className="chip-cell">
-      <span className="chip">
-        {value} / 4
-        {overridden && cell.model_score !== null && (
-          <s className="muted" aria-label={`model score ${cell.model_score}`}>
-            {cell.model_score}
-          </s>
-        )}
-      </span>
-      <small className="muted">{overridden ? "Recruiter override" : "Model suggestion"}</small>
+    <span className="flex flex-col items-start gap-1">
+      <ScoreChip model={cell.model_score} override={cell.override_score} />
+      <small className="text-xs text-muted-foreground">
+        {cell.override_score !== null ? "Changed by recruiter" : "AI suggestion"}
+      </small>
     </span>
   );
 }
@@ -65,84 +47,95 @@ export function RankedTable({
     for (const cell of candidate.scores) criteria.set(cell.criterion_id, cell.criterion_name);
   }
 
+  const NUM = "text-right font-mono tabular-nums";
   return (
-    <div className="table-wrap">
-      <table className="ranked">
-        <caption className="visually-hidden">
+    <div className="rounded-lg border bg-card">
+      <Table>
+        <TableCaption className="sr-only">
           Candidates ranked by weighted total, highest first
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col" className="num">
+        </TableCaption>
+        <TableHeader className="bg-muted/60">
+          <TableRow className="hover:bg-transparent">
+            <TableHead scope="col" className={NUM}>
               Rank
-            </th>
-            <th scope="col">Candidate</th>
-            <th scope="col">Compare</th>
-            <th scope="col" className="num" aria-sort="descending">
+            </TableHead>
+            <TableHead scope="col">Candidate</TableHead>
+            <TableHead scope="col">Select</TableHead>
+            <TableHead scope="col" className={NUM} aria-sort="descending">
               Weighted score
-            </th>
-            <th scope="col">Must-have coverage</th>
+            </TableHead>
+            <TableHead scope="col">Must-have coverage</TableHead>
             {[...criteria].map(([id, name]) => (
-              <th scope="col" key={id}>
+              <TableHead scope="col" key={id}>
                 {name}
-              </th>
+              </TableHead>
             ))}
-            <th scope="col" className="num">
-              Flags
-            </th>
-            <th scope="col">Stage</th>
-          </tr>
-        </thead>
-        <tbody>
+            <TableHead scope="col" className={NUM}>
+              Needs a look
+            </TableHead>
+            <TableHead scope="col">Hiring stage</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {candidates.map((candidate, index) => {
             const flags = candidate.scores.filter((s) => s.flag_reason !== null).length;
             const ready = candidate.processing_status === "done";
             return (
-              <tr key={candidate.id}>
-                <td className="num">{offset + index + 1}</td>
-                <th scope="row">
-                  <Link to="/candidates/$candidateId" params={{ candidateId: candidate.id }}>
+              <TableRow key={candidate.id}>
+                <TableCell className={NUM}>{offset + index + 1}</TableCell>
+                <TableHead scope="row">
+                  <Link
+                    to="/candidates/$candidateId"
+                    params={{ candidateId: candidate.id }}
+                    className="font-mono underline-offset-4 hover:underline"
+                  >
                     {candidateLabel(candidate.candidate_no)}
                   </Link>
                   {candidate.duplicate_of_candidate_no !== null && (
-                    <small className="muted">
-                      {" "}
+                    <small className="block text-xs font-normal text-muted-foreground">
                       Possible duplicate of {candidateLabel(candidate.duplicate_of_candidate_no)}
                     </small>
                   )}
-                </th>
-                <td>
-                  <input
-                    type="checkbox"
+                </TableHead>
+                <TableCell>
+                  <Checkbox
                     aria-label={`Select ${candidateLabel(candidate.candidate_no)} to compare`}
                     checked={selected.includes(candidate.id)}
-                    onChange={() => {
+                    onCheckedChange={() => {
                       onToggle(candidate.id);
                     }}
                   />
-                </td>
-                <td className="num">
+                </TableCell>
+                <TableCell className={NUM}>
                   {ready
                     ? candidate.total.toFixed(1)
                     : PROCESSING_LABEL[candidate.processing_status]}
-                  {candidate.stale && <small className="muted"> Stale scores</small>}
-                </td>
-                <td>
+                  {candidate.stale && (
+                    <small className="block font-sans text-xs text-muted-foreground">
+                      Scores are out of date
+                    </small>
+                  )}
+                </TableCell>
+                <TableCell>
                   {ready
                     ? `${candidate.must_have_covered} of ${candidate.must_have_total}`
                     : "Not scored yet"}
-                </td>
+                </TableCell>
                 {[...criteria.keys()].map((id) => {
                   const cell = candidate.scores.find((s) => s.criterion_id === id);
-                  return <td key={id}>{cell ? <ScoreChip cell={cell} /> : "Not scored yet"}</td>;
+                  return (
+                    <TableCell key={id}>
+                      {cell ? <ScoreCellView cell={cell} /> : "Not scored yet"}
+                    </TableCell>
+                  );
                 })}
-                <td className="num">{flags}</td>
-                <td>{STAGE_LABEL[candidate.stage]}</td>
-              </tr>
+                <TableCell className={NUM}>{flags}</TableCell>
+                <TableCell>{STAGE_LABEL[candidate.stage]}</TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

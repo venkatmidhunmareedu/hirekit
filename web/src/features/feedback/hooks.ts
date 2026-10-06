@@ -21,6 +21,7 @@ export function useSubmitFeedback(candidateId: string) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: feedbackKeys.list(candidateId) });
       await queryClient.invalidateQueries({ queryKey: candidateKeys.detail(candidateId) });
+      await queryClient.invalidateQueries({ queryKey: candidateKeys.mine });
     },
   });
 }

@@ -1,6 +1,21 @@
+import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { AlertIcon } from "../../components/AlertIcon";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { Notice } from "../../components/Notice";
+import { Section } from "../../components/Section";
 import { errorMessage } from "../../lib/errors";
 
 import type { CriterionInput, CriterionKind, RoleDetail, RubricLevel } from "./api";
@@ -63,6 +78,11 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
   const problem = rows.map(rowError).find((e) => e !== null) ?? null;
   const failure = save.error ?? approve.error;
   const canApprove = !dirty && rows.length > 0 && role.status === "draft";
+  const approveBlocker = dirty
+    ? "Save your edits first."
+    : rows.length === 0
+      ? "Add at least one criterion first."
+      : null;
 
   function update(key: string, patch: Partial<Row>) {
     setRows((current) => current.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -83,164 +103,193 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
   }
 
   return (
-    <div className="stack">
+    <div className="flex flex-col gap-8">
       {(["must_have", "nice_to_have"] as const).map((kind) => (
-        <section key={kind} aria-labelledby={`group-${kind}`} className="stack">
-          <h2 id={`group-${kind}`}>{kind === "must_have" ? "Must-have" : "Nice-to-have"}</h2>
+        <Section
+          key={kind}
+          id={`group-${kind}`}
+          title={kind === "must_have" ? "Must-have" : "Nice-to-have"}
+        >
           {rows.filter((r) => r.kind === kind).length === 0 && (
-            <p className="muted">
+            <p className="text-muted-foreground">
               No {kind === "must_have" ? "must-have" : "nice-to-have"} criteria.
             </p>
           )}
           {rows
             .filter((r) => r.kind === kind)
             .map((row) => (
-              <fieldset key={row.key} className="card criterion">
-                <legend>{row.name.trim() || "New criterion"}</legend>
-                <div className="field">
-                  <label htmlFor={`name-${row.key}`}>Name</label>
-                  <input
-                    id={`name-${row.key}`}
-                    value={row.name}
-                    onChange={(e) => {
-                      update(row.key, { name: e.target.value });
-                    }}
-                  />
-                </div>
-                <div className="criterion-meta">
-                  <div className="field">
-                    <label htmlFor={`kind-${row.key}`}>Type</label>
-                    <select
-                      id={`kind-${row.key}`}
-                      value={row.kind}
+              <Card key={row.key} className="px-5 py-5">
+                <fieldset className="flex min-w-0 flex-col gap-4">
+                  <legend className="mb-3 font-display text-lg font-medium">
+                    {row.name.trim() || "New criterion"}
+                  </legend>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`name-${row.key}`}>Name</Label>
+                    <Input
+                      id={`name-${row.key}`}
+                      className="h-10"
+                      value={row.name}
                       onChange={(e) => {
-                        update(row.key, {
-                          kind: e.target.value === "nice_to_have" ? "nice_to_have" : "must_have",
-                        });
+                        update(row.key, { name: e.target.value });
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor={`kind-${row.key}`}>Type</Label>
+                      <Select
+                        value={row.kind}
+                        onValueChange={(value) => {
+                          update(row.key, {
+                            kind: value === "nice_to_have" ? "nice_to_have" : "must_have",
+                          });
+                        }}
+                      >
+                        <SelectTrigger id={`kind-${row.key}`} className="h-10 w-44">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="must_have">Must-have</SelectItem>
+                          <SelectItem value="nice_to_have">Nice-to-have</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor={`weight-${row.key}`}>Weight</Label>
+                      <Input
+                        id={`weight-${row.key}`}
+                        type="number"
+                        min="0"
+                        step="any"
+                        className="h-10 w-28 font-mono"
+                        value={row.weight}
+                        onChange={(e) => {
+                          update(row.key, { weight: e.target.value });
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {row.rubric.map((level) => (
+                      <div className="flex flex-col gap-1.5" key={level.level}>
+                        <Label htmlFor={`level-${row.key}-${level.level}`}>
+                          Score {level.level} looks like
+                        </Label>
+                        <Textarea
+                          id={`level-${row.key}-${level.level}`}
+                          rows={3}
+                          value={level.descriptor}
+                          onChange={(e) => {
+                            update(row.key, {
+                              rubric: row.rubric.map((l) =>
+                                l.level === level.level ? { ...l, descriptor: e.target.value } : l,
+                              ),
+                            });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="h-10 px-4"
+                      onClick={() => {
+                        setRows((current) => current.filter((r) => r.key !== row.key));
                       }}
                     >
-                      <option value="must_have">Must-have</option>
-                      <option value="nice_to_have">Nice-to-have</option>
-                    </select>
+                      <Trash2 aria-hidden="true" />
+                      Remove criterion
+                    </Button>
                   </div>
-                  <div className="field">
-                    <label htmlFor={`weight-${row.key}`}>Weight</label>
-                    <input
-                      id={`weight-${row.key}`}
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={row.weight}
-                      onChange={(e) => {
-                        update(row.key, { weight: e.target.value });
-                      }}
-                    />
-                  </div>
-                </div>
-                {row.rubric.map((level) => (
-                  <div className="field" key={level.level}>
-                    <label htmlFor={`level-${row.key}-${level.level}`}>
-                      Score {level.level} looks like
-                    </label>
-                    <input
-                      id={`level-${row.key}-${level.level}`}
-                      value={level.descriptor}
-                      onChange={(e) => {
-                        update(row.key, {
-                          rubric: row.rubric.map((l) =>
-                            l.level === level.level ? { ...l, descriptor: e.target.value } : l,
-                          ),
-                        });
-                      }}
-                    />
-                  </div>
-                ))}
-                <div>
-                  <button
-                    type="button"
-                    className="btn btn-destructive"
-                    onClick={() => {
-                      setRows((current) => current.filter((r) => r.key !== row.key));
-                    }}
-                  >
-                    Remove criterion
-                  </button>
-                </div>
-              </fieldset>
+                </fieldset>
+              </Card>
             ))}
-        </section>
+        </Section>
       ))}
       <div>
-        <button type="button" className="btn btn-secondary" onClick={add}>
+        <Button type="button" variant="outline" className="h-10 px-4" onClick={add}>
+          <Plus aria-hidden="true" />
           Add criterion
-        </button>
+        </Button>
       </div>
 
-      {problem !== null && dirty && <p className="muted">{problem}</p>}
+      {problem !== null && dirty && <p className="text-muted-foreground">{problem}</p>}
       {role.status === "approved" && (
-        <p className="muted">Saving changes returns this role to Draft until you approve again.</p>
-      )}
-      {failure && (
-        <p role="alert" className="notice notice-danger">
-          <AlertIcon />
-          <span>{errorMessage(failure)}</span>
+        <p className="text-muted-foreground">
+          Saving changes returns this role to Draft until you approve again.
         </p>
       )}
+      {failure && <Notice tone="danger">{errorMessage(failure)}</Notice>}
       {confirming && (
-        <div role="group" aria-label="Confirm approval" className="card stack">
-          <p>
+        <div role="group" aria-label="Confirm approval">
+          <Notice
+            tone="warning"
+            role="status"
+            action={
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  className="h-10 px-4"
+                  disabled={approve.isPending}
+                  onClick={() => {
+                    approve.mutate(role.criteria_version, {
+                      onSettled: () => {
+                        setConfirming(false);
+                      },
+                    });
+                  }}
+                >
+                  Confirm approval
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 px-4"
+                  onClick={() => {
+                    setConfirming(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            }
+          >
             Approve these criteria? This unlocks resume upload and scoring. Resumes are scored only
             against the criteria you approve.
-          </p>
-          <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={approve.isPending}
-              onClick={() => {
-                approve.mutate(role.criteria_version, {
-                  onSettled: () => {
-                    setConfirming(false);
-                  },
-                });
-              }}
-            >
-              Confirm approval
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                setConfirming(false);
-              }}
-            >
-              Cancel
-            </button>
-          </div>
+          </Notice>
         </div>
       )}
-      <div className="actions">
-        <button
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
           type="button"
-          className="btn btn-secondary"
+          variant={dirty ? "default" : "outline"}
+          className="h-10 px-4"
           disabled={!dirty || problem !== null || save.isPending}
           onClick={() => {
             save.mutate(rows.map(toInput));
           }}
         >
           {save.isPending ? "Saving draft" : "Save draft"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="btn btn-primary"
+          variant={dirty ? "outline" : "default"}
+          className="h-10 px-4"
+          aria-describedby={approveBlocker ? "approve-blocker" : undefined}
           disabled={!canApprove || approve.isPending}
           onClick={() => {
             setConfirming(true);
           }}
         >
           Approve criteria
-        </button>
-        {dirty && <span className="muted">Save the draft before approving.</span>}
+        </Button>
+        {role.status === "draft" && approveBlocker && (
+          <span id="approve-blocker" className="text-muted-foreground">
+            {approveBlocker}
+          </span>
+        )}
       </div>
     </div>
   );

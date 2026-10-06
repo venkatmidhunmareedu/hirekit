@@ -1,7 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
 import { ErrorNotice } from "../../components/ErrorNotice";
-import { Icon } from "../../components/Icon";
+import { EmptyState } from "../../components/EmptyState";
+import { Loading } from "../../components/Loading";
+import { PageHeader } from "../../components/PageHeader";
+import { StatusTag } from "../../components/StatusTag";
 import { candidateLabel } from "../candidates/api";
 import { ScoreChip } from "../candidates/components/ScoreParts";
 
@@ -9,33 +22,32 @@ import { type CompareCell } from "./api";
 import { compareQueryOptions } from "./hooks";
 
 function Cell({ cell }: { cell: CompareCell | undefined }) {
-  if (!cell) return <span className="muted">No data</span>;
+  if (!cell) return <span className="text-muted-foreground">No data</span>;
   return (
-    <div className="stack">
-      <div>
-        <span className="muted">Resume </span>
+    <div className="flex flex-col items-start gap-2 whitespace-normal">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground">Resume</span>
         <ScoreChip model={cell.model_score} override={cell.override_score} />
       </div>
-      <div>
-        <span className="muted">Interviewers </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground">Interviewers</span>
         {cell.feedback.length === 0 ? (
-          <span className="muted">none yet</span>
+          <span className="text-muted-foreground">none yet</span>
         ) : (
           cell.feedback.map((f) => (
-            <span key={f.interviewer_id} className="chip mono" title={f.comment}>
+            <Badge
+              key={f.interviewer_id}
+              variant="outline"
+              className="mono h-6 px-2 font-mono text-xs"
+            >
               {f.score} / 4
-            </span>
+            </Badge>
           ))
         )}
       </div>
-      {cell.disagreement && (
-        <p className="tag">
-          <Icon name="triangle" color="var(--warning)" />
-          Interviewers disagree
-        </p>
-      )}
+      {cell.disagreement && <StatusTag tone="warning">Interviewers disagree</StatusTag>}
       {cell.feedback.map((f) => (
-        <p key={f.interviewer_id} className="muted">
+        <p key={f.interviewer_id} className="max-w-prose text-muted-foreground">
           {f.comment}
         </p>
       ))}
@@ -50,52 +62,74 @@ export function ComparePage({ ids }: { ids: string[] }) {
 
   if (!valid) {
     return (
-      <div className="stack">
-        <h1>Compare candidates</h1>
-        <p className="muted">Choose two to four candidates to compare.</p>
+      <div className="flex flex-col gap-8">
+        <PageHeader title="Compare candidates" />
+        <EmptyState message="Choose two to four candidates to compare." />
       </div>
     );
   }
-  if (comparison.isPending) return <p role="status">Loading the comparison</p>;
-  if (comparison.isError) return <ErrorNotice error={comparison.error} />;
+  if (comparison.isPending) return <Loading label="Loading the comparison" />;
+  if (comparison.isError) {
+    return (
+      <ErrorNotice
+        error={comparison.error}
+        retry={() => {
+          void comparison.refetch();
+        }}
+      />
+    );
+  }
   const { criteria, candidates } = comparison.data;
 
   return (
-    <div className="stack">
-      <h1>Compare candidates</h1>
-      <p className="muted">
-        Scores are model suggestions and recruiter overrides. Interviewer scores sit beside them.
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title="Compare candidates"
+        purpose="Resume scores are AI suggestions or scores changed by a recruiter. Interviewer scores sit beside them."
+      />
+      <p className="text-sm text-muted-foreground md:hidden">
+        Scroll sideways to see every candidate.
       </p>
-      <div className="table-scroll">
-        <table className="table">
-          <thead>
-            <tr>
-              <th scope="col">Criterion</th>
+      <div
+        role="region"
+        aria-label="Candidate comparison table"
+        tabIndex={0}
+        className="overflow-x-auto rounded-lg border bg-card focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none *:data-[slot=table-container]:overflow-visible"
+      >
+        <Table>
+          <TableHeader className="bg-muted/60">
+            <TableRow className="hover:bg-transparent">
+              <TableHead scope="col" className="sticky left-0 z-10 bg-muted">
+                Criterion
+              </TableHead>
               {candidates.map((c) => (
-                <th key={c.candidate_id} scope="col" className="mono">
+                <TableHead key={c.candidate_id} scope="col" className="mono font-mono">
                   {candidateLabel(c.candidate_no)}
-                </th>
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {criteria.map((crit) => (
-              <tr key={crit.id}>
-                <th scope="row">
+              <TableRow key={crit.id} className="align-top">
+                <TableHead
+                  scope="row"
+                  className="sticky left-0 z-10 h-auto min-w-40 bg-card py-3 align-top whitespace-normal"
+                >
                   {crit.name}
-                  <div className="muted">
+                  <div className="text-sm font-normal text-muted-foreground">
                     {crit.kind === "must_have" ? "Must-have" : "Nice-to-have"}
                   </div>
-                </th>
+                </TableHead>
                 {candidates.map((cand) => (
-                  <td key={cand.candidate_id}>
+                  <TableCell key={cand.candidate_id} className="min-w-48 py-3 align-top">
                     <Cell cell={cand.cells.find((x) => x.criterion_id === crit.id)} />
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

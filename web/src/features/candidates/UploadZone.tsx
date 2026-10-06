@@ -1,9 +1,13 @@
+import { CircleCheck, FileUp, TriangleAlert } from "lucide-react";
 import { useState, type DragEvent } from "react";
 
-import { AlertIcon } from "../../components/AlertIcon";
+import { Button } from "@/components/ui/button";
+
+import { Notice } from "../../components/Notice";
+import { Section } from "../../components/Section";
 import { errorMessage } from "../../lib/errors";
 
-import { MAX_FILES, type UploadFileResult } from "./api";
+import { MAX_FILES, type UploadFileResult, candidateLabel } from "./api";
 import { useUpload } from "./hooks";
 
 function resultText(result: UploadFileResult): string {
@@ -11,7 +15,7 @@ function resultText(result: UploadFileResult): string {
     const duplicate =
       result.duplicate_of_candidate_no === null
         ? ""
-        : `, possible duplicate of C-${String(result.duplicate_of_candidate_no).padStart(3, "0")}`;
+        : `, possible duplicate of ${candidateLabel(result.duplicate_of_candidate_no)}`;
     return `Accepted${duplicate}`;
   }
   if (result.status === "role_not_approved") return "Not uploaded: approve the criteria first";
@@ -39,22 +43,24 @@ export function UploadZone({ roleId }: { roleId: string }) {
   const failed = results.filter((r) => r.status !== "accepted").length;
 
   return (
-    <section aria-labelledby="upload-heading" className="card stack">
-      <h2 id="upload-heading">Upload resumes</h2>
+    <Section id="upload-heading" title="Upload resumes">
       <div
-        className="dropzone"
+        className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-input bg-card p-5 focus-within:ring-3 focus-within:ring-ring/50"
         onDragOver={(e) => {
           e.preventDefault();
         }}
         onDrop={drop}
       >
+        <FileUp aria-hidden="true" className="size-6 text-muted-foreground" />
         <p>Drop PDF or DOCX files here, or choose them. Up to {MAX_FILES} at a time.</p>
-        <label className="btn btn-primary" htmlFor="resume-files">
-          Choose files
-        </label>
+        <Button asChild className="h-10 px-4">
+          <label htmlFor="resume-files" className="cursor-pointer">
+            Choose files
+          </label>
+        </Button>
         <input
           id="resume-files"
-          className="visually-hidden"
+          className="sr-only"
           type="file"
           multiple
           accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -67,28 +73,30 @@ export function UploadZone({ roleId }: { roleId: string }) {
       </div>
       {upload.isPending && <p role="status">Uploading</p>}
       {tooMany && (
-        <p role="alert" className="notice notice-danger">
-          <AlertIcon />
-          <span>Upload at most {MAX_FILES} files at a time. Choose fewer files.</span>
-        </p>
+        <Notice tone="danger">
+          Upload at most {MAX_FILES} files at a time. Choose fewer files.
+        </Notice>
       )}
-      {upload.isError && (
-        <p role="alert" className="notice notice-danger">
-          <AlertIcon />
-          <span>{errorMessage(upload.error)}</span>
-        </p>
-      )}
+      {upload.isError && <Notice tone="danger">{errorMessage(upload.error)}</Notice>}
       {results.length > 0 && (
-        <div className="stack">
+        <div className="flex flex-col gap-2">
           <p role="status">
             {results.length - failed} of {results.length} files uploaded
             {failed > 0 ? `, ${failed} not uploaded` : ""}.
           </p>
-          <ul className="file-results">
+          <ul className="flex flex-col divide-y rounded-lg border bg-card">
             {results.map((result, index) => (
-              <li key={`${result.file_name}-${index}`}>
-                <span className="file-name">{result.file_name}</span>
-                <span className={result.status === "accepted" ? "" : "muted"}>
+              <li
+                key={`${result.file_name}-${index}`}
+                className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2"
+              >
+                {result.status === "accepted" ? (
+                  <CircleCheck aria-hidden="true" className="size-4 shrink-0 text-ok" />
+                ) : (
+                  <TriangleAlert aria-hidden="true" className="size-4 shrink-0 text-warn" />
+                )}
+                <span className="font-mono text-sm">{result.file_name}</span>
+                <span className={result.status === "accepted" ? "" : "text-muted-foreground"}>
                   {resultText(result)}
                 </span>
               </li>
@@ -96,6 +104,6 @@ export function UploadZone({ roleId }: { roleId: string }) {
           </ul>
         </div>
       )}
-    </section>
+    </Section>
   );
 }

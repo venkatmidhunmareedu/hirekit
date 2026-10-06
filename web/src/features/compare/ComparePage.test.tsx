@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { setCsrfToken } from "../../lib/api";
-import { CRIT_A, CRIT_B, INTERVIEWER } from "../../test/fixtures";
+import { CRIT_A, CRIT_B } from "../../test/fixtures";
 import { json, session, stubFetch } from "../../test/fetch";
 import { renderApp } from "../../test/renderApp";
 
@@ -76,14 +76,25 @@ describe("compare", () => {
     expect(calls.filter((c) => !c.path.includes("cost-log"))).toHaveLength(2);
   });
 
+  it("puts the table in a focusable, labelled scroll region", async () => {
+    stubFetch({
+      "GET /v1/auth/me": () => json(200, session),
+      "GET /v1/compare?ids=c1%2Cc2": () => json(200, comparison),
+    });
+    renderApp("/compare?ids=c1,c2");
+
+    const region = await screen.findByRole("region", { name: "Candidate comparison table" });
+    expect(region).toHaveAttribute("tabindex", "0");
+  });
+
   it("asks for two to four candidates when the link has fewer", async () => {
-    const { calls } = stubFetch({ "GET /v1/auth/me": () => json(200, INTERVIEWER) });
+    const { calls } = stubFetch({ "GET /v1/auth/me": () => json(200, session) });
     renderApp("/compare?ids=c1");
 
     expect(
       await screen.findByText("Choose two to four candidates to compare."),
     ).toBeInTheDocument();
-    expect(calls.every((c) => c.path === "/v1/auth/me")).toBe(true);
+    expect(calls.filter((c) => !c.path.includes("cost-log"))).toHaveLength(1);
   });
 
   it("explains a comparison that cannot be loaded", async () => {

@@ -54,7 +54,7 @@ describe("interview kit, recruiter", () => {
     expect(screen.getByRole("heading", { name: "Tell me about APIs" })).toBeInTheDocument();
     expect(screen.getByText("strong Tell me about APIs")).toBeInTheDocument();
     expect(screen.getByText("weak Tell me about APIs")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Print kit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Print interview kit" })).not.toBeInTheDocument();
   });
 
   it("warns that a stale kit belongs to older criteria", async () => {
@@ -74,7 +74,7 @@ describe("interview kit, recruiter", () => {
     renderApp(`/roles/${ROLE}/kit`);
 
     expect(await screen.findByText(/Approve the criteria/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Generate kit" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Generate interview kit" })).toBeDisabled();
   });
 
   it("generates, polls the job and shows the new kit", async () => {
@@ -91,7 +91,7 @@ describe("interview kit, recruiter", () => {
     );
     renderApp(`/roles/${ROLE}/kit`);
 
-    await userEvent.click(await screen.findByRole("button", { name: "Generate kit" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Generate interview kit" }));
 
     expect(await screen.findByRole("heading", { name: "Scaling?" })).toBeInTheDocument();
   });
@@ -105,9 +105,9 @@ describe("interview kit, recruiter", () => {
     );
     renderApp(`/roles/${ROLE}/kit`);
 
-    await userEvent.click(await screen.findByRole("button", { name: "Regenerate kit" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Regenerate interview kit" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("model budget has been reached");
+    expect(await screen.findByRole("alert")).toHaveTextContent("AI budget has been reached");
   });
 
   it("edits a question in place", async () => {
@@ -155,11 +155,53 @@ describe("interview kit, recruiter", () => {
     renderApp(`/roles/${ROLE}/kit`);
 
     await userEvent.click(await first("Regenerate"));
-    expect(await screen.findByText(/ended as failed/)).toBeInTheDocument();
+    expect(await screen.findByText(/did not finish/)).toBeInTheDocument();
     await userEvent.click(await first("Delete", 2));
 
     await screen.findByRole("heading", { name: "Backend experience" });
     expect(calls.some((c) => c.method === "DELETE")).toBe(true);
+  });
+});
+
+describe("interview kit, no kit yet", () => {
+  it("offers Generate kit to a recruiter instead of an error", async () => {
+    stubFetch(
+      routes({
+        [`GET /v1/roles/${ROLE}/kit`]: () =>
+          json(404, { error: { code: "not_found", message: "kit not found", details: {} } }),
+      }),
+    );
+    renderApp(`/roles/${ROLE}/kit`);
+
+    expect(await screen.findByText(/No interview kit yet/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generate interview kit" })).toBeEnabled();
+  });
+
+  it("tells an interviewer the kit is not ready", async () => {
+    stubFetch(
+      routes(
+        {
+          [`GET /v1/roles/${ROLE}/kit`]: () =>
+            json(404, { error: { code: "not_found", message: "kit not found", details: {} } }),
+        },
+        INTERVIEWER,
+      ),
+    );
+    renderApp(`/roles/${ROLE}/kit`);
+
+    expect(await screen.findByText("The interview kit is not ready yet.")).toBeInTheDocument();
+  });
+
+  it("keeps a server error as an error", async () => {
+    stubFetch(
+      routes({
+        [`GET /v1/roles/${ROLE}/kit`]: () =>
+          json(500, { error: { code: "internal", message: "boom", details: {} } }),
+      }),
+    );
+    renderApp(`/roles/${ROLE}/kit`);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
   });
 });
 
@@ -168,10 +210,10 @@ describe("interview kit, interviewer", () => {
     stubFetch(routes({}, INTERVIEWER));
     renderApp(`/roles/${ROLE}/kit`);
 
-    expect(await screen.findByRole("button", { name: "Print kit" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Print interview kit" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /Generate kit|Regenerate kit/ }),
+      screen.queryByRole("button", { name: /Generate interview kit|Regenerate interview kit/ }),
     ).not.toBeInTheDocument();
   });
 });

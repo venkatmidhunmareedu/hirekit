@@ -7,7 +7,7 @@ import tseslint from "typescript-eslint";
 
 // Flat config: strict type-checked TypeScript, React hooks, jsx-a11y.
 export default tseslint.config(
-  { ignores: ["dist/**", "coverage/**", "node_modules/**"] },
+  { ignores: ["dist/**", "coverage/**", "node_modules/**", "src/components/ui/**"] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
@@ -27,6 +27,8 @@ export default tseslint.config(
         "error",
         { allow: [{ from: "package", package: "@tanstack/router-core", name: "Redirect" }] },
       ],
+      // A named, scrollable region must be keyboard focusable (axe scrollable-region-focusable).
+      "jsx-a11y/no-noninteractive-tabindex": ["error", { roles: ["tabpanel", "region"] }],
       "no-console": ["error", { allow: ["warn", "error"] }],
     },
   },

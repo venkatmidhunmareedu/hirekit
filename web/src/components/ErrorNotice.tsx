@@ -1,13 +1,27 @@
+import { CircleAlert } from "lucide-react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+
 import { errorMessage } from "../lib/errors";
 
-import { AlertIcon } from "./AlertIcon";
-
 /** A visible, announced error with an icon (Design.md section 11: plain message, next step). */
-export function ErrorNotice({ error }: { error: unknown }) {
+export function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
   return (
-    <p role="alert" className="notice notice-danger">
-      <AlertIcon />
-      <span>{errorMessage(error)}</span>
-    </p>
+    <Alert variant="destructive" className="flex items-center gap-3 border-bad bg-bad-soft">
+      <CircleAlert aria-hidden="true" className="size-4 shrink-0" />
+      <AlertDescription className="flex-1 text-bad">{errorMessage(error)}</AlertDescription>
+      {retry && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="bg-card text-foreground dark:bg-card"
+          onClick={retry}
+        >
+          Try again
+        </Button>
+      )}
+    </Alert>
   );
 }

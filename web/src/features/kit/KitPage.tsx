@@ -1,11 +1,22 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { ArrowDown, ArrowUp, Check, Minus, Pencil, Printer, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
 import { ErrorNotice } from "../../components/ErrorNotice";
-import { Icon } from "../../components/Icon";
+import { EmptyState } from "../../components/EmptyState";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
+import { PageHeader } from "../../components/PageHeader";
+import { Section } from "../../components/Section";
+import { RoleTabs } from "../roles/RoleTabs";
 import { sessionQueryOptions } from "../auth/hooks";
 
-import { type Question } from "./api";
+import { type Question, type RoleCriterion } from "./api";
 import {
   isJobDone,
   kitQueryOptions,
@@ -40,140 +51,220 @@ function QuestionCard({
 
   if (draft) {
     return (
-      <li className="card">
-        <form
-          className="stack"
-          onSubmit={(event) => {
-            event.preventDefault();
-            edit.mutate(
-              {
-                id: question.id,
-                patch: {
-                  question_text: draft.question_text.trim(),
-                  strong_answer: draft.strong_answer.trim(),
-                  weak_answer: draft.weak_answer.trim(),
+      <li>
+        <Card className="px-5">
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              edit.mutate(
+                {
+                  id: question.id,
+                  patch: {
+                    question_text: draft.question_text.trim(),
+                    strong_answer: draft.strong_answer.trim(),
+                    weak_answer: draft.weak_answer.trim(),
+                  },
                 },
-              },
-              {
-                onSuccess: () => {
+                {
+                  onSuccess: () => {
+                    setDraft(null);
+                  },
+                },
+              );
+            }}
+          >
+            {(
+              [
+                ["question_text", "Question"],
+                ["strong_answer", "Strong answer"],
+                ["weak_answer", "Weak answer"],
+              ] as const
+            ).map(([field, label]) => (
+              <div className="flex flex-col gap-1.5" key={field}>
+                <Label htmlFor={`${field}-${question.id}`}>{label}</Label>
+                <Textarea
+                  id={`${field}-${question.id}`}
+                  rows={3}
+                  required
+                  value={draft[field]}
+                  onChange={(e) => {
+                    setDraft({ ...draft, [field]: e.target.value });
+                  }}
+                />
+              </div>
+            ))}
+            {edit.error && <ErrorNotice error={edit.error} />}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 px-4"
+                onClick={() => {
                   setDraft(null);
-                },
-              },
-            );
-          }}
-        >
-          {(
-            [
-              ["question_text", "Question"],
-              ["strong_answer", "Strong answer"],
-              ["weak_answer", "Weak answer"],
-            ] as const
-          ).map(([field, label]) => (
-            <div className="field" key={field}>
-              <label htmlFor={`${field}-${question.id}`}>{label}</label>
-              <textarea
-                id={`${field}-${question.id}`}
-                rows={3}
-                required
-                value={draft[field]}
-                onChange={(e) => {
-                  setDraft({ ...draft, [field]: e.target.value });
                 }}
-              />
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="h-10 px-4" disabled={edit.isPending}>
+                Save question
+              </Button>
             </div>
-          ))}
-          {edit.error && <ErrorNotice error={edit.error} />}
-          <div className="actions">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                setDraft(null);
-              }}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={edit.isPending}>
-              Save question
-            </button>
-          </div>
-        </form>
+          </form>
+        </Card>
       </li>
     );
   }
 
   return (
-    <li className="card stack">
-      <h4>{question.question_text}</h4>
-      <div className="answer-pair">
-        <div className="answer">
-          <p className="tag">
-            <Icon name="check" /> Strong answer
-          </p>
-          <p>{question.strong_answer}</p>
+    <li>
+      <Card className="gap-4 px-5">
+        <h3 className="text-lg font-medium">{question.question_text}</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-ok">
+              <Check aria-hidden="true" className="size-4" /> Strong answer
+            </p>
+            <p>{question.strong_answer}</p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+              <Minus aria-hidden="true" className="size-4" /> Weak answer
+            </p>
+            <p>{question.weak_answer}</p>
+          </div>
         </div>
-        <div className="answer">
-          <p className="tag">
-            <Icon name="minus" /> Weak answer
-          </p>
-          <p>{question.weak_answer}</p>
-        </div>
-      </div>
-      {failure && <ErrorNotice error={failure} />}
-      {recruiter && (
-        <div className="actions no-print">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            disabled={!neighbours.prev || swap.isPending}
-            onClick={() => {
-              if (neighbours.prev) swap.mutate([question, neighbours.prev]);
-            }}
-          >
-            Move up
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            disabled={!neighbours.next || swap.isPending}
-            onClick={() => {
-              if (neighbours.next) swap.mutate([question, neighbours.next]);
-            }}
-          >
-            Move down
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => {
-              setDraft(question);
-            }}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={regenerate.isPending}
-            onClick={() => {
-              regenerate.mutate(question.id, { onSuccess: onJob });
-            }}
-          >
-            Regenerate
-          </button>
-          <button
-            type="button"
-            className="btn btn-destructive"
-            disabled={remove.isPending}
-            onClick={() => {
-              remove.mutate(question.id);
-            }}
-          >
-            Delete
-          </button>
-        </div>
-      )}
+        {failure && <ErrorNotice error={failure} />}
+        {recruiter && (
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-10 px-3"
+              disabled={!neighbours.prev || swap.isPending}
+              onClick={() => {
+                if (neighbours.prev) swap.mutate([question, neighbours.prev]);
+              }}
+            >
+              <ArrowUp aria-hidden="true" />
+              Move up
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-10 px-3"
+              disabled={!neighbours.next || swap.isPending}
+              onClick={() => {
+                if (neighbours.next) swap.mutate([question, neighbours.next]);
+              }}
+            >
+              <ArrowDown aria-hidden="true" />
+              Move down
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 px-3"
+              onClick={() => {
+                setDraft(question);
+              }}
+            >
+              <Pencil aria-hidden="true" />
+              Edit
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 px-3"
+              disabled={regenerate.isPending}
+              onClick={() => {
+                regenerate.mutate(question.id, { onSuccess: onJob });
+              }}
+            >
+              <RefreshCw aria-hidden="true" />
+              Regenerate
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="h-10 px-3"
+              disabled={remove.isPending}
+              onClick={() => {
+                remove.mutate(question.id);
+              }}
+            >
+              <Trash2 aria-hidden="true" />
+              Delete
+            </Button>
+          </div>
+        )}
+      </Card>
     </li>
+  );
+}
+
+function QuestionGroups({
+  roleId,
+  criteria,
+  questions: all,
+  recruiter,
+  onJob,
+}: {
+  roleId: string;
+  criteria: RoleCriterion[];
+  questions: Question[];
+  recruiter: boolean;
+  onJob: (id: number) => void;
+}) {
+  return criteria.map((crit) => {
+    const questions = all
+      .filter((q) => q.criterion_id === crit.id)
+      .sort((a, b) => a.position - b.position);
+    if (questions.length === 0) return null;
+    return (
+      <Section key={crit.id} id={`criterion-${crit.id}`} title={crit.name}>
+        <ul className="flex flex-col gap-4">
+          {questions.map((q, i) => (
+            <QuestionCard
+              key={q.id}
+              question={q}
+              neighbours={{ prev: questions[i - 1] ?? null, next: questions[i + 1] ?? null }}
+              roleId={roleId}
+              recruiter={recruiter}
+              onJob={onJob}
+            />
+          ))}
+        </ul>
+      </Section>
+    );
+  });
+}
+
+/** The kit's questions for an interviewer, read-only, to sit beside the feedback form. */
+export function KitQuestions({ roleId }: { roleId: string }) {
+  const role = useQuery(roleCriteriaQueryOptions(roleId));
+  const kit = useQuery(kitQueryOptions(roleId));
+  if (role.isPending || kit.isPending) return <Loading label="Loading the interview kit" />;
+  if (role.isError) return <ErrorNotice error={role.error} />;
+  if (kit.isError) return <ErrorNotice error={kit.error} />;
+  if (kit.data.questions.length === 0) {
+    return <EmptyState message="The interview kit is not ready yet." />;
+  }
+  const criteria = [...role.data.criteria].sort(
+    (a, b) =>
+      Number(b.kind === "must_have") - Number(a.kind === "must_have") || a.position - b.position,
+  );
+  return (
+    <div className="flex flex-col gap-6">
+      <h2 className="text-xl font-medium">Interview kit</h2>
+      <QuestionGroups
+        roleId={roleId}
+        criteria={criteria}
+        questions={kit.data.questions}
+        recruiter={false}
+        onJob={() => undefined}
+      />
+    </div>
   );
 }
 
@@ -188,9 +279,27 @@ export function KitPage({ roleId }: { roleId: string }) {
   const job = useJobWatch(roleId, jobId);
   const running = jobId !== null && !isJobDone(job.data?.status);
 
-  if (role.isPending || kit.isPending) return <p role="status">Loading the interview kit</p>;
-  if (role.isError) return <ErrorNotice error={role.error} />;
-  if (kit.isError) return <ErrorNotice error={kit.error} />;
+  if (role.isPending || kit.isPending) return <Loading label="Loading the interview kit" />;
+  if (role.isError) {
+    return (
+      <ErrorNotice
+        error={role.error}
+        retry={() => {
+          void role.refetch();
+        }}
+      />
+    );
+  }
+  if (kit.isError) {
+    return (
+      <ErrorNotice
+        error={kit.error}
+        retry={() => {
+          void kit.refetch();
+        }}
+      />
+    );
+  }
 
   const criteria = [...role.data.criteria].sort(
     (a, b) =>
@@ -200,85 +309,68 @@ export function KitPage({ roleId }: { roleId: string }) {
   const draftRole = role.data.status === "draft";
 
   return (
-    <div className="stack">
-      <div className="row-between">
-        <h1>Interview kit: {role.data.title}</h1>
-        <div className="actions no-print">
-          {!recruiter && (
-            <button
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title={`Interview kit: ${role.data.title}`}
+        action={
+          recruiter ? (
+            <Button
               type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                window.print();
-              }}
-            >
-              Print kit
-            </button>
-          )}
-          {recruiter && (
-            <button
-              type="button"
-              className="btn btn-primary"
+              className="h-10 px-4"
               disabled={draftRole || running || generate.isPending}
               onClick={() => {
                 generate.mutate(undefined, { onSuccess: setJobId });
               }}
             >
-              {hasQuestions ? "Regenerate kit" : "Generate kit"}
-            </button>
-          )}
-        </div>
-      </div>
-      {draftRole && (
-        <p role="status" className="notice notice-info">
-          Approve the criteria to start generating the kit.
-        </p>
-      )}
+              {hasQuestions ? "Regenerate interview kit" : "Generate interview kit"}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 px-4"
+              onClick={() => {
+                window.print();
+              }}
+            >
+              <Printer aria-hidden="true" />
+              Print interview kit
+            </Button>
+          )
+        }
+      />
+      {recruiter && <RoleTabs roleId={roleId} status={role.data.status} current="kit" />}
+      {draftRole && <Notice>Approve the criteria to start generating the interview kit.</Notice>}
       {kit.data.stale && (
-        <p role="status" className="notice notice-warning">
-          <Icon name="triangle" color="var(--warning)" />
-          <span>
-            This kit was generated for older criteria. Regenerate it to match the current ones.
-          </span>
-        </p>
+        <Notice tone="warning">
+          This interview kit was generated for older criteria. Regenerate it to match the current
+          ones.
+        </Notice>
       )}
-      {running && <p role="status">Generating, this can take a minute</p>}
+      {running && <Loading label="Generating, this can take a minute" />}
       {job.data && isJobDone(job.data.status) && job.data.status !== "succeeded" && (
-        <p role="alert" className="notice notice-danger">
-          The generation job ended as {job.data.status}. Try again.
-        </p>
+        <Notice tone="danger">
+          Generating the interview kit{" "}
+          {job.data.status === "cancelled" ? "was cancelled" : "did not finish"}. Try again.
+        </Notice>
       )}
       {generate.error && <ErrorNotice error={generate.error} />}
       {!hasQuestions && !draftRole && (
-        <p className="muted">
-          {recruiter
-            ? "No kit yet. Generate the kit to see questions."
-            : "The kit is not ready yet."}
-        </p>
+        <EmptyState
+          message={
+            recruiter
+              ? "No interview kit yet. Generate it to see questions."
+              : "The interview kit is not ready yet."
+          }
+        />
       )}
-      {criteria.map((crit) => {
-        const questions = kit.data.questions
-          .filter((q) => q.criterion_id === crit.id)
-          .sort((a, b) => a.position - b.position);
-        if (questions.length === 0) return null;
-        return (
-          <section key={crit.id} aria-label={crit.name} className="stack">
-            <h2>{crit.name}</h2>
-            <ul className="plain-list stack">
-              {questions.map((q, i) => (
-                <QuestionCard
-                  key={q.id}
-                  question={q}
-                  neighbours={{ prev: questions[i - 1] ?? null, next: questions[i + 1] ?? null }}
-                  roleId={roleId}
-                  recruiter={recruiter}
-                  onJob={setJobId}
-                />
-              ))}
-            </ul>
-          </section>
-        );
-      })}
+      <QuestionGroups
+        roleId={roleId}
+        criteria={criteria}
+        questions={kit.data.questions}
+        recruiter={recruiter}
+        onJob={setJobId}
+      />
     </div>
   );
 }
