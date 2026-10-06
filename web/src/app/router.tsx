@@ -10,7 +10,11 @@ import {
 
 import { SignInPage } from "../features/auth/SignInPage";
 import { sessionQueryOptions } from "../features/auth/hooks";
+import { CandidateDetailPage } from "../features/candidates/CandidateDetailPage";
 import { CandidatesPage } from "../features/candidates/CandidatesPage";
+import { MyCandidatesPage } from "../features/candidates/MyCandidatesPage";
+import { ComparePage } from "../features/compare/ComparePage";
+import { KitPage } from "../features/kit/KitPage";
 import { RoleSetupPage } from "../features/roles/RoleSetupPage";
 import { RolesPage } from "../features/roles/RolesPage";
 import { ApiError } from "../lib/api";
@@ -64,9 +68,60 @@ const roleCandidatesRoute = createRoute({
   component: CandidatesPage,
 });
 
+// HK-68 screens: candidate detail, my candidates, interview kit, compare.
+const candidateRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/candidates/$candidateId",
+  component: function CandidateRoute() {
+    const { candidateId } = candidateRoute.useParams();
+    // key: per-candidate state (drafts, dialogs) must not survive a param change.
+    return <CandidateDetailPage key={candidateId} candidateId={candidateId} />;
+  },
+});
+
+const myCandidatesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/me/candidates",
+  component: MyCandidatesPage,
+});
+
+const kitRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/roles/$roleId/kit",
+  component: function KitRoute() {
+    const { roleId } = kitRoute.useParams();
+    return <KitPage key={roleId} roleId={roleId} />;
+  },
+});
+
+// ids is the API's own parameter name: two to four candidate ids, comma separated.
+const compareRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/compare",
+  validateSearch: (search: Record<string, unknown>) => ({
+    ids: typeof search.ids === "string" ? search.ids : "",
+  }),
+  component: function CompareRoute() {
+    const { ids } = compareRoute.useSearch();
+    const list = ids
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id !== "");
+    return <ComparePage ids={list} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   signInRoute,
-  appRoute.addChildren([homeRoute, roleSetupRoute, roleCandidatesRoute]),
+  appRoute.addChildren([
+    homeRoute,
+    roleSetupRoute,
+    roleCandidatesRoute,
+    candidateRoute,
+    myCandidatesRoute,
+    kitRoute,
+    compareRoute,
+  ]),
 ]);
 
 /** Build the router; tests pass a memory history. */

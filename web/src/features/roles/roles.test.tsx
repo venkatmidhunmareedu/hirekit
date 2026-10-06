@@ -108,7 +108,7 @@ describe("role list", () => {
     await userEvent.type(screen.getByLabelText("Job description"), "D");
     await userEvent.click(screen.getByRole("button", { name: "Create role" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Your account may not do this.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Your role cannot do this.");
   });
 });
 
@@ -131,7 +131,9 @@ describe("role setup", () => {
         json(404, { error: { code: "not_found", message: "x", details: {}, request_id: null } }),
     });
     renderApp(`/roles/${ROLE_ID}`);
-    expect(await screen.findByRole("alert")).toHaveTextContent("not found");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This record is missing or you cannot see it.",
+    );
   });
 
   it("saves edited criteria by id, then approves with the version it saw after a confirmation", async () => {

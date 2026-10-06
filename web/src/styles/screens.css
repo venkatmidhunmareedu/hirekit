@@ -196,3 +196,228 @@ table.ranked .num {
 progress {
   width: 100%;
 }
+
+/* Styles for the candidate detail, kit, compare and feedback screens (HK-68). Tokens only. */
+h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 500;
+}
+
+h3,
+h4 {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.plain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-5);
+}
+
+.criterion-row {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.criterion-selected {
+  background: var(--row-hover);
+}
+
+.criterion-box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: var(--space-3);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  margin-right: var(--space-1);
+  background: var(--row-hover);
+  border-radius: var(--radius-control);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.evidence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+
+.quote {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--border);
+  background: var(--row-hover);
+  font-style: italic;
+}
+
+.quote-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.resume-text {
+  white-space: pre-wrap;
+  max-height: 480px;
+  overflow: auto;
+}
+
+mark {
+  background: var(--brand-tint);
+  color: var(--ink);
+  outline: 1px solid var(--brand-deep);
+}
+
+textarea,
+select {
+  padding: var(--space-2) var(--space-3);
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font: inherit;
+  min-height: 40px;
+}
+
+.radio-row {
+  display: flex;
+  gap: var(--space-3);
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 40px;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.btn-destructive {
+  background: var(--card);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.notice-info {
+  border-color: var(--info);
+}
+
+.notice-warning {
+  border-color: var(--warning);
+}
+
+.modal {
+  max-width: 560px;
+  width: calc(100% - 32px);
+  padding: var(--space-5);
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-modal);
+}
+
+.modal::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: var(--space-3);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+.answer-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 1024px) {
+  .detail-grid,
+  .answer-pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The interviewer's printable kit (Design.md 8.5). */
+@media print {
+  .sidebar,
+  .topbar,
+  .no-print {
+    display: none;
+  }
+
+  .shell {
+    display: block;
+  }
+}
