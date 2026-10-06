@@ -28,7 +28,7 @@ All under `backend/`. Line counts are estimates. No file is expected to pass 400
 | `app/anonymizer/dates.py` (new) | dates of birth, stated ages, graduation years | 180 |
 | `app/anonymizer/religion.py` (new) | stated religion and religious affiliations | 80 |
 | `app/anonymizer/pipeline.py` (new) | run the passes in order, apply the replacements, build the report | 150 |
-| `app/anonymizer/verify.py` (new) | the independent residual scan, its repair step and `AnonymizationLeakError` | 130 |
+| `app/anonymizer/verify.py` (new) | the residual scan, its repair step and `AnonymizationLeakError` | 130 |
 | `app/anonymizer/loader.py` (new) | `load_anonymized`: read the stored anonymized text and mint it | 40 |
 | `app/anonymizer/data/*.txt` (new) | word lists: places, titles, religion terms, common-word names | 6 files, about 3,000 lines of data |
 
@@ -87,7 +87,7 @@ sequenceDiagram
     N-->>P: NameSet (variants) and identity_name, or none found
     P->>X: contact, places, gender, dates, religion, names (each returns Replacements)
     P->>P: sort, drop overlaps (longest first), rebuild the text once
-    P->>V: scan the output with independent, broader patterns (below)
+    P->>V: scan the output with broader patterns (below)
     alt something from the removed classes is present
         V->>V: mask exactly what was found, count it in report.repaired, scan again
         alt still present after the repair (a defect in the scan itself)
@@ -99,14 +99,14 @@ sequenceDiagram
     P-->>W: Anonymized(text, identity_name, report)
 ```
 
-**The residual scan is independent, and it repairs.** It does not reuse the passes' patterns. It uses broader ones: any `@` between word characters, any run of seven or more digits with separators, any `http`, `www.` or `.com`-style token, any label `dob`, `date of birth`, `born`, `age:`, `sex`, `gender`, `religion`, every title and pronoun on the lists, every religion term, every postal-code shape, every part of the discovered name that is not a common word, and the tokens of the email local part and of a profile slug even when no name was discovered. A finding is masked in place and counted in `report.repaired` (a non-zero count tells the maintainer a pass has a gap); only a finding that survives its own repair raises `AnonymizationLeakError`. So no candidate is failed because of what their name is: a common-word part is checked in name positions only. `name_found` is false when discovery found none; that is a warning the Worker records ("name not found", shown at Reveal identity), not a failure.
+**The residual scan is partly independent, and it repairs.** Its patterns for contact details, labels (`dob`, `age:`, `gender`, `religion`) and names are its own, so a defect in one of those is in one layer only. Titles, pronouns and religion words are not independent: both layers read the same word lists in `data/` (and the pronoun set is typed twice), so a gap in a list is a gap in both. The scan uses broader patterns: any `@` between word characters, any run of seven or more digits with separators, any `http`, `www.` or `.com`-style token, any label `dob`, `date of birth`, `born`, `age:`, `sex`, `gender`, `religion`, every title and pronoun on the lists, every religion term, every postal-code shape, every part of the discovered name that is not a common word, and the tokens of the email local part and of a profile slug even when no name was discovered. A finding is masked in place and counted in `report.repaired` (a non-zero count tells the maintainer a pass has a gap); only a finding that survives its own repair raises `AnonymizationLeakError`. So no candidate is failed because of what their name is: a common-word part is checked in name positions only. `name_found` is false when discovery found none; that is a warning the Worker records ("name not found", shown at Reveal identity), not a failure.
 
 **What each pass removes** (the acceptance criteria, mapped):
 
 | Pass | Removes | Keeps | Criteria |
 | --- | --- | --- | --- |
 | `names` | the candidate's full name in any case, each part that is not a common word (matched everywhere), each part that is a common word (`Will`, `Rose`, `Mark`, `Young`, `Swift`) only in a *name position* (below), initials only in a name position (`J. Doe`, `Doe, J`), reversed order (`Doe, Jane`), common nicknames of a first name (`Robert` and `Bob`, from `data/nicknames.txt`), hyphenated and multi-part names (`Mary-Ann van der Berg`), the name in a repeated header or footer line, the name inside an email or a link | everyone else's name (a referee or a manager); bare initials in running text (`JS`, `CS`, `ML`, `AI`, `QA`, `PM`, `JD` are evidence or degrees) | REQ-011, AC-US-00-004-1 |
-| `gender` | fields (`Gender: Male`, `Sex:`), titles (`Mr`, `Mrs`, `Ms`, `Miss`, `Mx`, `Sir`, `Madam`), gendered pronouns (`he`, `him`, `his`, `himself`, `she`, `her`, `hers`, `herself`) replaced by `[PRONOUN]` | neutral titles such as `Dr` and `Prof`; gendered nouns such as `chairman` (a proxy that remains, section 1) | REQ-012, AC-US-00-004-2 |
+| `gender` | fields (`Gender: Male`, `Sex:`), titles (`Mr`, `Mrs`, `Ms`, `Miss`, `Mx`, `Sir`, `Madam`, `Smt`, `Shri`, `Sri`, `Kumari`, `Mme`, `Mlle`, `Mister`, `Lady`, `Lord`), gendered pronouns (`he`, `him`, `his`, `himself`, `she`, `her`, `hers`, `herself`) replaced by `[PRONOUN]` | neutral titles such as `Dr` and `Prof`; gendered nouns such as `chairman` (a proxy that remains, section 1) | REQ-012, AC-US-00-004-2 |
 | `dates` | dates of birth in every format (`12/03/1990`, `03-12-1990`, `12 March 1990`, `March 12, 1990`, `1990-03-12`, `12.03.90`) and after `DOB`, `Date of Birth`, `Born`; stated ages (`Age: 34`, `34 years old`, `34-year-old`, `aged 34`); graduation years and dates in an education line or section, and after `graduated`, `class of`, `batch of` | employment dates, which are evidence (a proxy for age that remains) | REQ-013, AC-US-00-004-3 |
 | `religion` | stated religion (`Religion: Hindu`), affiliations (`Member of the Catholic Youth Association`, `Sikh Students Society`), and religion words from the list | languages and cultural skills | REQ-015, AC-US-00-004-5 |
 | `places` | postal codes (US ZIP and ZIP+4, UK, Canadian, six-digit Indian PIN), street addresses, and cities, states, provinces and countries from the gazetteer, including inside a school or employer name (`University of Madras` becomes `University of [LOCATION]`) | the rest of the school or employer name, which is a proxy that remains | REQ-016, AC-US-00-004-6 |
@@ -198,7 +198,9 @@ None. No environment variable, no setting: the word lists and patterns are code 
 | `test_the_residual_scan_raises_only_when_its_own_repair_fails` | unit (a broken repair planted) | section 6 |
 | `test_the_scan_checks_an_email_local_part_even_when_no_name_was_found` | unit | independence |
 | `test_name_found_is_false_when_discovery_finds_nothing` | unit | report |
-| `test_the_residual_scan_uses_patterns_independent_of_the_passes` | unit (AST: no shared pattern objects) | independence |
+| `test_the_residual_scan_uses_patterns_independent_of_the_passes` | unit (AST: imports no pass; contact, label and name patterns are its own, word lists are shared by design) | partial independence |
+| `test_a_repair_cannot_create_a_finding_on_the_second_scan`, `test_titles_are_masked_in_any_case_by_the_pass_and_the_scan`, `test_christian_is_a_name_only_for_the_candidate_or_before_a_surname`, `test_bahai_spellings_are_masked_by_the_pass`, `test_hyphen_compounds_with_a_belief_word_are_unchanged` | unit | section 4 repair rule, titles, religion words |
+| `test_adversarial_input_finishes_quickly` (including 18,000 distinct email addresses) | unit (subprocess, 60 s bound) | scan cost |
 | `test_a_leak_error_and_the_report_carry_counts_never_text` | unit | AC-US-00-005-6, tenet 7 |
 | `test_adversarial_input_finishes_quickly` | unit (subprocess with a hard timeout) | regex safety |
 | `test_an_input_over_500000_characters_is_refused_with_a_permanent_error` | unit | limit |

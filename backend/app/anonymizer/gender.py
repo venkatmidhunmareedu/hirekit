@@ -15,11 +15,25 @@ _TITLES = tuple(
     for line in (Path(__file__).with_name("data") / "titles.txt").read_text("utf-8").splitlines()
     if (s := line.strip()) and s[0] != "#"
 )
-_TITLE = re.compile(
-    rf"(?<![\w\[])(?:{'|'.join(_TITLES)})(?![\w\]])\.?"
-    r"(?=\.|[ \t]+(?:[A-Z\[]|or\b)|[ \t]*(?:[,\n]|$))",
-    re.MULTILINE,
+_ALL_CAPS_TOO = frozenset(
+    {"mrs", "miss", "madam", "smt", "shri", "kumari", "mme", "mlle", "mister"}
 )
+_STRICT = frozenset({"lord", "lady"})  # only before a capitalised word or a placeholder
+_AFTER = r"(?=\.|[ \t]+(?:[A-Z\[]|or\b)|[ \t]*(?:[,\n]|$))"
+
+
+def _title_pattern(words: list[str], before: str, after_word: str) -> re.Pattern[str]:
+    plain = [re.escape(w) for w in words if w.lower() not in _STRICT]
+    plain += [re.escape(w.upper()) for w in words if w.lower() in _ALL_CAPS_TOO]
+    strict = [re.escape(w) for w in words if w.lower() in _STRICT]
+    return re.compile(
+        rf"{before}(?:(?:{'|'.join(plain)}){after_word}\.?{_AFTER}"
+        rf"|(?:{'|'.join(strict)}){after_word}(?=[ \t]+[A-Z\[]))",
+        re.MULTILINE,
+    )
+
+
+_TITLE = _title_pattern(list(_TITLES), r"(?<![\w\[])", r"(?![\w\]])")
 _PRONOUN = re.compile(
     r"(?<![\w\[])(?:he|him|his|himself|she|her|hers|herself)(?![\w\]])", re.IGNORECASE
 )

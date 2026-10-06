@@ -2,7 +2,8 @@
 
 An affiliation keeps its shape (`Member of the [RELIGION] Youth Association`); only the religion
 word goes. `Christian` is also a first name, so a capitalised `Christian` followed by another
-capitalised word that is not an organisation word is left to the name pass.
+capitalised word that is not an organisation word, or the candidate's own name part, is left to
+the name pass.
 The scan in `verify.py` has its own label pattern, so a gap in the field is repaired and counted.
 """
 
@@ -28,9 +29,10 @@ _WORD = re.compile(
 _FIELD = re.compile(r"\breligion[ \t]*+:[ \t]*+(?P<value>(?!\[)[^\n|;]{1,40})", re.IGNORECASE)
 _ORG_WORD = re.compile(
     r"[ \t]+(?:Youth|Fellowship|Association|Society|Union|Students?|Club|Church|Ministry|Mission"
-    r"|Group|Community|Choir|Faith|Council|Forum|Centre|Center)\b"
+    r"|Group|Community|Choir|Faith|Council|Forum|Centre|Center|University|College|School|Medical"
+    r"|Academy|Hospital|Aid|Ministries)\b"
 )
-_CAPITALISED_WORD = re.compile(r"[ \t]+[A-Z][a-z]")
+_CAPITALISED_WORD = re.compile(r"[ \t]+(?:[A-Z][a-z]|\[[A-Z]+\])")
 
 
 def mask_religion(text: str, names: NameSet) -> list[Replacement]:
@@ -38,7 +40,7 @@ def mask_religion(text: str, names: NameSet) -> list[Replacement]:
     found = [
         Replacement(m.start(), m.end(), RELIGION, "religion")
         for m in _WORD.finditer(text)
-        if not _is_a_first_name(text, m)
+        if not _is_a_first_name(text, m, names)
     ]
     for m in _FIELD.finditer(text):
         end = m.start("value") + len(m.group("value").rstrip())
@@ -46,8 +48,10 @@ def mask_religion(text: str, names: NameSet) -> list[Replacement]:
     return found
 
 
-def _is_a_first_name(text: str, m: re.Match[str]) -> bool:
+def _is_a_first_name(text: str, m: re.Match[str], names: NameSet) -> bool:
     word = m.group()
+    if word.lower() == "christian" and "christian" in names.variants:
+        return True  # the candidate's own name part: the name pass masks it
     return (
         word == "Christian"
         and _CAPITALISED_WORD.match(text, m.end()) is not None
