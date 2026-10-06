@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
+import { EmptyState } from "../../components/EmptyState";
 import { ErrorNotice } from "../../components/ErrorNotice";
+import { Loading } from "../../components/Loading";
+import { PageHeader } from "../../components/PageHeader";
+import { StatusTag } from "../../components/StatusTag";
 
 import { candidateLabel } from "./api";
 import { myCandidatesQueryOptions } from "./hooks";
@@ -11,11 +15,18 @@ export function MyCandidatesPage() {
   const mine = useQuery(myCandidatesQueryOptions);
   return (
     <div className="stack">
-      <h1>My candidates</h1>
-      {mine.isPending && <p role="status">Loading your candidates</p>}
-      {mine.isError && <ErrorNotice error={mine.error} />}
+      <PageHeader title="My candidates" />
+      {mine.isPending && <Loading label="Loading your candidates" />}
+      {mine.isError && (
+        <ErrorNotice
+          error={mine.error}
+          retry={() => {
+            void mine.refetch();
+          }}
+        />
+      )}
       {mine.data?.length === 0 && (
-        <p className="muted">No candidates are assigned to you yet. A recruiter assigns them.</p>
+        <EmptyState message="No candidates are assigned to you yet. A recruiter assigns them." />
       )}
       {mine.data && mine.data.length > 0 && (
         <table className="table">
@@ -35,7 +46,11 @@ export function MyCandidatesPage() {
                   </Link>
                 </td>
                 <td>{c.role_title}</td>
-                <td>{c.has_submitted ? "Submitted" : "Not submitted"}</td>
+                <td>
+                  <StatusTag tone={c.has_submitted ? "success" : "neutral"}>
+                    {c.has_submitted ? "Submitted" : "Not submitted"}
+                  </StatusTag>
+                </td>
               </tr>
             ))}
           </tbody>

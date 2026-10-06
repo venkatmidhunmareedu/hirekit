@@ -2,8 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type SubmitEvent } from "react";
 
-import { AlertIcon } from "../../components/AlertIcon";
-import { errorMessage } from "../../lib/errors";
+import { EmptyState } from "../../components/EmptyState";
+import { ErrorNotice } from "../../components/ErrorNotice";
+import { Loading } from "../../components/Loading";
+import { PageHeader } from "../../components/PageHeader";
+import { StatusTag } from "../../components/StatusTag";
 
 import { rolesQueryOptions, useCreateRole } from "./hooks";
 
@@ -13,26 +16,24 @@ export function RolesPage() {
 
   return (
     <div className="stack">
-      <h1>Roles</h1>
+      <PageHeader
+        title="Roles"
+        purpose="Each role has its own criteria, candidates and interview kit."
+      />
       <NewRoleForm />
       <section aria-labelledby="your-roles" className="stack">
         <h2 id="your-roles">Your roles</h2>
-        {roles.isPending && <p role="status">Loading roles</p>}
+        {roles.isPending && <Loading label="Loading roles" />}
         {roles.isError && (
-          <p role="alert" className="notice notice-danger">
-            <AlertIcon />
-            <span>{errorMessage(roles.error)}</span>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => void roles.refetch()}
-            >
-              Try again
-            </button>
-          </p>
+          <ErrorNotice
+            error={roles.error}
+            retry={() => {
+              void roles.refetch();
+            }}
+          />
         )}
         {roles.data?.length === 0 && (
-          <p className="muted">No roles yet. Create one above to set its criteria.</p>
+          <EmptyState message="No roles yet. Create one above to set its criteria." />
         )}
         {roles.data && roles.data.length > 0 && (
           <ul className="role-list">
@@ -41,7 +42,9 @@ export function RolesPage() {
                 <Link to="/roles/$roleId" params={{ roleId: role.id }}>
                   {role.title}
                 </Link>
-                <span className="tag">{role.status === "draft" ? "Draft" : "Approved"}</span>
+                <StatusTag tone={role.status === "draft" ? "neutral" : "success"}>
+                  {role.status === "draft" ? "Draft" : "Approved"}
+                </StatusTag>
               </li>
             ))}
           </ul>
@@ -72,7 +75,7 @@ function NewRoleForm() {
   }
 
   return (
-    <form className="card stack" onSubmit={submit} aria-labelledby="new-role">
+    <form className="section" onSubmit={submit} aria-labelledby="new-role">
       <h2 id="new-role">New role</h2>
       <div className="field">
         <label htmlFor="role-title">Role title</label>
@@ -98,12 +101,7 @@ function NewRoleForm() {
           Paste the job description. You can ask for proposed criteria on the next screen.
         </span>
       </div>
-      {create.isError && (
-        <p role="alert" className="notice notice-danger">
-          <AlertIcon />
-          <span>{errorMessage(create.error)}</span>
-        </p>
-      )}
+      {create.isError && <ErrorNotice error={create.error} />}
       <div>
         <button type="submit" className="btn btn-primary" disabled={!ready || create.isPending}>
           {create.isPending ? "Creating role" : "Create role"}

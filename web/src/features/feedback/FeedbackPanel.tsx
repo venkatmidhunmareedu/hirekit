@@ -178,7 +178,7 @@ export function FeedbackPanel({
   const criteria = [...role.data.criteria].sort((a, b) => a.position - b.position);
 
   return (
-    <section aria-labelledby="feedback-heading" className="card stack">
+    <section aria-labelledby="feedback-heading" className="section">
       <h2 id="feedback-heading">Interviewer feedback</h2>
       {viewer === "recruiter" ? (
         <RecruiterFeedback candidateId={candidateId} criteria={criteria} rows={feedback.data} />

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Icon } from "../../../components/Icon";
+import { StatusTag } from "../../../components/StatusTag";
 import { type ScoreCell } from "../api";
 
 /** Score chip (Design.md 7.2): neutral, mono; an override shows the model value struck through. */
@@ -41,10 +42,7 @@ export function EvidenceBlock({ cell }: { cell: ScoreCell }) {
   if (cell.flag_reason) {
     return (
       <div className="evidence">
-        <span className="tag tag-warning">
-          <Icon name="triangle" color="var(--warning)" />
-          Flagged
-        </span>
+        <StatusTag tone="warning">Flagged</StatusTag>
         <p>
           The model&apos;s quote was not found in the resume. It was replaced with no evidence
           found.
@@ -71,10 +69,7 @@ export function EvidenceBlock({ cell }: { cell: ScoreCell }) {
   }
   return (
     <div className="evidence">
-      <span className="tag tag-success">
-        <Icon name="check" color="var(--success)" />
-        Verified
-      </span>
+      <StatusTag tone="success">Verified</StatusTag>
       <blockquote className={expanded ? "quote" : "quote quote-clamped"}>
         &ldquo;{cell.quote}&rdquo;
       </blockquote>

@@ -3,6 +3,10 @@ import { Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { AlertIcon } from "../../components/AlertIcon";
+import { EmptyState } from "../../components/EmptyState";
+import { ErrorNotice } from "../../components/ErrorNotice";
+import { Loading } from "../../components/Loading";
+import { PageHeader } from "../../components/PageHeader";
 import { errorMessage } from "../../lib/errors";
 import { RoleTabs } from "../roles/RoleTabs";
 import { budgetQueryOptions } from "../cost/hooks";
@@ -24,22 +28,21 @@ export function CandidatesPage() {
 function Candidates({ roleId }: { roleId: string }) {
   const role = useQuery(roleQueryOptions(roleId));
 
-  if (role.isPending) return <p role="status">Loading role</p>;
+  if (role.isPending) return <Loading label="Loading role" />;
   if (role.isError) {
     return (
-      <p role="alert" className="notice notice-danger">
-        <AlertIcon />
-        <span>{errorMessage(role.error)}</span>
-        <button type="button" className="btn btn-secondary" onClick={() => void role.refetch()}>
-          Try again
-        </button>
-      </p>
+      <ErrorNotice
+        error={role.error}
+        retry={() => {
+          void role.refetch();
+        }}
+      />
     );
   }
 
   return (
     <div className="stack">
-      <h1>{role.data.title}</h1>
+      <PageHeader title={role.data.title} />
       <RoleTabs roleId={roleId} />
       {role.data.status === "draft" ? (
         <p className="notice notice-info" role="status">
@@ -67,7 +70,7 @@ function RankedList({ roleId }: { roleId: string }) {
   const ranked = useQuery(rankedQueryOptions(roleId, stage, offset, working));
 
   return (
-    <section aria-labelledby="ranked-heading" className="stack">
+    <section aria-labelledby="ranked-heading" className="section">
       <h2 id="ranked-heading">Ranked candidates</h2>
       <p className="muted">
         Scores are model suggestions until a recruiter overrides them. Names are hidden. Hiding
@@ -115,20 +118,19 @@ function RankedList({ roleId }: { roleId: string }) {
         </label>
       </div>
       {working && (
-        <p role="status">
+        <p role="status" className="notice notice-info">
           Processing resumes: {queue.data?.waiting ?? 0} waiting, {queue.data?.running ?? 0}{" "}
           running. The list refreshes by itself.
         </p>
       )}
-      {ranked.isPending && <p role="status">Loading candidates</p>}
+      {ranked.isPending && <Loading label="Loading candidates" />}
       {ranked.isError && (
-        <p role="alert" className="notice notice-danger">
-          <AlertIcon />
-          <span>{errorMessage(ranked.error)}</span>
-          <button type="button" className="btn btn-secondary" onClick={() => void ranked.refetch()}>
-            Try again
-          </button>
-        </p>
+        <ErrorNotice
+          error={ranked.error}
+          retry={() => {
+            void ranked.refetch();
+          }}
+        />
       )}
       {ranked.data && (
         <RankedBody
@@ -204,11 +206,13 @@ function RankedBody({
 }) {
   if (page.total === 0 && page.data.length === 0) {
     return (
-      <p className="muted">
-        {filtered
-          ? "No candidates are in this stage."
-          : "No resumes yet. Upload PDF or DOCX files to see a ranked list."}
-      </p>
+      <EmptyState
+        message={
+          filtered
+            ? "No candidates are in this stage."
+            : "No resumes yet. Upload PDF or DOCX files to see a ranked list."
+        }
+      />
     );
   }
   const anyStale = page.data.some((c) => c.stale);
@@ -232,9 +236,9 @@ function RankedBody({
         Compare
       </Link>
       {page.data.length === 0 ? (
-        <p className="muted">This page is past the last candidate. Go back to the previous page.</p>
+        <EmptyState message="This page is past the last candidate. Go back to the previous page." />
       ) : shown.length === 0 ? (
-        <p className="muted">No candidates on this page match the filters.</p>
+        <EmptyState message="No candidates on this page match the filters." />
       ) : (
         <RankedTable
           candidates={shown}

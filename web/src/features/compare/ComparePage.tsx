@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { ErrorNotice } from "../../components/ErrorNotice";
-import { Icon } from "../../components/Icon";
+import { EmptyState } from "../../components/EmptyState";
+import { Loading } from "../../components/Loading";
+import { PageHeader } from "../../components/PageHeader";
+import { StatusTag } from "../../components/StatusTag";
 import { candidateLabel } from "../candidates/api";
 import { ScoreChip } from "../candidates/components/ScoreParts";
 
@@ -28,12 +31,7 @@ function Cell({ cell }: { cell: CompareCell | undefined }) {
           ))
         )}
       </div>
-      {cell.disagreement && (
-        <p className="tag">
-          <Icon name="triangle" color="var(--warning)" />
-          Interviewers disagree
-        </p>
-      )}
+      {cell.disagreement && <StatusTag tone="warning">Interviewers disagree</StatusTag>}
       {cell.feedback.map((f) => (
         <p key={f.interviewer_id} className="muted">
           {f.comment}
@@ -51,21 +49,30 @@ export function ComparePage({ ids }: { ids: string[] }) {
   if (!valid) {
     return (
       <div className="stack">
-        <h1>Compare candidates</h1>
-        <p className="muted">Choose two to four candidates to compare.</p>
+        <PageHeader title="Compare candidates" />
+        <EmptyState message="Choose two to four candidates to compare." />
       </div>
     );
   }
-  if (comparison.isPending) return <p role="status">Loading the comparison</p>;
-  if (comparison.isError) return <ErrorNotice error={comparison.error} />;
+  if (comparison.isPending) return <Loading label="Loading the comparison" />;
+  if (comparison.isError) {
+    return (
+      <ErrorNotice
+        error={comparison.error}
+        retry={() => {
+          void comparison.refetch();
+        }}
+      />
+    );
+  }
   const { criteria, candidates } = comparison.data;
 
   return (
     <div className="stack">
-      <h1>Compare candidates</h1>
-      <p className="muted">
-        Scores are model suggestions and recruiter overrides. Interviewer scores sit beside them.
-      </p>
+      <PageHeader
+        title="Compare candidates"
+        purpose="Scores are model suggestions and recruiter overrides. Interviewer scores sit beside them."
+      />
       <div className="table-scroll">
         <table className="table">
           <thead>

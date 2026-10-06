@@ -3,7 +3,7 @@ import { useState, type DragEvent } from "react";
 import { AlertIcon } from "../../components/AlertIcon";
 import { errorMessage } from "../../lib/errors";
 
-import { MAX_FILES, type UploadFileResult } from "./api";
+import { MAX_FILES, type UploadFileResult, candidateLabel } from "./api";
 import { useUpload } from "./hooks";
 
 function resultText(result: UploadFileResult): string {
@@ -11,7 +11,7 @@ function resultText(result: UploadFileResult): string {
     const duplicate =
       result.duplicate_of_candidate_no === null
         ? ""
-        : `, possible duplicate of C-${String(result.duplicate_of_candidate_no).padStart(3, "0")}`;
+        : `, possible duplicate of ${candidateLabel(result.duplicate_of_candidate_no)}`;
     return `Accepted${duplicate}`;
   }
   if (result.status === "role_not_approved") return "Not uploaded: approve the criteria first";
@@ -39,7 +39,7 @@ export function UploadZone({ roleId }: { roleId: string }) {
   const failed = results.filter((r) => r.status !== "accepted").length;
 
   return (
-    <section aria-labelledby="upload-heading" className="card stack">
+    <section aria-labelledby="upload-heading" className="section">
       <h2 id="upload-heading">Upload resumes</h2>
       <div
         className="dropzone"

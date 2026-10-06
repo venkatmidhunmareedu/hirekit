@@ -24,7 +24,7 @@ export function ResumeText({ candidateId, quote }: { candidateId: string; quote:
   if (text.isError) return <ErrorNotice error={text.error} />;
   const parts = splitAtQuote(text.data, quote);
   return (
-    <section aria-labelledby="resume-heading" className="card">
+    <section aria-labelledby="resume-heading" className="section">
       <h2 id="resume-heading">Anonymized resume text</h2>
       <p className="muted">
         Identity signals are removed by code. Some signals, such as schools or career gaps, can
@@ -134,7 +134,7 @@ export function Assignments({ candidateId }: { candidateId: string }) {
   }
 
   return (
-    <section aria-labelledby="assign-heading" className="card stack">
+    <section aria-labelledby="assign-heading" className="section">
       <h2 id="assign-heading">Interviewers</h2>
       <form onSubmit={onSubmit} className="stack">
         <div className="field">
@@ -198,7 +198,7 @@ function describe(event: AuditEvent): string {
 /** Stage history and override history (Design.md 8.4), newest first, as the API sends it. */
 export function AuditHistory({ events }: { events: AuditEvent[] }) {
   return (
-    <section aria-labelledby="history-heading" className="card">
+    <section aria-labelledby="history-heading" className="section">
       <h2 id="history-heading">History</h2>
       {events.length === 0 ? (
         <p className="muted">No stage moves or overrides yet.</p>

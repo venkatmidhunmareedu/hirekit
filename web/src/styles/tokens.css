@@ -26,6 +26,22 @@
   --space-6: 32px;
   --space-7: 48px;
 
+  --text-sm: 12px;
+  --leading-sm: 18px;
+  --text-md: 14px;
+  --leading-md: 22px;
+  --text-lg: 18px;
+  --leading-lg: 26px;
+  --text-xl: 24px;
+  --leading-xl: 32px;
+  --text-mono: 13px;
+  --leading-mono: 20px;
+
+  --control-h: 40px;
+  --row-h: 44px;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 8px rgb(0 0 0 / 6%);
+  --backdrop: rgb(0 0 0 / 40%);
+
   --radius-control: 8px;
   --radius-card: 12px;
   --radius-modal: 16px;
@@ -43,6 +59,21 @@
   --button-primary-fill: var(--brand);
   --button-primary-text: var(--ink);
   --row-hover: var(--brand-tint);
+  --mark-bg: var(--brand-tint);
+  --mark-text: var(--ink);
+
+  /* Status tones (Design.md 3.2): state, never candidate worth. Fill is a faint tint; text keeps body contrast. */
+  --status-ok: var(--success);
+  --status-ok-bg: #e8f8f1;
+  --status-warn: #a96d00;
+  --status-warn-bg: #fdf3df;
+  --status-danger: #b83232;
+  --status-danger-bg: #fbeaea;
+  --status-info: #2f6da6;
+  --status-info-bg: #e9f2fa;
+  --status-neutral-bg: var(--mist);
+  --nav-active-bg: var(--brand-tint);
+  --nav-hover-bg: var(--mist);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -55,5 +86,21 @@
     --focus: var(--brand);
     --wordmark-accent: var(--brand);
     --row-hover: #232323;
+    --brand-tint: #16352a;
+    --mark-bg: #1f4d3a;
+    --mark-text: #ededed;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 40%), 0 2px 8px rgb(0 0 0 / 40%);
+    --backdrop: rgb(0 0 0 / 60%);
+    --status-ok: var(--brand);
+    --status-ok-bg: #16352a;
+    --status-warn: #f0b84d;
+    --status-warn-bg: #3a2c10;
+    --status-danger: #f08080;
+    --status-danger-bg: #3d1c1c;
+    --status-info: #7db4e6;
+    --status-info-bg: #16293b;
+    --status-neutral-bg: #2a2a2a;
+    --nav-active-bg: #16352a;
+    --nav-hover-bg: #232323;
   }
 }

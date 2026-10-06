@@ -3,7 +3,9 @@ import { useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { AlertIcon } from "../../components/AlertIcon";
-import { errorMessage } from "../../lib/errors";
+import { ErrorNotice } from "../../components/ErrorNotice";
+import { Loading } from "../../components/Loading";
+import { PageHeader } from "../../components/PageHeader";
 
 import { CriteriaEditor } from "./CriteriaEditor";
 import { RoleTabs } from "./RoleTabs";
@@ -26,26 +28,25 @@ export function RoleSetupPage() {
 function RoleSetup({ roleId }: { roleId: string }) {
   const role = useQuery(roleQueryOptions(roleId));
 
-  if (role.isPending) return <p role="status">Loading role</p>;
+  if (role.isPending) return <Loading label="Loading role" />;
   if (role.isError) {
     return (
-      <p role="alert" className="notice notice-danger">
-        <AlertIcon />
-        <span>{errorMessage(role.error)}</span>
-        <button type="button" className="btn btn-secondary" onClick={() => void role.refetch()}>
-          Try again
-        </button>
-      </p>
+      <ErrorNotice
+        error={role.error}
+        retry={() => {
+          void role.refetch();
+        }}
+      />
     );
   }
   return (
     <div className="stack">
-      <h1>{role.data.title}</h1>
+      <PageHeader title={role.data.title} />
       <RoleTabs roleId={roleId} />
-      <div className="card stack">
+      <section className="section">
         <h2>Job description</h2>
         <p className="job-description">{role.data.job_description}</p>
-      </div>
+      </section>
       {role.data.status === "draft" ? (
         <p className="notice notice-info" role="status">
           Draft. Approve the criteria to start uploading and scoring resumes.
@@ -84,7 +85,7 @@ function Proposal({ role }: { role: RoleDetail }) {
       : null;
 
   return (
-    <div className="card stack">
+    <section className="section">
       <h2>Proposed criteria</h2>
       <p className="muted">
         The model suggests criteria from the job description. Review and edit every one before you
@@ -123,12 +124,7 @@ function Proposal({ role }: { role: RoleDetail }) {
       )}
       {status === "succeeded" && <p role="status">Proposed criteria are below.</p>}
       {status === "cancelled" && <p role="status">Proposal cancelled.</p>}
-      {failure && (
-        <p role="alert" className="notice notice-danger">
-          <AlertIcon />
-          <span>{errorMessage(failure)}</span>
-        </p>
-      )}
-    </div>
+      {failure && <ErrorNotice error={failure} />}
+    </section>
   );
 }

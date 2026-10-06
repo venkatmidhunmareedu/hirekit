@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { ErrorNotice } from "../../components/ErrorNotice";
 import { Icon } from "../../components/Icon";
+import { Loading } from "../../components/Loading";
+import { PageHeader } from "../../components/PageHeader";
 import { sessionQueryOptions } from "../auth/hooks";
 import { FeedbackPanel } from "../feedback/FeedbackPanel";
 
@@ -33,7 +35,7 @@ function CriterionRow({
   onOverride: () => void;
 }) {
   return (
-    <li className={selected ? "criterion-row criterion-selected" : "criterion-row"}>
+    <li className={selected ? "criterion-row criterion-selected flow" : "criterion-row flow"}>
       <div className="row-between">
         <h4>{cell.criterion_name}</h4>
         <ScoreChip model={cell.model_score} override={cell.override_score} />
@@ -77,19 +79,34 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [overriding, setOverriding] = useState<ScoreCell | null>(null);
 
-  if (candidate.isPending) return <p role="status">Loading the candidate</p>;
-  if (candidate.isError) return <ErrorNotice error={candidate.error} />;
+  if (candidate.isPending) return <Loading label="Loading the candidate" />;
+  if (candidate.isError) {
+    return (
+      <ErrorNotice
+        error={candidate.error}
+        retry={() => {
+          void candidate.refetch();
+        }}
+      />
+    );
+  }
   const c = candidate.data;
   const selected = c.scores.find((s) => s.criterion_id === selectedId) ?? null;
 
   return (
     <div className="stack">
-      <div className="row-between">
-        <h1>Candidate {candidateLabel(c.candidate_no)}</h1>
-        <Link to="/roles/$roleId/kit" params={{ roleId: c.role_id }} className="btn btn-secondary">
-          Interview kit
-        </Link>
-      </div>
+      <PageHeader
+        title={`Candidate ${candidateLabel(c.candidate_no)}`}
+        action={
+          <Link
+            to="/roles/$roleId/kit"
+            params={{ roleId: c.role_id }}
+            className="btn btn-secondary"
+          >
+            Interview kit
+          </Link>
+        }
+      />
       {c.processing_status && c.processing_status !== "done" && (
         <p role="status" className="notice notice-info">
           Processing status: {c.processing_status}. Scores appear when processing is done.
@@ -102,14 +119,14 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
         </p>
       )}
       {recruiter && (
-        <section className="card stack" aria-label="Decision">
+        <section className="section" aria-label="Decision">
           <StageControl candidateId={c.id} stage={c.stage} />
           <RevealIdentity key={c.id} candidateId={c.id} />
         </section>
       )}
       <div className="detail-grid">
         <div className="stack">
-          <section className="card" aria-labelledby="scores-heading">
+          <section className="section" aria-labelledby="scores-heading">
             <h2 id="scores-heading">Scores</h2>
             {c.scores.length === 0 ? (
               <p className="muted">

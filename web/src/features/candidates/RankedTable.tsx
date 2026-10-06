@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
-import type { RankedCandidate, ScoreCell } from "./api";
+import { type RankedCandidate, type ScoreCell, candidateLabel } from "./api";
+import { ScoreChip } from "./components/ScoreParts";
 
 const STAGE_LABEL: Record<RankedCandidate["stage"], string> = {
   new: "New",
@@ -21,29 +22,17 @@ const PROCESSING_LABEL: Record<RankedCandidate["processing_status"], string> = {
   failed: "Failed",
 };
 
-/** Anonymous label (Design.md section 9): the number, never a name. */
-export function candidateLabel(no: number): string {
-  return `C-${String(no).padStart(3, "0")}`;
-}
-
-/** A score chip (Design.md 7.2): neutral, mono numerals, labelled by source, never colored by value. */
-function ScoreChip({ cell }: { cell: ScoreCell }) {
+/** A score cell: the shared chip labelled by source, or the plain no-score state. */
+function ScoreCellView({ cell }: { cell: ScoreCell }) {
   if (cell.status === "failed") return <span>Scoring failed</span>;
-  if (cell.status === "no_evidence") return <span>No evidence found</span>;
-  const overridden = cell.override_score !== null;
   const value = cell.override_score ?? cell.model_score;
-  if (value === null) return <span>No evidence found</span>;
+  if (cell.status === "no_evidence" || value === null) return <span>No evidence found</span>;
   return (
     <span className="chip-cell">
-      <span className="chip">
-        {value} / 4
-        {overridden && cell.model_score !== null && (
-          <s className="muted" aria-label={`model score ${cell.model_score}`}>
-            {cell.model_score}
-          </s>
-        )}
-      </span>
-      <small className="muted">{overridden ? "Recruiter override" : "Model suggestion"}</small>
+      <ScoreChip model={cell.model_score} override={cell.override_score} />
+      <small className="muted">
+        {cell.override_score !== null ? "Recruiter override" : "Model suggestion"}
+      </small>
     </span>
   );
 }
@@ -134,7 +123,9 @@ export function RankedTable({
                 </td>
                 {[...criteria.keys()].map((id) => {
                   const cell = candidate.scores.find((s) => s.criterion_id === id);
-                  return <td key={id}>{cell ? <ScoreChip cell={cell} /> : "Not scored yet"}</td>;
+                  return (
+                    <td key={id}>{cell ? <ScoreCellView cell={cell} /> : "Not scored yet"}</td>
+                  );
                 })}
                 <td className="num">{flags}</td>
                 <td>{STAGE_LABEL[candidate.stage]}</td>

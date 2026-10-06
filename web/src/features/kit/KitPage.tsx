@@ -2,7 +2,10 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { ErrorNotice } from "../../components/ErrorNotice";
+import { EmptyState } from "../../components/EmptyState";
 import { Icon } from "../../components/Icon";
+import { Loading } from "../../components/Loading";
+import { PageHeader } from "../../components/PageHeader";
 import { sessionQueryOptions } from "../auth/hooks";
 
 import { type Question } from "./api";
@@ -104,7 +107,7 @@ function QuestionCard({
 
   return (
     <li className="card stack">
-      <h4>{question.question_text}</h4>
+      <h3>{question.question_text}</h3>
       <div className="answer-pair">
         <div className="answer">
           <p className="tag">
@@ -188,9 +191,27 @@ export function KitPage({ roleId }: { roleId: string }) {
   const job = useJobWatch(roleId, jobId);
   const running = jobId !== null && !isJobDone(job.data?.status);
 
-  if (role.isPending || kit.isPending) return <p role="status">Loading the interview kit</p>;
-  if (role.isError) return <ErrorNotice error={role.error} />;
-  if (kit.isError) return <ErrorNotice error={kit.error} />;
+  if (role.isPending || kit.isPending) return <Loading label="Loading the interview kit" />;
+  if (role.isError) {
+    return (
+      <ErrorNotice
+        error={role.error}
+        retry={() => {
+          void role.refetch();
+        }}
+      />
+    );
+  }
+  if (kit.isError) {
+    return (
+      <ErrorNotice
+        error={kit.error}
+        retry={() => {
+          void kit.refetch();
+        }}
+      />
+    );
+  }
 
   const criteria = [...role.data.criteria].sort(
     (a, b) =>
@@ -201,21 +222,10 @@ export function KitPage({ roleId }: { roleId: string }) {
 
   return (
     <div className="stack">
-      <div className="row-between">
-        <h1>Interview kit: {role.data.title}</h1>
-        <div className="actions no-print">
-          {!recruiter && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                window.print();
-              }}
-            >
-              Print kit
-            </button>
-          )}
-          {recruiter && (
+      <PageHeader
+        title={`Interview kit: ${role.data.title}`}
+        action={
+          recruiter ? (
             <button
               type="button"
               className="btn btn-primary"
@@ -226,9 +236,19 @@ export function KitPage({ roleId }: { roleId: string }) {
             >
               {hasQuestions ? "Regenerate kit" : "Generate kit"}
             </button>
-          )}
-        </div>
-      </div>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                window.print();
+              }}
+            >
+              Print kit
+            </button>
+          )
+        }
+      />
       {draftRole && (
         <p role="status" className="notice notice-info">
           Approve the criteria to start generating the kit.
@@ -242,7 +262,7 @@ export function KitPage({ roleId }: { roleId: string }) {
           </span>
         </p>
       )}
-      {running && <p role="status">Generating, this can take a minute</p>}
+      {running && <Loading label="Generating, this can take a minute" />}
       {job.data && isJobDone(job.data.status) && job.data.status !== "succeeded" && (
         <p role="alert" className="notice notice-danger">
           The generation job ended as {job.data.status}. Try again.
@@ -250,11 +270,13 @@ export function KitPage({ roleId }: { roleId: string }) {
       )}
       {generate.error && <ErrorNotice error={generate.error} />}
       {!hasQuestions && !draftRole && (
-        <p className="muted">
-          {recruiter
-            ? "No kit yet. Generate the kit to see questions."
-            : "The kit is not ready yet."}
-        </p>
+        <EmptyState
+          message={
+            recruiter
+              ? "No kit yet. Generate the kit to see questions."
+              : "The kit is not ready yet."
+          }
+        />
       )}
       {criteria.map((crit) => {
         const questions = kit.data.questions
@@ -262,7 +284,7 @@ export function KitPage({ roleId }: { roleId: string }) {
           .sort((a, b) => a.position - b.position);
         if (questions.length === 0) return null;
         return (
-          <section key={crit.id} aria-label={crit.name} className="stack">
+          <section key={crit.id} aria-label={crit.name} className="section">
             <h2>{crit.name}</h2>
             <ul className="plain-list stack">
               {questions.map((q, i) => (
