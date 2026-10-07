@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { setCsrfToken } from "../../lib/api";
@@ -56,7 +56,11 @@ describe("my candidates", () => {
       "href",
       "/candidates/c2",
     );
-    expect(screen.getByRole("link", { name: "My candidates" })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("navigation", { name: "Main" })).getByRole("link", {
+        name: "My candidates",
+      }),
+    ).toBeInTheDocument();
   });
 
   const assigned = (submitted: boolean) => ({

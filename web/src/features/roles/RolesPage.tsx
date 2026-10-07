@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState, type SubmitEvent } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -80,23 +81,31 @@ export function RolesPage() {
         )}
         {roles.data && roles.data.length > 0 && (
           <ul className="flex flex-col gap-3">
-            {roles.data.map((role) => (
-              <li key={role.id}>
-                <Card className="flex-row flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
-                  <Link
-                    to="/roles/$roleId"
-                    params={{ roleId: role.id }}
-                    className="text-base font-semibold underline-offset-4 hover:underline"
-                  >
-                    {role.title}
-                  </Link>
-                  <StatusTag tone={role.status === "draft" ? "neutral" : "success"}>
-                    {role.status === "draft" ? "Draft" : "Approved"}
-                  </StatusTag>
-                  <RoleAction roleId={role.id} status={role.status} />
-                </Card>
-              </li>
-            ))}
+            <AnimatePresence initial={false}>
+              {roles.data.map((role) => (
+                <motion.li
+                  key={role.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                >
+                  <Card className="flex-row flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+                    <Link
+                      to="/roles/$roleId"
+                      params={{ roleId: role.id }}
+                      className="text-base font-semibold underline-offset-4 hover:underline"
+                    >
+                      {role.title}
+                    </Link>
+                    <StatusTag tone={role.status === "draft" ? "neutral" : "success"}>
+                      {role.status === "draft" ? "Draft" : "Approved"}
+                    </StatusTag>
+                    <RoleAction roleId={role.id} status={role.status} />
+                  </Card>
+                </motion.li>
+              ))}
+            </AnimatePresence>
           </ul>
         )}
       </section>
@@ -105,8 +114,22 @@ export function RolesPage() {
 }
 
 /** The row's single action: the same next-up label the role header shows (counts are unknown here). */
-function RoleAction({ roleId, status }: { roleId: string; status: "draft" | "approved" }) {
-  const next = nextUp({ status });
+export function RoleAction({
+  roleId,
+  status,
+  candidates,
+  processing,
+}: {
+  roleId: string;
+  status: "draft" | "approved";
+  candidates?: number;
+  processing?: number;
+}) {
+  const next = nextUp({
+    status,
+    ...(candidates !== undefined && { candidates }),
+    ...(processing !== undefined && { processing }),
+  });
   const content = (
     <>
       {next.label}

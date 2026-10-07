@@ -44,17 +44,19 @@ describe("role list", () => {
         json(200, { data: [role, { ...role, id: "x", title: "Designer", status: "approved" }] }),
     });
 
-    renderApp("/");
+    renderApp("/roles");
 
-    const link = await screen.findByRole("link", { name: "Backend engineer" });
+    // The sidebar lists recent roles too; this checks the page itself.
+    const page = within(await screen.findByRole("main"));
+    const link = await page.findByRole("link", { name: "Backend engineer" });
     expect(link).toHaveAttribute("href", `/roles/${ROLE_ID}`);
-    expect(screen.getByText("Approved")).toBeInTheDocument();
-    expect(screen.getByText("Draft")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Approve criteria" })).toHaveAttribute(
+    expect(page.getByText("Approved")).toBeInTheDocument();
+    expect(page.getByText("Draft")).toBeInTheDocument();
+    expect(page.getByRole("link", { name: "Approve criteria" })).toHaveAttribute(
       "href",
       `/roles/${ROLE_ID}`,
     );
-    expect(screen.getByRole("link", { name: "Open candidates" })).toHaveAttribute(
+    expect(page.getByRole("link", { name: "Open candidates" })).toHaveAttribute(
       "href",
       "/roles/x/candidates",
     );
@@ -62,20 +64,20 @@ describe("role list", () => {
 
   it("shows an empty state and an error with a retry", async () => {
     stubFetch({ ...me, "GET /v1/roles": () => json(200, { data: [] }) });
-    renderApp("/");
+    renderApp("/roles");
     expect(await screen.findByText(/No roles yet/)).toBeInTheDocument();
   });
 
   it("explains a network failure", async () => {
     stubFetch({ ...me, "GET /v1/roles": networkDown });
-    renderApp("/");
+    renderApp("/roles");
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not reach the server");
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
   it("rejects a body that breaks the contract", async () => {
     stubFetch({ ...me, "GET /v1/roles": () => json(200, { data: [{ id: 1 }] }) });
-    renderApp("/");
+    renderApp("/roles");
     expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong");
   });
 
@@ -86,7 +88,7 @@ describe("role list", () => {
       "POST /v1/roles": () => json(201, role),
       [`GET /v1/roles/${ROLE_ID}`]: () => json(200, { ...role, criteria: [] }),
     });
-    const router = renderApp("/");
+    const router = renderApp("/roles");
 
     await userEvent.click(await screen.findByRole("button", { name: "New role" }));
     const create = await screen.findByRole("button", { name: "Create role" });
@@ -111,7 +113,7 @@ describe("role list", () => {
       "POST /v1/roles": () =>
         json(403, { error: { code: "forbidden", message: "x", details: {}, request_id: null } }),
     });
-    renderApp("/");
+    renderApp("/roles");
 
     await userEvent.click(await screen.findByRole("button", { name: "New role" }));
     await userEvent.type(await screen.findByLabelText("Role title"), "T");

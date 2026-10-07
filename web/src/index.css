@@ -17,6 +17,8 @@
 @custom-variant data-checked (&:is([data-checked], [data-state="checked"]));
 @custom-variant data-open (&:is([data-open], [data-state="open"], [data-state="delayed-open"]));
 @custom-variant data-closed (&:is([data-closed], [data-state="closed"]));
+/* React renders data-active="false" for an inactive item; only a present, non-false value counts. */
+@custom-variant data-active (&:is([data-active]:not([data-active="false"])));
 @custom-variant data-horizontal (&:is([data-horizontal], [data-orientation="horizontal"]));
 @custom-variant data-vertical (&:is([data-vertical], [data-orientation="vertical"]));
 
@@ -56,6 +58,20 @@
   --bad-soft: oklch(0.945 0.03 27);
   --note: oklch(0.42 0.1 235);
   --note-soft: oklch(0.945 0.025 235);
+
+  /* Sidebar: a white rail on the grey surface; the active item reads as the accent tint. */
+  --sidebar: oklch(0.985 0.003 258);
+  --sidebar-foreground: oklch(0.25 0.02 265);
+  --sidebar-primary: oklch(0.5 0.22 275);
+  --sidebar-primary-foreground: oklch(0.99 0.004 275);
+  --sidebar-accent: oklch(0.925 0.04 275);
+  --sidebar-accent-foreground: oklch(0.32 0.14 275);
+  --sidebar-border: oklch(0.88 0.008 260);
+  --sidebar-ring: oklch(0.55 0.2 275);
+
+  /* Scrollbars: the thumb is at least 3:1 against the surface it sits on. */
+  --scroll-thumb: oklch(0.58 0.015 262);
+  --scroll-thumb-hover: oklch(0.44 0.02 265);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -88,6 +104,16 @@
     --bad-soft: oklch(0.31 0.05 27);
     --note: oklch(0.8 0.08 235);
     --note-soft: oklch(0.3 0.04 235);
+    --sidebar: oklch(0.2 0.013 265);
+    --sidebar-foreground: oklch(0.92 0.006 265);
+    --sidebar-primary: oklch(0.74 0.14 275);
+    --sidebar-primary-foreground: oklch(0.18 0.03 275);
+    --sidebar-accent: oklch(0.31 0.06 275);
+    --sidebar-accent-foreground: oklch(0.93 0.03 275);
+    --sidebar-border: oklch(0.32 0.014 265);
+    --sidebar-ring: oklch(0.74 0.14 275);
+    --scroll-thumb: oklch(0.66 0.02 265);
+    --scroll-thumb-hover: oklch(0.8 0.02 265);
   }
 }
 
@@ -146,6 +172,14 @@
   --color-bad-soft: var(--bad-soft);
   --color-note: var(--note);
   --color-note-soft: var(--note-soft);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 @layer base {
@@ -167,8 +201,42 @@
   h3 {
     @apply text-base font-semibold text-balance;
   }
+  /* Thin rounded thumbs on a transparent track. Chromium and Firefox read scrollbar-color;
+     the -webkit rules cover older Safari. Hover on a scroll region emphasises its thumb. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scroll-thumb) transparent;
+  }
+  *:hover {
+    scrollbar-color: var(--scroll-thumb-hover) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 0.625rem;
+    height: 0.625rem;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--scroll-thumb);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scroll-thumb-hover);
+  }
   ::selection {
     @apply bg-mark text-mark-foreground;
+  }
+}
+
+/* The shell scrolls the page; the sidebar list hides its own bar so the rail stays clean. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
 

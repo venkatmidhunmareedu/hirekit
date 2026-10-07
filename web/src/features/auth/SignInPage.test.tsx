@@ -56,7 +56,7 @@ describe("sign-in screen", () => {
 
     await submit("riya@example.com", "pw");
 
-    expect(await screen.findByRole("heading", { name: "Roles" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/");
     expect(calls[0]?.body).toBe(JSON.stringify({ email: "riya@example.com", password: "pw" }));
   });

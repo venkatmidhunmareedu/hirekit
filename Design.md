@@ -135,7 +135,7 @@ The scale is set once in `@theme` and `h1` to `h3` take it from the base layer.
 - **Borders:** 1px `--border`. Panels use a hairline ring on a white fill over the grey page, not a shadow.
 - **Shadows:** none, except a single subtle overlay shadow on menus and modals.
 - **Grid:** 12 columns, 24px gutters. Content is at most 1280px wide (`max-w-7xl`); prose stays at 65 characters. Tables can use the full width.
-- **App shell:** one sticky header (wordmark left, main navigation with an underline on the current item, budget pill, then the user's name and role and a quiet "Sign out") over a content area of at most 1280px (`max-w-7xl`). No sidebar; on a phone the navigation drops to its own row. One primary button per view.
+- **App shell:** a collapsible sidebar on the left (shadcn Sidebar: a 16rem panel that folds to a 3rem icon rail, an off-canvas sheet below 768px; open by default, no cookie is read) with the wordmark at the top, a Main nav (recruiters: Dashboard, Roles; interviewers: Dashboard, My candidates) and, for recruiters, a Recent roles group of up to five roles (approved roles open their candidates, drafts their criteria). A slim sticky top bar (3.5rem) holds the sidebar trigger, a breadcrumb (the current page alone on a phone), the budget pill and the user menu. Content is at most 1280px (`max-w-7xl`) inside the main landmark; a skip link comes first. The current item carries `aria-current="page"` and a primary-colored mark that slides between items. Sticky panes sit under the 3.5rem bar (`lg:top-20`, `review-rail`). One primary button per view.
 - **Breakpoints:** 640, 1024, 1440. The comparison view and the ranked table are desktop-first and scroll horizontally on small screens. Never truncate scores.
 
 ---
@@ -210,12 +210,14 @@ Drag-and-drop area with a file picker. Shows per-file rows: name, type, size, st
 
 ### 7.10 Budget indicator
 
-A small persistent pill in the top bar for recruiters: `$3.42 of $8.00`.
+A small persistent pill in the top bar for recruiters: `Budget USD 3.42 of 8.00` (on a phone only `USD 3.42` shows; the full text stays for screen readers). The Dashboard repeats it as a bar with the percentage.
 
 - Default: neutral.
 - 75% and above: `--warning` with icon.
 - 100%: `--danger`, and model actions show a disabled state with the reason "Budget reached".
-- Click opens the call log (time, purpose, tokens, cost).
+- Not clickable yet: no call log screen exists (N-W24).
+
+**User menu.** An initials circle, the name and a chevron open a menu with the name, email, a role badge (shield for recruiter, speech bubble for interviewer, always with the word) and Sign out. A failed sign-out shows an alert under the bar.
 
 ### 7.11 Toasts and banners
 
@@ -282,6 +284,16 @@ Interviewers land on `/me/candidates` (recruiter-only routes redirect there, nev
 - Each cell shows the resume score chip, "Changed by recruiter" (pencil icon and words) when the score was changed, the interviewer scores and their comments.
 - Disagreement between interviewers on a criterion is an icon-and-text tag in the cell ("Interviewers disagree"), not a tooltip.
 - Not built, because the comparison endpoint does not return them: a pinned weighted-totals row, stage controls in the headers and expandable evidence quotes (N-W17).
+
+### 8.0 Dashboard
+
+"/" for both roles. It uses only existing calls (role list, queue and first ranked page per approved role, cost log, my candidates); nothing is invented.
+
+- Recruiter: six stat tiles (roles by status, candidates scored, need a look, changed by recruiter, out of date, processing now), a Roles at a glance list (progress bar, counts, the same next-up button as the role list), the budget as a bar, then for one role (a select when several have candidates) a stage bar list and a histogram of weighted totals.
+- Counts and charts come from the first page of up to 100 candidates per role. The page says so whenever a role has more, and each chart note states its scope.
+- Charts are CSS bars with printed counts and a visually hidden table for the histogram. One primary hue; no bar is colored by score or by stage quality (rule 9). Bars and tiles grow once on load (one orchestrated moment, 250 to 300ms) and not at all under reduced motion.
+- Interviewer: assigned, submitted and remaining tiles, a progress bar, one primary button for the next candidate, and the assigned list. Anonymized ids only.
+- States: skeletons while loading, an error with Try again, an empty state per case.
 
 ### 8.8 Cost log
 
@@ -373,6 +385,8 @@ Motion is quiet: things settle, they do not bounce.
 - 120 to 200ms ease-out for hover, dialog open and close, and menu transitions (`tw-animate-css` fade and zoom on Radix dialogs and popovers).
 - A button press shifts 1px. No springs, no parallax, no decorative or looping animation.
 - Spinners and the progress bar are the only continuous motion.
+- Motion (`motion/react`, wrapped in `MotionConfig reducedMotion="user"`): a 200ms fade and 6px rise for page content on a route change, a sliding active mark in the sidebar, a one-time stagger and grow on the dashboard, list items entering, and the compare tray sliding in. 150 to 300ms, ease-out, no springs. Tests set `MotionGlobalConfig.skipAnimations`.
+- Scrollbars are thin with a rounded thumb (3:1 against its surface), a transparent track and a stronger thumb on hover, in both themes.
 - `prefers-reduced-motion`: transitions are removed and spinners stop spinning (their label stays); progress remains.
 
 ---

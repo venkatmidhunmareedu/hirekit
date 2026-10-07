@@ -1,5 +1,7 @@
+import { cn } from "@/lib/utils";
+
 /** The HireKit mark and wordmark (Design.md section 2): a case with a check, "Kit" in italic serif. */
-export function Logo() {
+export function Logo({ wordmarkClassName }: { wordmarkClassName?: string }) {
   return (
     <span className="inline-flex items-center gap-2 text-primary">
       <svg width="28" height="24" viewBox="88 58 96 80" aria-hidden="true" focusable="false">
@@ -20,7 +22,12 @@ export function Logo() {
           strokeLinejoin="round"
         />
       </svg>
-      <span className="font-display text-2xl leading-none font-medium tracking-tight text-foreground">
+      <span
+        className={cn(
+          "font-display text-2xl leading-none font-medium tracking-tight text-foreground",
+          wordmarkClassName,
+        )}
+      >
         Hire<em className="text-primary">Kit</em>
       </span>
     </span>

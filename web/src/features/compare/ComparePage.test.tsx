@@ -77,7 +77,9 @@ describe("compare", () => {
     expect(screen.getByRole("rowheader", { name: "Nice-to-have" })).toBeInTheDocument();
     expect(screen.getByText("Changed by recruiter")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "C-001" })).toHaveAttribute("href", "/candidates/c1");
-    expect(calls.filter((c) => !c.path.includes("cost-log"))).toHaveLength(2);
+    expect(
+      calls.filter((c) => !c.path.includes("cost-log") && c.path !== "/v1/roles"),
+    ).toHaveLength(2);
   });
 
   it("puts the table in a focusable, labelled scroll region", async () => {
@@ -98,7 +100,9 @@ describe("compare", () => {
     expect(
       await screen.findByText("Choose two to four candidates to compare."),
     ).toBeInTheDocument();
-    expect(calls.filter((c) => !c.path.includes("cost-log"))).toHaveLength(1);
+    expect(
+      calls.filter((c) => !c.path.includes("cost-log") && c.path !== "/v1/roles"),
+    ).toHaveLength(1);
   });
 
   it("explains a comparison that cannot be loaded", async () => {

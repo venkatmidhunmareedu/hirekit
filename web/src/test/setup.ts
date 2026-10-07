@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
+import { MotionGlobalConfig } from "motion/react";
 
 // jsdom has no layout; the router calls scrollTo on navigation.
 Object.defineProperty(window, "scrollTo", { value: () => undefined, writable: true });
@@ -37,3 +38,6 @@ Object.defineProperty(window, "matchMedia", {
     removeEventListener: () => undefined,
   }),
 });
+
+// Motion would animate opacity and position in jsdom; jump to the end state so tests never wait on it.
+MotionGlobalConfig.skipAnimations = true;

@@ -148,7 +148,7 @@ function FeedbackForm({
         submit.mutate({ items, isEdit: rows.length > 0 });
       }}
     >
-      <div className="sticky top-0 z-10 -mx-1 flex flex-col gap-2 border-b bg-background px-1 pt-2 pb-3 sm:top-14">
+      <div className="sticky top-14 z-10 -mx-1 flex flex-col gap-2 border-b bg-background px-1 pt-2 pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p role="status" className="text-sm font-medium">
             {done} of {criteria.length} criteria scored
