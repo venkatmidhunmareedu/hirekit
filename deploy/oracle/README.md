@@ -47,8 +47,7 @@ into an image; secrets reach the containers only through `.env` on the VM.
 ## 4. Start (on the VM)
 ```
 # in .env set REGISTRY_NAMESPACE=midhunmareedu (leave IMAGE_TAG empty: it means latest)
-docker compose pull && docker compose up -d
-docker compose run --rm api alembic upgrade head
+docker compose pull && docker compose up -d     # the migrate service applies the migrations first
 docker compose run --rm api python -m app.seed      # first sign-in users; see backend/.env.example for SEED_PASSWORD_*
 ```
 Nothing is built on the VM, so the 1 GB Micro shape is enough.
@@ -60,7 +59,7 @@ Nothing is built on the VM, so the 1 GB Micro shape is enough.
 
 ## Update
 On your machine run `build-push.sh`; on the VM
-`docker compose pull && docker compose up -d && docker compose run --rm api alembic upgrade head`.
+`docker compose pull && docker compose up -d`; migrations run by themselves.
 
 ## Database (Supabase)
 - Use the **session pooler** connection string (Project Settings, Database, Connection string,

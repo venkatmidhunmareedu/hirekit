@@ -1,22 +1,37 @@
 # On the VM, from this folder: docker compose pull && docker compose up -d. Needs a .env beside it
 # (see .env.example). The images are built and pushed from your machine by build-push.sh.
 # PostgreSQL is external (Supabase): DATABASE_URL comes from .env.
+x-backend: &backend
+  image: ${REGISTRY_NAMESPACE:?set REGISTRY_NAMESPACE in .env}/hirekit-backend:${IMAGE_TAG:-latest}
+  environment:
+    ENV: production
+    LOG_FORMAT: json
+    DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+    MODEL_MODE: live
+    OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env}
+    KEY_CREDIT_LIMIT_CONFIRMED: "yes"
+
 services:
-  api: &backend
-    image: ${REGISTRY_NAMESPACE:?set REGISTRY_NAMESPACE in .env}/hirekit-backend:${IMAGE_TAG:-latest}
+  # Runs once on every `up`, before the API and Worker start; they do not start if it fails.
+  # Alembic skips migrations that already ran, so repeating it is safe.
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+
+  api:
+    <<: *backend
     restart: always
-    environment: &backend-env
-      ENV: production
-      LOG_FORMAT: json
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
-      MODEL_MODE: live
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env}
-      KEY_CREDIT_LIMIT_CONFIRMED: "yes"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
 
   worker:
     <<: *backend
+    restart: always
     command: ["python", "-m", "app.worker"]
     stop_grace_period: 90s # finish the job in hand on SIGTERM
+    depends_on:
+      migrate: { condition: service_completed_successfully }
 
   web:
     image: ${REGISTRY_NAMESPACE}/hirekit-web:${IMAGE_TAG:-latest}
