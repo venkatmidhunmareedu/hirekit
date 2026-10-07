@@ -94,7 +94,7 @@ function RankedList({ roleId }: { roleId: string }) {
     <Section
       id="ranked-heading"
       title="Ranked candidates"
-      description="Scores are AI suggestions that a person decides on. Hiding names reduces some bias but does not remove it: schools, clubs, wording and career gaps can still show. The hiring stage filter covers every candidate; the two checkboxes cover this page only."
+      description="Scores are AI suggestions. Hiding names reduces some bias but does not remove it: schools, clubs and wording can still show."
     >
       <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
         <div className="flex flex-col gap-1.5">

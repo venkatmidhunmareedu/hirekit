@@ -85,7 +85,7 @@ export function ComparePage({ ids }: { ids: string[] }) {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Compare candidates"
-        purpose="Resume scores are AI suggestions or scores changed by a recruiter. Interviewer scores sit beside them."
+        purpose="Resume scores sit beside interviewer scores."
       />
       <p className="text-sm text-muted-foreground md:hidden">
         Scroll sideways to see every candidate.

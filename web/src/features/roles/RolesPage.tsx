@@ -51,7 +51,7 @@ export function RolesPage() {
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl font-medium">New role</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">New role</DialogTitle>
             <DialogDescription>
               Paste the job description. You can ask for proposed criteria on the next screen.
             </DialogDescription>
@@ -64,9 +64,7 @@ export function RolesPage() {
         </DialogContent>
       </Dialog>
       <section aria-labelledby="your-roles" className="flex flex-col gap-4">
-        <h2 id="your-roles" className="font-display text-xl font-medium">
-          Your roles
-        </h2>
+        <h2 id="your-roles">Your roles</h2>
         {roles.isPending && <Loading label="Loading roles" />}
         {roles.isError && (
           <ErrorNotice
@@ -87,7 +85,7 @@ export function RolesPage() {
                   <Link
                     to="/roles/$roleId"
                     params={{ roleId: role.id }}
-                    className="font-display text-lg font-medium underline-offset-4 hover:underline"
+                    className="text-base font-semibold underline-offset-4 hover:underline"
                   >
                     {role.title}
                   </Link>

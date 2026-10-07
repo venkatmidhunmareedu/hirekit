@@ -36,7 +36,7 @@ export function Notice({
     <Alert
       id={id}
       role={role ?? (tone === "danger" ? "alert" : "status")}
-      className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5", box)}
+      className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2.5", box)}
     >
       <ToneIcon aria-hidden="true" className={cn("size-4 shrink-0", glyph)} />
       <AlertDescription className="min-w-0 flex-1 text-foreground">{children}</AlertDescription>

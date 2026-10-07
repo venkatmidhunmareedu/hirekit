@@ -1,7 +1,11 @@
-/* HireKit theme: "reading room" (Design.md sections 3, 4, 13). Warm paper, ink-navy,
-   a highlighter yellow reserved for evidence quotes. OKLCH throughout; dark follows
-   prefers-color-scheme. */
+/* HireKit theme (Design.md sections 3, 4, 13; HK-86): cool-grey surface, white panels,
+   ink text, one indigo primary, a highlighter yellow reserved for evidence quotes. OKLCH
+   throughout; dark follows prefers-color-scheme. */
 @layer theme, base, components, utilities;
+@import "@fontsource-variable/hanken-grotesk";
+@import "@fontsource-variable/source-serif-4";
+@import "@fontsource-variable/source-serif-4/wght-italic.css";
+@import "@fontsource-variable/jetbrains-mono";
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -19,24 +23,25 @@
 :root {
   --radius: 0.375rem;
 
-  --background: oklch(0.972 0.009 85);
-  --foreground: oklch(0.22 0.025 262);
-  --card: oklch(0.991 0.005 85);
-  --card-foreground: oklch(0.22 0.025 262);
-  --popover: oklch(0.991 0.005 85);
-  --popover-foreground: oklch(0.22 0.025 262);
-  --primary: oklch(0.37 0.085 262);
-  --primary-foreground: oklch(0.98 0.006 85);
-  --secondary: oklch(0.93 0.014 85);
-  --secondary-foreground: oklch(0.27 0.03 262);
-  --muted: oklch(0.945 0.011 85);
-  --muted-foreground: oklch(0.45 0.025 262);
-  --accent: oklch(0.915 0.025 262);
-  --accent-foreground: oklch(0.27 0.06 262);
+  /* Cool-grey working surface, white panels, ink text, one indigo primary. */
+  --background: oklch(0.958 0.006 258);
+  --foreground: oklch(0.2 0.02 265);
+  --card: oklch(0.995 0.002 258);
+  --card-foreground: oklch(0.2 0.02 265);
+  --popover: oklch(0.995 0.002 258);
+  --popover-foreground: oklch(0.2 0.02 265);
+  --primary: oklch(0.5 0.22 275);
+  --primary-foreground: oklch(0.99 0.004 275);
+  --secondary: oklch(0.92 0.008 260);
+  --secondary-foreground: oklch(0.25 0.02 265);
+  --muted: oklch(0.94 0.006 258);
+  --muted-foreground: oklch(0.46 0.02 265);
+  --accent: oklch(0.925 0.04 275);
+  --accent-foreground: oklch(0.32 0.14 275);
   --destructive: oklch(0.47 0.16 27);
-  --border: oklch(0.87 0.014 85);
-  --input: oklch(0.58 0.025 262);
-  --ring: oklch(0.5 0.14 262);
+  --border: oklch(0.88 0.008 260);
+  --input: oklch(0.6 0.015 262);
+  --ring: oklch(0.55 0.2 275);
 
   /* Evidence: the highlighter. Only quotes and matched text use it. */
   --mark: oklch(0.93 0.12 95);
@@ -46,7 +51,7 @@
   --ok: oklch(0.42 0.1 160);
   --ok-soft: oklch(0.94 0.04 160);
   --warn: oklch(0.45 0.1 70);
-  --warn-soft: oklch(0.95 0.06 85);
+  --warn-soft: oklch(0.955 0.045 85);
   --bad: oklch(0.47 0.16 27);
   --bad-soft: oklch(0.945 0.03 27);
   --note: oklch(0.42 0.1 235);
@@ -55,24 +60,24 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: oklch(0.185 0.018 262);
-    --foreground: oklch(0.935 0.01 85);
-    --card: oklch(0.225 0.02 262);
-    --card-foreground: oklch(0.935 0.01 85);
-    --popover: oklch(0.25 0.022 262);
-    --popover-foreground: oklch(0.935 0.01 85);
-    --primary: oklch(0.82 0.085 262);
-    --primary-foreground: oklch(0.2 0.03 262);
-    --secondary: oklch(0.285 0.022 262);
-    --secondary-foreground: oklch(0.92 0.01 85);
-    --muted: oklch(0.26 0.02 262);
-    --muted-foreground: oklch(0.75 0.02 262);
-    --accent: oklch(0.32 0.04 262);
-    --accent-foreground: oklch(0.94 0.01 85);
-    --destructive: oklch(0.75 0.13 27);
-    --border: oklch(0.32 0.02 262);
-    --input: oklch(0.62 0.03 262);
-    --ring: oklch(0.78 0.1 262);
+    --background: oklch(0.17 0.012 265);
+    --foreground: oklch(0.95 0.006 265);
+    --card: oklch(0.225 0.014 265);
+    --card-foreground: oklch(0.95 0.006 265);
+    --popover: oklch(0.25 0.016 265);
+    --popover-foreground: oklch(0.95 0.006 265);
+    --primary: oklch(0.74 0.14 275);
+    --primary-foreground: oklch(0.18 0.03 275);
+    --secondary: oklch(0.28 0.014 265);
+    --secondary-foreground: oklch(0.94 0.006 265);
+    --muted: oklch(0.26 0.012 265);
+    --muted-foreground: oklch(0.74 0.015 265);
+    --accent: oklch(0.31 0.06 275);
+    --accent-foreground: oklch(0.93 0.03 275);
+    --destructive: oklch(0.78 0.12 27);
+    --border: oklch(0.32 0.014 265);
+    --input: oklch(0.6 0.02 265);
+    --ring: oklch(0.74 0.14 275);
     --mark: oklch(0.4 0.08 90);
     --mark-foreground: oklch(0.96 0.03 90);
     --ok: oklch(0.8 0.1 160);
@@ -87,9 +92,25 @@
 }
 
 @theme inline {
-  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
-  --font-display: Newsreader, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-display: "Source Serif 4 Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Type scale (size / line height). */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.625rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 2.375rem;
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: var(--radius);
@@ -137,10 +158,14 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
-  h1,
-  h2,
+  h1 {
+    @apply font-display text-3xl font-medium tracking-tight text-balance;
+  }
+  h2 {
+    @apply text-lg font-semibold tracking-tight text-balance;
+  }
   h3 {
-    @apply font-display tracking-tight text-balance;
+    @apply text-base font-semibold text-balance;
   }
   ::selection {
     @apply bg-mark text-mark-foreground;

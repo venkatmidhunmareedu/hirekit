@@ -11,7 +11,7 @@ import { sessionQueryOptions, useLogout } from "../features/auth/hooks";
 import { budgetQueryOptions } from "../features/cost/hooks";
 
 const NAV_LINK =
-  "rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground";
+  "relative inline-flex h-14 items-center px-3 text-sm font-medium text-muted-foreground hover:text-foreground aria-[current=page]:text-foreground aria-[current=page]:after:absolute aria-[current=page]:after:inset-x-3 aria-[current=page]:after:bottom-0 aria-[current=page]:after:h-0.5 aria-[current=page]:after:rounded-full aria-[current=page]:after:bg-primary";
 
 /** Model spend against the USD limit: icon and text, never color alone. Not a link: no call log page exists. */
 function BudgetPill() {
@@ -26,12 +26,12 @@ function BudgetPill() {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-sm border px-2 py-1 font-mono text-xs",
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs",
         reached
           ? "border-bad bg-bad-soft text-bad"
           : warn
             ? "border-warn bg-warn-soft text-warn"
-            : "border-border bg-card text-muted-foreground",
+            : "border-border bg-muted text-muted-foreground",
       )}
     >
       {(reached || warn) && <TriangleAlert aria-hidden="true" className="size-3.5" />}
@@ -46,11 +46,13 @@ export function AppShell() {
   const logout = useLogout();
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b bg-card print:hidden">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-          <Logo />
-          <nav aria-label="Main" className="flex gap-1">
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-20 border-b bg-card print:hidden">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-0 px-4 sm:px-6">
+          <div className="py-3">
+            <Logo />
+          </div>
+          <nav aria-label="Main" className="flex gap-1 max-sm:order-last max-sm:w-full">
             {session.user.role === "recruiter" && (
               <Link to="/" className={NAV_LINK} activeOptions={{ exact: true }}>
                 Roles
@@ -62,15 +64,16 @@ export function AppShell() {
               </Link>
             )}
           </nav>
-          <div className="ml-auto flex flex-wrap items-center gap-3">
+          <div className="ml-auto flex flex-wrap items-center gap-3 py-2">
             {session.user.role === "recruiter" && <BudgetPill />}
-            <span className="flex items-baseline gap-2 text-sm">
+            <span className="flex items-baseline gap-2 border-l pl-4 text-sm">
               <span className="font-medium">{session.user.name}</span>
               <span className="text-muted-foreground">{session.user.role}</span>
             </span>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              className="text-muted-foreground"
               disabled={logout.isPending}
               onClick={() => {
                 logout.mutate();
@@ -82,7 +85,7 @@ export function AppShell() {
         </div>
       </header>
       {logout.isError && (
-        <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
           <Alert variant="destructive" className="flex items-center gap-2 border-bad bg-bad-soft">
             <CircleAlert aria-hidden="true" className="size-4" />
             <AlertDescription className="text-bad">
@@ -91,7 +94,7 @@ export function AppShell() {
           </Alert>
         </div>
       )}
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <Outlet />
       </main>
     </div>

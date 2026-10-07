@@ -120,7 +120,7 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
             .map((row) => (
               <Card key={row.key} className="px-5 py-5">
                 <fieldset className="flex min-w-0 flex-col gap-4">
-                  <legend className="mb-3 font-display text-lg font-medium">
+                  <legend className="mb-3 text-base font-semibold">
                     {row.name.trim() || "New criterion"}
                   </legend>
                   <div className="flex flex-col gap-1.5">

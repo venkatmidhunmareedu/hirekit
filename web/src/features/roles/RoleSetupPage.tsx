@@ -97,7 +97,7 @@ function Proposal({ role }: { role: RoleDetail }) {
     <Section
       id="proposed-criteria"
       title="Proposed criteria"
-      description="The AI suggests criteria from the job description. Review and edit every one before you approve."
+      description="The AI suggests criteria. Edit each one, then approve."
     >
       <div className="flex flex-wrap items-center gap-2">
         <Button

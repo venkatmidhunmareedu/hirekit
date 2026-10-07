@@ -18,13 +18,13 @@ Version 0.1 (draft) · Companion to `PRD.md`
 
 ### 2.1 Name
 
-**HireKit** is set as one word with a capital H and a capital K. In two-tone use, "Hire" takes the text color and "Kit" takes the accent, set in italic display serif (section 4).
+**HireKit** is set as one word with a capital H and a capital K. In two-tone use, "Hire" takes the text color and "Kit" takes the accent, set in Source Serif 4 with "Kit" in italic (section 4).
 
 ### 2.2 Logo
 
 The mark is a **briefcase with a check**: a rounded body, a handle, and a check mark. The briefcase says "hiring", the "kit" idea is in the toolbox form, and the check stands for verified evidence.
 
-- **Wordmark:** Newsreader medium (500), 24px at standard size, "Kit" in italic.
+- **Wordmark:** Source Serif 4 medium (500), 24px at standard size, "Kit" in italic.
 - **Clear space:** at least the height of the briefcase handle on every side.
 - **Minimum size:** mark alone 16px, mark with wordmark 96px wide.
 - **Do not:** stretch, rotate, add gradients or shadows, or change the check color to something without enough contrast.
@@ -49,32 +49,32 @@ Swap the two colors for other treatments (see section 3.3).
 
 ### 2.3 Palette status
 
-The emerald and near-black palette is **superseded** (HK-80). One palette ships: "reading room", section 3. The two alternates formerly listed in 3.4 were dropped with it.
+Two earlier palettes are superseded: the emerald and near-black one (HK-80) and "reading room", the warm bone paper with ink-navy (HK-80), which HK-86 replaces. One palette ships: the working surface in section 3.
 
 ---
 
 ## 3. Color
 
-**Direction: reading room.** HireKit is read for long sessions and its job is to put evidence in front of a person. The look borrows from a well-kept paper file: warm bone paper, ink-navy for action, serif headings, and one highlighter yellow that appears only on evidence (quotes and matched text). Everything else stays quiet so the yellow means "this is the proof". It is deliberately not stock neutral, not green-on-white and not a gradient SaaS dashboard.
+**Direction: working surface (HK-86, supersedes "reading room").** HireKit is a tool people work in for long sessions, so the page is a cool grey surface, panels are white, text is ink-black, and one saturated indigo marks the action. The only other loud colour is the highlighter yellow, which appears only on evidence (quotes and matched text), so yellow means "this is the proof". It is deliberately not warm paper, not a gradient SaaS dashboard and not stock neutral.
 
-All colors are OKLCH. Tokens live in `web/src/index.css` as shadcn role tokens (`--background`, `--primary`, ...) mapped through Tailwind's `@theme inline`. Dark follows `prefers-color-scheme`; no toggle at launch.
+All colors are OKLCH. Tokens live in `web/src/index.css` as shadcn role tokens (`--background`, `--primary`, ...) mapped through Tailwind's `@theme inline`. Dark follows `prefers-color-scheme`; no toggle at launch. Contrast is computed, not eyeballed: text 4.5:1 or better, control borders and the focus ring 3:1 or better, in both themes.
 
 ### 3.1 Role tokens
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `--background` | `oklch(0.972 0.009 85)` | `oklch(0.185 0.018 262)` | Page (bone paper / ink night) |
-| `--card`, `--popover` | `oklch(0.991 0.005 85)` | `oklch(0.225 0.02 262)` | Cards, dialogs, header |
-| `--foreground` | `oklch(0.22 0.025 262)` | `oklch(0.935 0.01 85)` | Body text |
-| `--muted-foreground` | `oklch(0.45 0.025 262)` | `oklch(0.75 0.02 262)` | Secondary text (at least 4.5:1 on page and card) |
-| `--primary` | `oklch(0.37 0.085 262)` | `oklch(0.82 0.085 262)` | The one action color: primary button, links in chrome, wordmark |
-| `--primary-foreground` | `oklch(0.98 0.006 85)` | `oklch(0.2 0.03 262)` | Text on primary |
-| `--secondary`, `--muted` | `oklch(0.93 0.014 85)`, `oklch(0.945 0.011 85)` | `oklch(0.285 0.022 262)`, `oklch(0.26 0.02 262)` | Quiet fills |
-| `--accent` | `oklch(0.915 0.025 262)` | `oklch(0.32 0.04 262)` | Current nav item, hover fills |
-| `--border` | `oklch(0.87 0.014 85)` | `oklch(0.32 0.02 262)` | Dividers and card edges |
-| `--input` | `oklch(0.58 0.025 262)` | `oklch(0.62 0.03 262)` | Control borders (3:1 against the page, WCAG 1.4.11) |
-| `--ring` | `oklch(0.5 0.14 262)` | `oklch(0.78 0.1 262)` | Focus ring |
-| `--destructive` | `oklch(0.47 0.16 27)` | `oklch(0.75 0.13 27)` | Destructive actions |
+| `--background` | `oklch(0.958 0.006 258)` | `oklch(0.17 0.012 265)` | Page: the cool-grey working surface |
+| `--card`, `--popover` | `oklch(0.995 0.002 258)` | `oklch(0.225 0.014 265)` | Panels, dialogs, header: a clear step above the page |
+| `--foreground` | `oklch(0.2 0.02 265)` | `oklch(0.95 0.006 265)` | Body text |
+| `--muted-foreground` | `oklch(0.46 0.02 265)` | `oklch(0.74 0.015 265)` | Secondary text (at least 4.5:1 on page and panel) |
+| `--primary` | `oklch(0.5 0.22 275)` | `oklch(0.74 0.14 275)` | The one action color: primary button, current nav item, wordmark "Kit" |
+| `--primary-foreground` | `oklch(0.99 0.004 275)` | `oklch(0.18 0.03 275)` | Text on primary |
+| `--secondary`, `--muted` | `oklch(0.92 0.008 260)`, `oklch(0.94 0.006 258)` | `oklch(0.28 0.014 265)`, `oklch(0.26 0.012 265)` | Quiet fills |
+| `--accent` | `oklch(0.925 0.04 275)` | `oklch(0.31 0.06 275)` | Hover and selected fills |
+| `--border` | `oklch(0.88 0.008 260)` | `oklch(0.32 0.014 265)` | Dividers and panel edges |
+| `--input` | `oklch(0.6 0.015 262)` | `oklch(0.6 0.02 265)` | Control borders (3:1 against page and panel, WCAG 1.4.11) |
+| `--ring` | `oklch(0.55 0.2 275)` | `oklch(0.74 0.14 275)` | Focus ring |
+| `--destructive` | `oklch(0.47 0.16 27)` | `oklch(0.78 0.12 27)` | Destructive actions |
 
 ### 3.2 Evidence and state tokens
 
@@ -84,7 +84,7 @@ The highlighter is reserved for evidence. Do not use it for decoration, selectio
 |---|---|---|---|
 | `--mark` / `--mark-foreground` | `oklch(0.93 0.12 95)` / `oklch(0.25 0.04 80)` | `oklch(0.4 0.08 90)` / `oklch(0.96 0.03 90)` | Evidence quote background and matched text |
 | `--ok` / `--ok-soft` | `oklch(0.42 0.1 160)` / `oklch(0.94 0.04 160)` | `oklch(0.8 0.1 160)` / `oklch(0.3 0.045 160)` | Verified quote, approved, saved |
-| `--warn` / `--warn-soft` | `oklch(0.45 0.1 70)` / `oklch(0.95 0.06 85)` | `oklch(0.82 0.11 80)` / `oklch(0.32 0.05 80)` | Flagged quote, stale scores, budget near the limit |
+| `--warn` / `--warn-soft` | `oklch(0.45 0.1 70)` / `oklch(0.955 0.045 85)` | `oklch(0.82 0.11 80)` / `oklch(0.32 0.05 80)` | Flagged quote, stale scores, budget near the limit |
 | `--bad` / `--bad-soft` | `oklch(0.47 0.16 27)` / `oklch(0.945 0.03 27)` | `oklch(0.78 0.12 27)` / `oklch(0.31 0.05 27)` | Errors, budget reached, destructive confirmation |
 | `--note` / `--note-soft` | `oklch(0.42 0.1 235)` / `oklch(0.945 0.025 235)` | `oklch(0.8 0.08 235)` / `oklch(0.3 0.04 235)` | Informational notices |
 
@@ -94,30 +94,32 @@ State tones describe the state of the work, never a candidate's worth. Do not co
 
 - Primary is the only saturated chrome color. One primary button per view.
 - The yellow `--mark` appears only behind evidence quotes and matched text.
-- Surfaces are separated by borders and tone steps, not shadows. Cards are for independent objects (a role, a candidate); sections use headings and separators.
+- Surfaces are separated by borders and tone steps, not shadows. Panels are for independent objects (a role, a candidate); sections use a heading and spacing, with no rule above each one.
 - Contrast is checked in both themes for text, control borders and the focus ring (WCAG 2.2 AA).
 
 ---
 
 ## 4. Typography
 
-Two families plus mono, loaded from Google Fonts in `web/index.html` with `display=swap`. If the font host is unreachable the system fallbacks below apply and the layout holds.
+Three families, self-hosted through `@fontsource-variable` packages (no font host at runtime, so the type never falls back to Times). Fallbacks apply only while the files load.
 
 | Role | Family | Fallback |
 |---|---|---|
-| Display: page titles, section headings, role names, evidence quotes | Newsreader (opsz 6 to 72) | `Iowan Old Style`, `Palatino Linotype`, Georgia, serif |
-| Text: UI, tables, forms, body | Instrument Sans | `ui-sans-serif`, `system-ui`, `Segoe UI`, sans-serif |
-| Code, IDs, hashes, cost figures | JetBrains Mono | `ui-monospace`, `SF Mono`, Menlo, monospace |
+| UI text: navigation, tables, forms, body, section headings | Hanken Grotesk | `ui-sans-serif`, `system-ui`, `Segoe UI`, sans-serif |
+| Serif: the wordmark, page titles and evidence quotes (italic) only | Source Serif 4 | `Iowan Old Style`, `Palatino Linotype`, Georgia, serif |
+| Code, IDs, scores, cost figures | JetBrains Mono | `ui-monospace`, `SF Mono`, Menlo, monospace |
 
 | Use | Family | Weight | Size / line height |
 |---|---|---|---|
-| Page title | Display | 500 | 30 / 36 |
-| Section heading | Display | 500 | 20 / 28 |
-| Subheading | Text | 600 | 16 / 24 |
+| Page title (`h1`) | Serif | 500 | 32 / 38 |
+| Section heading (`h2`) | Text | 600 | 18 / 26 |
+| Subheading (`h3`) | Text | 600 | 16 / 24 |
 | Body | Text | 400 | 14 to 16 / 22 to 24 |
 | Small / caption | Text | 400 | 12 / 18 |
-| Evidence quote | Display (italic) | 400 | 16 / 26, on `--mark` |
-| Code, IDs, cost figures | Mono | 400 | 12 to 13 / 20 |
+| Evidence quote | Serif (italic) | 400 | 16 / 26, on `--mark` |
+| Code, IDs, scores, cost figures | Mono | 400 | 12 to 13 / 20 |
+
+The scale is set once in `@theme` and `h1` to `h3` take it from the base layer.
 
 - Sentence case everywhere. No all caps, no title case in UI copy.
 - Evidence quotes are always shown in quotation marks, in italic serif on the highlighter, so they read as source text, not model commentary.
@@ -128,12 +130,12 @@ Two families plus mono, loaded from Google Fonts in `web/index.html` with `displ
 ## 5. Layout and spacing
 
 - **Spacing scale (px):** 4, 8, 12, 16, 24, 32, 48.
-- **Radii:** one `--radius` of 6px; controls and badges use it, cards and dialogs step up to 8 and 10px. Small and squared on purpose: paper-file, not pill.
+- **Radii:** one `--radius` of 6px; controls use it, panels and dialogs step up to 8 and 10px. Status tags and the budget pill are fully rounded so they read as labels, not buttons.
 - **Density:** controls 40px high (touch target), table rows 44px, comfortable reading density over compact.
-- **Borders:** 1px `--border`. Cards use a hairline ring, not a shadow.
+- **Borders:** 1px `--border`. Panels use a hairline ring on a white fill over the grey page, not a shadow.
 - **Shadows:** none, except a single subtle overlay shadow on menus and modals.
-- **Grid:** 12 columns, max content width 1200px, 24px gutters. Tables can use the full width.
-- **App shell:** one header (wordmark, main navigation, budget pill, user, sign out) over a content column of at most 1152px (`max-w-6xl`). No sidebar; the header wraps to two rows on a phone.
+- **Grid:** 12 columns, 24px gutters. Content is at most 1280px wide (`max-w-7xl`); prose stays at 65 characters. Tables can use the full width.
+- **App shell:** one sticky header (wordmark left, main navigation with an underline on the current item, budget pill, then the user's name and role and a quiet "Sign out") over a content area of at most 1280px (`max-w-7xl`). No sidebar; on a phone the navigation drops to its own row. One primary button per view.
 - **Breakpoints:** 640, 1024, 1440. The comparison view and the ranked table are desktop-first and scroll horizontally on small screens. Never truncate scores.
 
 ---
@@ -354,7 +356,7 @@ Every screen and component needs these states designed:
 
 ## 13. Motion
 
-Motion is paper-quiet: things settle, they do not bounce.
+Motion is quiet: things settle, they do not bounce.
 
 - 120 to 200ms ease-out for hover, dialog open and close, and menu transitions (`tw-animate-css` fade and zoom on Radix dialogs and popovers).
 - A button press shifts 1px. No springs, no parallax, no decorative or looping animation.
@@ -375,13 +377,13 @@ Motion is paper-quiet: things settle, they do not bounce.
 
 ### 14.1 Tokens
 
-The source of truth is `web/src/index.css` (sections 3 to 5 above); there is no second copy here. The legacy hand-written sheets in `web/src/styles/` still exist until HK-80 stage 4 and are being removed screen by screen.
+The source of truth is `web/src/index.css` (sections 3 to 5 above); there is no second copy here. The legacy hand-written sheets are gone.
 
 ---
 
 ## 15. Open design questions
 
-1. ~~Final palette~~ Closed (HK-80): "reading room", section 3. The emerald palette is superseded.
+1. ~~Final palette~~ Closed (HK-86): the cool-grey working surface with one indigo primary, section 3. It supersedes "reading room" (HK-80) and the emerald palette.
 2. Should candidate identity be hidden by default in the recruiter's views (recommended)?
 3. Should the interviewer see model scores before submitting feedback?
 4. Is a dark theme required for launch, or a later addition?
