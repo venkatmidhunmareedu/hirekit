@@ -75,3 +75,13 @@ variable "boot_volume_gb" {
     error_message = "boot_volume_gb must be between 50 and 200."
   }
 }
+
+variable "shape" {
+  type        = string
+  description = "VM.Standard.A1.Flex (Ampere, 2 OCPU and 12 GB free in total, capacity often missing) or VM.Standard.E2.1.Micro (AMD, 1 GB, two free, always available)."
+  default     = "VM.Standard.A1.Flex"
+  validation {
+    condition     = contains(["VM.Standard.A1.Flex", "VM.Standard.E2.1.Micro"], var.shape)
+    error_message = "shape must be VM.Standard.A1.Flex or VM.Standard.E2.1.Micro (the free shapes)."
+  }
+}

@@ -13,7 +13,10 @@ terraform init && terraform plan
 terraform apply
 ```
 `apply` creates the network and a free Ampere A1 VM (2 OCPU, 12 GB, Ubuntu 24.04).
-- "Out of host capacity": set `availability_domain_index` to 1 or 2, or retry later.
+- "Out of host capacity" on the default Ampere shape: add `shape = "VM.Standard.E2.1.Micro"` to
+  `terraform.tfvars` for the free 1 GB AMD VM, which has no capacity problem. It is slow: the first
+  `docker compose up --build` takes 15 to 30 minutes and leans on the 2 GB swap that cloud-init adds.
+  Or retry later (Hyderabad has one availability domain, so `availability_domain_index` does not help).
 - The output `public_ip` is the address. Point a domain's A record at it, or use `<ip>.sslip.io`.
 - Cloud-init installs Docker and opens ports 80 and 443 on the VM; give it a minute after apply.
 - State stays local and git-ignored; keep a copy, or `terraform destroy` stops working.

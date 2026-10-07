@@ -6,7 +6,7 @@ data "oci_core_images" "ubuntu" {
   compartment_id           = var.compartment_ocid
   operating_system         = "Canonical Ubuntu"
   operating_system_version = "24.04"
-  shape                    = "VM.Standard.A1.Flex"
+  shape                    = var.shape
   sort_by                  = "TIMECREATED"
   sort_order               = "DESC"
 }
@@ -82,11 +82,15 @@ resource "oci_core_instance" "this" {
   compartment_id      = var.compartment_ocid
   availability_domain = data.oci_identity_availability_domains.this.availability_domains[var.availability_domain_index].name
   display_name        = "hirekit"
-  shape               = "VM.Standard.A1.Flex"
+  shape               = var.shape
 
-  shape_config {
-    ocpus         = var.ocpus
-    memory_in_gbs = var.memory_gb
+  # Only the flexible A1 shape takes a size; the Micro shape is fixed.
+  dynamic "shape_config" {
+    for_each = var.shape == "VM.Standard.A1.Flex" ? [1] : []
+    content {
+      ocpus         = var.ocpus
+      memory_in_gbs = var.memory_gb
+    }
   }
 
   source_details {
