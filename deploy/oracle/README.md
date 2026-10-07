@@ -35,7 +35,7 @@ cp .env.example .env && chmod 600 .env && nano .env
 ## 3. Build and push the images (on your machine)
 ```
 docker login -u midhunmareedu        # password: a Docker Hub access token with write access
-REGISTRY_NAMESPACE=midhunmareedu ./deploy/oracle/build-push.sh
+make images                          # or: make images-build, then make images-push
 ```
 It prints the tag. The repositories are `hirekit-backend` and `hirekit-web` on Docker Hub.
 

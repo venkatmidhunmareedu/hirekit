@@ -4,11 +4,14 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 BACKEND := backend
 WEB := web
+REGISTRY_NAMESPACE ?= midhunmareedu
+IMAGE_TAG ?= $(shell git rev-parse --short HEAD)
 
-.PHONY: help dev-web build-web setup dev worker worker-live check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean
+.PHONY: help images images-build images-push dev-web build-web setup dev worker worker-live check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean
 
 help: ## List targets
 	@$(MAKE) --no-print-directory -C $(BACKEND) help
+	@grep -E '^(images|dev-web|build-web)[a-z-]*:.*?## ' Makefile | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 
 # The gate. CI runs exactly this. It writes ../.bearing/state/.check-passed on success.
 check: ## The gate: every gate in backend/ and web/
@@ -38,3 +41,13 @@ build-web: ## Typecheck and build the web app into web/dist
 
 dev worker worker-live test-integration record migrate migrate-verify migrate-down migrate-new seed eval eval-prompts db db-reset:
 	@$(MAKE) --no-print-directory -C $(BACKEND) $@ $(if $(name),name=$(name),)
+
+# Docker Hub images for the Oracle VM (deploy/oracle/README.md). Log in first: docker login -u $(REGISTRY_NAMESPACE)
+images-build: ## Build the backend and web images (linux/amd64); tag = git short sha, IMAGE_TAG= overrides
+	@REGISTRY_NAMESPACE=$(REGISTRY_NAMESPACE) IMAGE_TAG=$(IMAGE_TAG) deploy/oracle/build-push.sh build
+
+images-push: ## Send the images for IMAGE_TAG to Docker Hub (run images-build first)
+	@REGISTRY_NAMESPACE=$(REGISTRY_NAMESPACE) IMAGE_TAG=$(IMAGE_TAG) deploy/oracle/build-push.sh push
+
+images: ## Build both images and send them to Docker Hub
+	@REGISTRY_NAMESPACE=$(REGISTRY_NAMESPACE) IMAGE_TAG=$(IMAGE_TAG) deploy/oracle/build-push.sh all
