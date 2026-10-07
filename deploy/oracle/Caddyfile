@@ -1,15 +1,13 @@
-# Replace the host with your domain, or <public-ip>.sslip.io for a free name; Caddy gets the
-# certificate by itself. The browser talks to one origin, as with the Vite proxy in web/vite.config.ts.
-hirekit.example.com {
+# SITE_ADDRESS comes from .env (a domain, or <public-ip>.sslip.io; Caddy gets the certificate by
+# itself). The browser talks to one origin, as with the Vite proxy in web/vite.config.ts.
+{$SITE_ADDRESS} {
 	encode gzip
-	handle /v1/* {
-		reverse_proxy 127.0.0.1:8080
-	}
-	handle /healthz {
-		reverse_proxy 127.0.0.1:8080
+	@api path /v1/* /healthz
+	handle @api {
+		reverse_proxy api:8080
 	}
 	handle {
-		root * /opt/hirekit/web/dist
+		root * /srv
 		try_files {path} /index.html
 		file_server
 	}

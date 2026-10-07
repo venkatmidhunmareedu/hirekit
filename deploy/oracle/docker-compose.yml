@@ -1,0 +1,44 @@
+# Run from this folder: docker compose up -d --build. Needs a .env beside it (see .env.example).
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: hirekit
+      POSTGRES_USER: hirekit
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hirekit"]
+      interval: 5s
+      retries: 10
+
+  api: &backend
+    build: { context: ../.., dockerfile: deploy/oracle/Dockerfile.backend }
+    restart: always
+    depends_on: { db: { condition: service_healthy } }
+    environment: &backend-env
+      ENV: production
+      LOG_FORMAT: json
+      DATABASE_URL: postgresql+asyncpg://hirekit:${DB_PASSWORD}@db:5432/hirekit
+      MODEL_MODE: live
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env}
+      KEY_CREDIT_LIMIT_CONFIRMED: "yes"
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]
+    stop_grace_period: 90s # finish the job in hand on SIGTERM
+
+  web:
+    build: { context: ../.., dockerfile: deploy/oracle/Dockerfile.web }
+    restart: always
+    depends_on: [api]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env}
+    ports: ["80:80", "443:443"]
+    volumes: [caddy:/data]
+
+volumes:
+  pgdata: {}
+  caddy: {}

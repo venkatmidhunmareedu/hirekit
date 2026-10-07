@@ -1,0 +1,12 @@
+# Build from the repo root. Builds the Vite app, then serves it with Caddy (HTTPS and the /v1 proxy).
+FROM node:24-slim AS build
+RUN npm i -g pnpm@12.9.1
+WORKDIR /web
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY web .
+RUN pnpm build
+
+FROM caddy:2
+COPY deploy/oracle/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /web/dist /srv

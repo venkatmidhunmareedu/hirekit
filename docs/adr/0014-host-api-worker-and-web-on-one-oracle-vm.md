@@ -5,7 +5,7 @@
 - Task: HK-85
 - Deciders: midhun (to accept)
 - Area: deployment
-- Reversibility: cheap: systemd units and a Caddyfile; the app code is unchanged
+- Reversibility: cheap: a Compose file, two Dockerfiles and a Caddyfile; the app code is unchanged
 - Relates to: ADR-0004, ADR-0007
 
 ## Context
@@ -24,15 +24,15 @@
 
 ## Decision
 
-We will run PostgreSQL, the API (`uvicorn`), the Worker (`python -m app.worker`) and Caddy on one Ubuntu VM. Caddy serves `web/dist` and proxies `/v1/*` to the API, so the browser sees one origin, as with the Vite proxy. Files and steps are in `deploy/oracle/`.
+We will run PostgreSQL, the API (`uvicorn`), the Worker (`python -m app.worker`) and Caddy as four Docker Compose containers on one Ubuntu VM. Caddy serves `web/dist` and proxies `/v1/*` to the API, so the browser sees one origin, as with the Vite proxy. Files and steps are in `deploy/oracle/`.
 
 ## Consequences
 
 - No platform limits on upload size or job duration; the Worker is the unchanged process.
 - One machine is one point of failure, and the engineer patches the OS, backs up the database and watches disk. Backups are not set up here.
 - Oracle can reclaim idle Always Free instances, and capacity for Ampere shapes can be unavailable in a region.
-- Deploys are manual (`git pull` and restart); no CI deploy job, per ground rule 2.
-- Secrets live in `/etc/hirekit/backend.env` (mode 600) only.
+- Deploys are manual (`git pull` and `docker compose up -d --build`); no CI deploy job, per ground rule 2.
+- Secrets live in `deploy/oracle/.env` on the VM (mode 600, git-ignored) only.
 
 ## Commits us to
 
