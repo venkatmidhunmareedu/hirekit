@@ -1,17 +1,29 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Link, Outlet } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { CircleAlert, TriangleAlert } from "lucide-react";
+import { MotionConfig, motion } from "motion/react";
+import { Fragment } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-import { Logo } from "../components/Logo";
 import { sessionQueryOptions, useLogout } from "../features/auth/hooks";
 import { budgetQueryOptions } from "../features/cost/hooks";
+import { rolesQueryOptions } from "../features/roles/hooks";
 
-const NAV_LINK =
-  "rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground";
+import { AppSidebar } from "./AppSidebar";
+import { UserMenu } from "./UserMenu";
+import { crumbs } from "./crumbs";
 
 /** Model spend against the USD limit: icon and text, never color alone. Not a link: no call log page exists. */
 function BudgetPill() {
@@ -26,74 +38,120 @@ function BudgetPill() {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-sm border px-2 py-1 font-mono text-xs",
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs",
         reached
           ? "border-bad bg-bad-soft text-bad"
           : warn
             ? "border-warn bg-warn-soft text-warn"
-            : "border-border bg-card text-muted-foreground",
+            : "border-border bg-muted text-muted-foreground",
       )}
     >
       {(reached || warn) && <TriangleAlert aria-hidden="true" className="size-3.5" />}
-      <span>{text}</span>
+      <span className="max-sm:sr-only">{text}</span>
+      <span aria-hidden="true" className="sm:hidden">
+        {reached ? "Reached" : `USD ${spent.toFixed(2)}`}
+      </span>
     </span>
   );
 }
 
-/** Authenticated layout (Design.md section 5): one header with nav, budget and user, then the content. */
+/** Where you are: the trail on wide screens, the current page alone on narrow ones. */
+function Trail({ recruiter }: { recruiter: boolean }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const roles = useQuery({ ...rolesQueryOptions, enabled: recruiter });
+  const trail = crumbs(pathname, recruiter ? "recruiter" : "interviewer", roles.data ?? []);
+  return (
+    <Breadcrumb className="min-w-0">
+      <BreadcrumbList className="flex-nowrap">
+        {trail.map((crumb, index) => {
+          const last = index === trail.length - 1;
+          return (
+            <Fragment key={crumb.label}>
+              {index > 0 && <BreadcrumbSeparator className={cn(!last && "max-sm:hidden")} />}
+              <BreadcrumbItem className={cn("min-w-0", !last && "max-sm:hidden")}>
+                {crumb.to === undefined ? (
+                  <BreadcrumbPage className="truncate font-medium">{crumb.label}</BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink asChild>
+                    {crumb.to === "/roles/$roleId" && crumb.roleId !== undefined ? (
+                      <Link to="/roles/$roleId" params={{ roleId: crumb.roleId }}>
+                        {crumb.label}
+                      </Link>
+                    ) : (
+                      <Link to={crumb.to === "/me/candidates" ? "/me/candidates" : "/roles"}>
+                        {crumb.label}
+                      </Link>
+                    )}
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+            </Fragment>
+          );
+        })}
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
+
+/** Authenticated layout (Design.md section 5): sidebar, a slim top bar, then the content. */
 export function AppShell() {
   const { data: session } = useSuspenseQuery(sessionQueryOptions);
   const logout = useLogout();
+  const recruiter = session.user.role === "recruiter";
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b bg-card print:hidden">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-          <Logo />
-          <nav aria-label="Main" className="flex gap-1">
-            {session.user.role === "recruiter" && (
-              <Link to="/" className={NAV_LINK} activeOptions={{ exact: true }}>
-                Roles
-              </Link>
+    <MotionConfig reducedMotion="user">
+      <TooltipProvider delayDuration={300}>
+        <SidebarProvider defaultOpen>
+          <a
+            href="#main"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:ring-2 focus:ring-ring"
+          >
+            Skip to content
+          </a>
+          <AppSidebar recruiter={recruiter} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-card px-3 sm:px-4 print:hidden">
+              <SidebarTrigger className="size-10" />
+              <Trail recruiter={recruiter} />
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                {recruiter && <BudgetPill />}
+                <UserMenu
+                  user={session.user}
+                  signingOut={logout.isPending}
+                  onSignOut={() => {
+                    logout.mutate();
+                  }}
+                />
+              </div>
+            </header>
+            {logout.isError && (
+              <div className="mx-auto w-full max-w-7xl px-4 pt-4 sm:px-6">
+                <Alert
+                  variant="destructive"
+                  className="flex items-center gap-2 border-bad bg-bad-soft"
+                >
+                  <CircleAlert aria-hidden="true" className="size-4" />
+                  <AlertDescription className="text-bad">
+                    Could not sign out. Check your connection and try again.
+                  </AlertDescription>
+                </Alert>
+              </div>
             )}
-            {session.user.role === "interviewer" && (
-              <Link to="/me/candidates" className={NAV_LINK}>
-                My candidates
-              </Link>
-            )}
-          </nav>
-          <div className="ml-auto flex flex-wrap items-center gap-3">
-            {session.user.role === "recruiter" && <BudgetPill />}
-            <span className="flex items-baseline gap-2 text-sm">
-              <span className="font-medium">{session.user.name}</span>
-              <span className="text-muted-foreground">{session.user.role}</span>
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={logout.isPending}
-              onClick={() => {
-                logout.mutate();
-              }}
-            >
-              Sign out
-            </Button>
+            <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
+              <motion.div
+                key={pathname}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.12, ease: "easeOut" }}
+              >
+                <Outlet />
+              </motion.div>
+            </main>
           </div>
-        </div>
-      </header>
-      {logout.isError && (
-        <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
-          <Alert variant="destructive" className="flex items-center gap-2 border-bad bg-bad-soft">
-            <CircleAlert aria-hidden="true" className="size-4" />
-            <AlertDescription className="text-bad">
-              Could not sign out. Check your connection and try again.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <Outlet />
-      </main>
-    </div>
+        </SidebarProvider>
+      </TooltipProvider>
+    </MotionConfig>
   );
 }

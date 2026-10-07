@@ -25,16 +25,23 @@ const MIN_NOTE = 10;
 export function OverrideDialog({
   candidateId,
   cell,
+  initialScore,
   onClose,
 }: {
   candidateId: string;
   cell: ScoreCell;
+  /** The segment the recruiter clicked; the note is still required before anything is saved. */
+  initialScore?: number;
   onClose: () => void;
 }) {
   const override = useOverride(candidateId);
-  const [score, setScore] = useState<number | null>(cell.override_score ?? cell.model_score);
+  const [score, setScore] = useState<number | null>(
+    initialScore ?? cell.override_score ?? cell.model_score,
+  );
   const [note, setNote] = useState("");
-  const valid = score !== null && note.trim().length >= MIN_NOTE;
+  const length = note.trim().length;
+  const noteReady = length >= MIN_NOTE;
+  const valid = score !== null && noteReady;
 
   return (
     <Dialog
@@ -91,12 +98,22 @@ export function OverrideDialog({
             <Label htmlFor="override-note">Note (at least {MIN_NOTE} characters)</Label>
             <Textarea
               id="override-note"
+              aria-describedby="override-note-count"
               rows={3}
               value={note}
               onChange={(e) => {
                 setNote(e.target.value);
               }}
             />
+            <p
+              id="override-note-count"
+              className={noteReady ? "text-sm text-ok" : "text-sm text-muted-foreground"}
+            >
+              {noteReady ? "Ready to save" : `${length} of ${MIN_NOTE} characters`}
+            </p>
+            <p role="status" className="sr-only">
+              {noteReady ? "Note is long enough to save" : ""}
+            </p>
           </div>
           {override.error && <ErrorNotice error={override.error} />}
           <DialogFooter>

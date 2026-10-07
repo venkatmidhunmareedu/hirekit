@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
+import { FileUp, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -17,18 +18,20 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorNotice } from "../../components/ErrorNotice";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
-import { PageHeader } from "../../components/PageHeader";
 import { Section } from "../../components/Section";
 import { errorMessage } from "../../lib/errors";
-import { RoleTabs } from "../roles/RoleTabs";
+import { RoleHeader } from "../roles/RoleHeader";
 import { budgetQueryOptions } from "../cost/hooks";
 import { roleQueryOptions } from "../roles/hooks";
 
-import { RankedTable } from "./RankedTable";
+import { CompareTray } from "./CompareTray";
+import { type Entry } from "./RankedList";
+import { RankingInfo } from "./RankingInfo";
+import { ReviewWorkspace } from "./ReviewWorkspace";
 import { UploadZone } from "./UploadZone";
-import { PAGE_SIZE, STAGES, type RankedPage, type Stage } from "./api";
+import { STAGES, type RankedPage, type Stage } from "./api";
 import { STAGE_LABEL } from "./labels";
-import { queueQueryOptions, rankedQueryOptions, useRescore } from "./hooks";
+import { rankedQueryOptions, useRescore, useRoleQueue } from "./hooks";
 
 /** Candidates: upload and ranked list (Design.md 8.3, PRD steps 4 and 6). */
 export function CandidatesPage() {
@@ -40,6 +43,12 @@ export function CandidatesPage() {
 
 function Candidates({ roleId }: { roleId: string }) {
   const role = useQuery(roleQueryOptions(roleId));
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const total = useQuery({
+    ...rankedQueryOptions(roleId, null, 0, false),
+    enabled: role.data?.status === "approved",
+  }).data?.total;
+  const hasCandidates = total !== undefined && total > 0;
 
   if (role.isPending) return <Loading label="Loading role" />;
   if (role.isError) {
@@ -54,25 +63,36 @@ function Candidates({ roleId }: { roleId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader title={role.data.title} />
-      <RoleTabs roleId={roleId} status={role.data.status} current="candidates" />
-      {role.data.status === "draft" ? (
-        <Notice
-          action={
-            <Button asChild className="h-10 px-4">
-              <Link to="/roles/$roleId" params={{ roleId }}>
-                Go to criteria
-              </Link>
+    <div className="flex flex-col gap-4">
+      <RoleHeader
+        role={role.data}
+        current="candidates"
+        actions={
+          hasCandidates && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 px-4"
+              aria-expanded={uploadOpen}
+              aria-controls="upload-zone"
+              onClick={() => {
+                setUploadOpen(!uploadOpen);
+              }}
+            >
+              <FileUp aria-hidden="true" />
+              Upload resumes
             </Button>
-          }
-        >
-          Approve the criteria to start uploading and scoring resumes. Candidates stay locked until
-          then.
-        </Notice>
+          )
+        }
+      />
+      {role.data.status === "draft" ? (
+        <Notice>Approve the criteria to start uploading and scoring resumes.</Notice>
       ) : (
         <>
-          <UploadZone roleId={roleId} />
+          {/* Hidden, not unmounted, so the result of an upload stays when it is closed. */}
+          <div id="upload-zone" className={hasCandidates && !uploadOpen ? "hidden" : undefined}>
+            <UploadZone roleId={roleId} compact={hasCandidates} />
+          </div>
           <RankedList roleId={roleId} />
         </>
       )}
@@ -86,130 +106,142 @@ function RankedList({ roleId }: { roleId: string }) {
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [overridesOnly, setOverridesOnly] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
-  const queue = useQuery(queueQueryOptions(roleId));
-  const working = (queue.data?.waiting ?? 0) + (queue.data?.running ?? 0) > 0;
+  const { working, waiting, running } = useRoleQueue(roleId);
   const ranked = useQuery(rankedQueryOptions(roleId, stage, offset, working));
 
   return (
-    <Section
-      id="ranked-heading"
-      title="Ranked candidates"
-      description="Scores are AI suggestions that a person decides on. Hiding names reduces some bias but does not remove it: schools, clubs, wording and career gaps can still show. The hiring stage filter covers every candidate; the two checkboxes cover this page only."
-    >
-      <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="stage-filter">Hiring stage</Label>
-          <Select
-            value={stage ?? "all"}
-            onValueChange={(value) => {
-              setStage(STAGES.find((s) => s === value) ?? null);
-              setOffset(0);
+    <div className={selected.length > 0 ? "pb-20" : undefined}>
+      <Section
+        id="ranked-heading"
+        title="Ranked candidates"
+        hideTitle
+        action={
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+            {ranked.data?.data.some((c) => c.stale) && <StaleBar roleId={roleId} />}
+            <div className="flex items-center gap-2">
+              <Label htmlFor="stage-filter">Filter by stage</Label>
+              <Select
+                value={stage ?? "all"}
+                onValueChange={(value) => {
+                  setStage(STAGES.find((s) => s === value) ?? null);
+                  setOffset(0);
+                }}
+              >
+                <SelectTrigger id="stage-filter" className="h-10 w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All hiring stages</SelectItem>
+                  {STAGES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STAGE_LABEL[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex min-h-10 items-center gap-2">
+              <Checkbox
+                id="flagged-only"
+                checked={flaggedOnly}
+                onCheckedChange={(checked) => {
+                  setFlaggedOnly(checked === true);
+                }}
+              />
+              <Label htmlFor="flagged-only">Needs a look only</Label>
+            </div>
+            <div className="flex min-h-10 items-center gap-2">
+              <Checkbox
+                id="overrides-only"
+                checked={overridesOnly}
+                onCheckedChange={(checked) => {
+                  setOverridesOnly(checked === true);
+                }}
+              />
+              <Label htmlFor="overrides-only">Changed by recruiter</Label>
+            </div>
+          </div>
+        }
+      >
+        <RankingInfo />
+        {(flaggedOnly || overridesOnly) && (
+          <p className="-mt-1 text-xs text-muted-foreground">
+            These checkboxes filter the loaded page only; the stage filter covers every candidate.
+          </p>
+        )}
+        {working && (
+          <Notice>
+            Processing resumes: {waiting} waiting, {running} running. The list refreshes by itself.
+          </Notice>
+        )}
+        {ranked.isPending && <Loading label="Loading candidates" />}
+        {ranked.isError && (
+          <ErrorNotice
+            error={ranked.error}
+            retry={() => {
+              void ranked.refetch();
             }}
-          >
-            <SelectTrigger id="stage-filter" className="h-10 w-52">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All hiring stages</SelectItem>
-              {STAGES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {STAGE_LABEL[s]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <div className="flex min-h-10 items-center gap-2">
-            <Checkbox
-              id="flagged-only"
-              checked={flaggedOnly}
-              onCheckedChange={(checked) => {
-                setFlaggedOnly(checked === true);
-              }}
-            />
-            <Label htmlFor="flagged-only">Needs a look only</Label>
-          </div>
-          <div className="flex min-h-10 items-center gap-2">
-            <Checkbox
-              id="overrides-only"
-              checked={overridesOnly}
-              onCheckedChange={(checked) => {
-                setOverridesOnly(checked === true);
-              }}
-            />
-            <Label htmlFor="overrides-only">Changed by recruiter</Label>
-          </div>
-        </div>
-      </div>
-      {working && (
-        <Notice>
-          Processing resumes: {queue.data?.waiting ?? 0} waiting, {queue.data?.running ?? 0}{" "}
-          running. The list refreshes by itself.
-        </Notice>
-      )}
-      {ranked.isPending && <Loading label="Loading candidates" />}
-      {ranked.isError && (
-        <ErrorNotice
-          error={ranked.error}
-          retry={() => {
-            void ranked.refetch();
-          }}
-        />
-      )}
-      {ranked.data && (
-        <RankedBody
-          roleId={roleId}
-          page={ranked.data}
-          filtered={stage !== null}
-          flaggedOnly={flaggedOnly}
-          overridesOnly={overridesOnly}
-          selected={selected}
-          onToggle={(id) => {
-            setSelected((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
-          }}
-          onOffset={setOffset}
-        />
-      )}
-    </Section>
+          />
+        )}
+        {ranked.data && (
+          <RankedBody
+            roleId={roleId}
+            page={ranked.data}
+            filtered={stage !== null}
+            flaggedOnly={flaggedOnly}
+            overridesOnly={overridesOnly}
+            selected={selected}
+            onToggle={(id) => {
+              setSelected((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
+            }}
+            onOffset={setOffset}
+          />
+        )}
+      </Section>
+      <p role="status" className="sr-only">
+        {selected.length === 0 ? "" : `${selected.length} candidates selected for compare`}
+      </p>
+      <CompareTray
+        ids={selected}
+        onClear={() => {
+          setSelected([]);
+        }}
+      />
+    </div>
   );
 }
 
-/** Out-of-date scores banner with the re-score action (Design.md section 11). */
-function StaleBanner({ roleId }: { roleId: string }) {
+/** Out-of-date scores as one slim inline bar with the re-score action (Design.md section 11). */
+function StaleBar({ roleId }: { roleId: string }) {
   const rescore = useRescore(roleId);
   const budget = useQuery(budgetQueryOptions);
   const blocked = budget.data?.model_actions_allowed === false;
   return (
-    <Notice
-      tone="warning"
-      action={
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 px-4"
-          disabled={rescore.isPending || blocked}
-          onClick={() => {
-            rescore.mutate();
-          }}
-        >
-          Re-score
-        </Button>
-      }
-    >
-      Scores are out of date. The criteria changed after some resumes were scored, so those still
-      show the older results.
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-warn bg-warn-soft py-0.5 pr-1 pl-3 text-sm">
+      <TriangleAlert aria-hidden="true" className="size-4 text-warn" />
+      <span>Scores are out of date because the criteria changed.</span>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-10 px-3"
+        disabled={rescore.isPending || blocked}
+        onClick={() => {
+          rescore.mutate();
+        }}
+      >
+        Re-score
+      </Button>
       {rescore.isSuccess && (
-        <span role="status" className="mt-1 block">
+        <span role="status">
           Re-scoring {rescore.data.queued} candidates; {rescore.data.skipped} skipped
         </span>
       )}
       {rescore.isError && (
-        <span role="alert" className="mt-1 block text-bad">
+        <span role="alert" className="text-bad">
           {errorMessage(rescore.error)}
         </span>
       )}
-    </Notice>
+    </div>
   );
 }
 
@@ -232,7 +264,6 @@ function RankedBody({
   onToggle: (id: string) => void;
   onOffset: (offset: number) => void;
 }) {
-  const navigate = useNavigate();
   if (page.total === 0 && page.data.length === 0) {
     return (
       <EmptyState
@@ -244,73 +275,30 @@ function RankedBody({
       />
     );
   }
-  const anyStale = page.data.some((c) => c.stale);
   // Client-side, on the loaded page only: the API has no such filters.
-  const shown = page.data.filter(
-    (c) =>
-      (!flaggedOnly || c.scores.some((s) => s.flag_reason !== null)) &&
-      (!overridesOnly || c.scores.some((s) => s.override_score !== null)),
-  );
-  const canCompare = selected.length >= 2 && selected.length <= 4;
-  const last = page.offset + page.data.length;
+  const entries: Entry[] = page.data
+    .map((candidate, index) => ({ candidate, rank: page.offset + index + 1 }))
+    .filter(
+      ({ candidate: c }) =>
+        (!flaggedOnly || c.scores.some((s) => s.flag_reason !== null)) &&
+        (!overridesOnly || c.scores.some((s) => s.override_score !== null)),
+    );
   return (
     <>
-      {anyStale && <StaleBanner roleId={roleId} />}
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 px-4"
-          disabled={!canCompare}
-          onClick={() => {
-            void navigate({ to: "/compare", search: { ids: selected.join(",") } });
-          }}
-        >
-          Compare
-        </Button>
-        <span className="text-sm text-muted-foreground" aria-live="polite">
-          {selected.length} selected. Select 2 to 4 candidates to compare.
-        </span>
-      </div>
       {page.data.length === 0 ? (
         <EmptyState message="This page is past the last candidate. Go back to the previous page." />
-      ) : shown.length === 0 ? (
+      ) : entries.length === 0 ? (
         <EmptyState message="No candidates on this page match the filters." />
       ) : (
-        <RankedTable
-          candidates={shown}
-          offset={page.offset}
+        <ReviewWorkspace
+          roleId={roleId}
+          page={page}
+          entries={entries}
           selected={selected}
           onToggle={onToggle}
+          onOffset={onOffset}
         />
       )}
-      <nav aria-label="Pages" className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 px-4"
-          disabled={page.offset === 0}
-          onClick={() => {
-            onOffset(Math.max(0, page.offset - PAGE_SIZE));
-          }}
-        >
-          Previous page
-        </Button>
-        <span className="text-sm text-muted-foreground">
-          {page.data.length === 0 ? 0 : page.offset + 1} to {last} of {page.total}
-        </span>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 px-4"
-          disabled={last >= page.total}
-          onClick={() => {
-            onOffset(page.offset + PAGE_SIZE);
-          }}
-        >
-          Next page
-        </Button>
-      </nav>
     </>
   );
 }

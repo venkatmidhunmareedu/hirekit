@@ -71,11 +71,17 @@ describe("budget pill", () => {
       "GET /v1/me/candidates": () => json(200, { data: [] }),
     });
     renderApp("/me/candidates");
-    await screen.findByText("interviewer");
+    await screen.findByRole("heading", { name: "My candidates" });
     expect(screen.queryByText(/Budget/)).not.toBeInTheDocument();
     expect(calls.some((c) => c.path.includes("cost-log"))).toBe(false);
   });
 });
+
+/** Open the account menu and choose Sign out. */
+async function signOut() {
+  await userEvent.click(await screen.findByRole("button", { name: /Account menu/ }));
+  await userEvent.click(await screen.findByRole("menuitem", { name: "Sign out" }));
+}
 
 describe("route guard", () => {
   it("redirects to sign-in when /v1/auth/me answers 401", async () => {
@@ -92,9 +98,10 @@ describe("route guard", () => {
       "GET /v1/auth/me": () => json(200, INTERVIEWER),
       "GET /v1/me/candidates": () => json(200, { data: [] }),
     });
-    const router = renderApp("/");
+    const router = renderApp("/roles");
 
     expect(await screen.findByRole("heading", { name: "My candidates" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/me/candidates");
     expect(screen.queryByRole("link", { name: "Roles" })).not.toBeInTheDocument();
     await router.navigate({ to: "/roles/$roleId", params: { roleId: "r1" } });
     await waitFor(() => {
@@ -106,13 +113,24 @@ describe("route guard", () => {
     });
   });
 
+  it("lets an interviewer open the dashboard without a redirect", async () => {
+    stubFetch({
+      "GET /v1/auth/me": () => json(200, INTERVIEWER),
+      "GET /v1/me/candidates": () => json(200, { data: [] }),
+    });
+    const router = renderApp("/");
+
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
+  });
+
   it("shows the shell with the user name when signed in", async () => {
     stubFetch({
       "GET /v1/auth/me": () => json(200, session),
       "GET /v1/roles": () => json(200, { data: [] }),
     });
 
-    renderApp("/");
+    renderApp("/roles");
 
     expect(await screen.findByRole("heading", { name: "Roles" })).toBeInTheDocument();
     expect(screen.getByText("Riya")).toBeInTheDocument();
@@ -135,7 +153,7 @@ describe("route guard", () => {
     });
     const router = renderApp("/");
 
-    await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    await signOut();
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/sign-in");
@@ -151,7 +169,7 @@ describe("route guard", () => {
     });
     const router = renderApp("/");
 
-    await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    await signOut();
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/sign-in");
@@ -166,7 +184,7 @@ describe("route guard", () => {
     });
     const router = renderApp("/");
 
-    await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    await signOut();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not sign out");
     expect(router.state.location.pathname).toBe("/");

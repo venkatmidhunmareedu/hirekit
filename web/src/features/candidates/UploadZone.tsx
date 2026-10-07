@@ -4,7 +4,6 @@ import { useState, type DragEvent } from "react";
 import { Button } from "@/components/ui/button";
 
 import { Notice } from "../../components/Notice";
-import { Section } from "../../components/Section";
 import { errorMessage } from "../../lib/errors";
 
 import { MAX_FILES, type UploadFileResult, candidateLabel } from "./api";
@@ -22,8 +21,11 @@ function resultText(result: UploadFileResult): string {
   return `Not uploaded${result.reason === null ? "" : `: ${result.reason}`}`;
 }
 
-/** Upload zone (Design.md 7.8): picker or drop, then one result row per file. */
-export function UploadZone({ roleId }: { roleId: string }) {
+/**
+ * Upload zone (Design.md 7.8): picker or drop, then one result row per file. Compact is a single
+ * row, used once the role has candidates so the ranked list stays first; its button is not primary.
+ */
+export function UploadZone({ roleId, compact }: { roleId: string; compact: boolean }) {
   const upload = useUpload(roleId);
   const [tooMany, setTooMany] = useState(false);
 
@@ -43,17 +45,34 @@ export function UploadZone({ roleId }: { roleId: string }) {
   const failed = results.filter((r) => r.status !== "accepted").length;
 
   return (
-    <Section id="upload-heading" title="Upload resumes">
+    <section aria-labelledby="upload-heading" className="flex flex-col gap-3">
       <div
-        className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-input bg-card p-5 focus-within:ring-3 focus-within:ring-ring/50"
+        className={
+          compact
+            ? "flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-dashed border-input bg-card px-4 py-2.5 focus-within:ring-3 focus-within:ring-ring/50"
+            : "flex flex-col items-start gap-3 rounded-lg border border-dashed border-input bg-card p-6 focus-within:ring-3 focus-within:ring-ring/50"
+        }
         onDragOver={(e) => {
           e.preventDefault();
         }}
         onDrop={drop}
       >
-        <FileUp aria-hidden="true" className="size-6 text-muted-foreground" />
-        <p>Drop PDF or DOCX files here, or choose them. Up to {MAX_FILES} at a time.</p>
-        <Button asChild className="h-10 px-4">
+        {compact ? (
+          <FileUp aria-hidden="true" className="size-4 text-muted-foreground" />
+        ) : (
+          <FileUp aria-hidden="true" className="size-6 text-muted-foreground" />
+        )}
+        <h2 id="upload-heading" className={compact ? "text-sm font-medium" : undefined}>
+          Upload resumes
+        </h2>
+        <p className={compact ? "text-sm text-muted-foreground" : undefined}>
+          Drop PDF or DOCX files here, or choose them. Up to {MAX_FILES} at a time.
+        </p>
+        <Button
+          asChild
+          variant={compact ? "outline" : "default"}
+          className={compact ? "ml-auto h-10 px-4" : "h-10 px-4"}
+        >
           <label htmlFor="resume-files" className="cursor-pointer">
             Choose files
           </label>
@@ -104,6 +123,6 @@ export function UploadZone({ roleId }: { roleId: string }) {
           </ul>
         </div>
       )}
-    </Section>
+    </section>
   );
 }

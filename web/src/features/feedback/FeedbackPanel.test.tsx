@@ -36,6 +36,7 @@ describe("feedback, recruiter", () => {
     });
     renderApp(`/candidates/${CAND}`);
 
+    await userEvent.click(await screen.findByRole("tab", { name: /^Feedback/ }));
     expect(await screen.findByText("good systems sense", { exact: false })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Approve edit/ }));
 

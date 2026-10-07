@@ -18,7 +18,10 @@ const TONE: Record<Tone, { icon: typeof Check; className: string }> = {
 export function StatusTag({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
   const { icon: ToneIcon, className } = TONE[tone];
   return (
-    <Badge variant="secondary" className={cn("h-6 rounded-sm px-2 text-xs", className)}>
+    <Badge
+      variant="secondary"
+      className={cn("h-6 rounded-full px-2.5 text-xs font-medium", className)}
+    >
       <ToneIcon aria-hidden="true" />
       {children}
     </Badge>

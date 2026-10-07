@@ -13,12 +13,14 @@ export const feedbackQueryOptions = (candidateId: string) =>
   });
 
 /** Submitting reveals the model scores to an interviewer, so the candidate is refetched too. */
-export function useSubmitFeedback(candidateId: string) {
+export function useSubmitFeedback(candidateId: string, onSubmitted: () => void = () => undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (v: { items: FeedbackItem[]; isEdit: boolean }) =>
       submitFeedback(candidateId, v.items, v.isEdit),
     onSuccess: async () => {
+      // Hook-level, so it still fires after the form remounts as read-only.
+      onSubmitted();
       await queryClient.invalidateQueries({ queryKey: feedbackKeys.list(candidateId) });
       await queryClient.invalidateQueries({ queryKey: candidateKeys.detail(candidateId) });
       await queryClient.invalidateQueries({ queryKey: candidateKeys.mine });

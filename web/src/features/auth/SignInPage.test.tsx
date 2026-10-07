@@ -10,6 +10,8 @@ import { INTERVIEWER } from "../../test/fixtures";
 import { json, networkDown, session, stubFetch, unauthenticated } from "../../test/fetch";
 
 afterEach(() => {
+  document.documentElement.removeAttribute("data-theme");
+  localStorage.clear();
   setCsrfToken(null);
 });
 
@@ -36,6 +38,17 @@ async function submit(email: string, password: string) {
 }
 
 describe("sign-in screen", () => {
+  it("lets the visitor choose a theme", async () => {
+    stubFetch({});
+    renderSignIn();
+    const dark = await screen.findByRole("button", { name: "Dark" });
+    await userEvent.click(dark);
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+    expect(dark).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: "System" }));
+    expect(document.documentElement).not.toHaveAttribute("data-theme");
+  });
+
   it("labels both fields and has one primary action", async () => {
     stubFetch({});
 
@@ -44,6 +57,30 @@ describe("sign-in screen", () => {
     expect(await screen.findByLabelText("Email")).toHaveAttribute("type", "email");
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
     expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+  });
+
+  it("shows and hides the password with a labelled toggle", async () => {
+    stubFetch({});
+    renderSignIn();
+    const toggle = await screen.findByRole("button", { name: "Show password" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.click(toggle);
+
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
+    expect(screen.getByRole("button", { name: "Hide password" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Hide password" }));
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
+  });
+
+  it("puts focus in the email field on arrival", async () => {
+    stubFetch({});
+    renderSignIn();
+
+    expect(await screen.findByLabelText("Email")).toHaveFocus();
   });
 
   it("signs in and opens the app shell", async () => {
@@ -56,12 +93,12 @@ describe("sign-in screen", () => {
 
     await submit("riya@example.com", "pw");
 
-    expect(await screen.findByRole("heading", { name: "Roles" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/");
     expect(calls[0]?.body).toBe(JSON.stringify({ email: "riya@example.com", password: "pw" }));
   });
 
-  it("sends an interviewer to My candidates", async () => {
+  it("sends an interviewer to the dashboard", async () => {
     stubFetch({
       "POST /v1/auth/login": () => json(200, INTERVIEWER),
       "GET /v1/auth/me": () => json(200, INTERVIEWER),
@@ -71,8 +108,8 @@ describe("sign-in screen", () => {
 
     await submit("ian@example.com", "pw");
 
-    expect(await screen.findByRole("heading", { name: "My candidates" })).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe("/me/candidates");
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
   });
 
   it("explains a wrong email or password and keeps the form", async () => {

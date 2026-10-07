@@ -1,4 +1,5 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 
 import {
   type Stage,
@@ -42,6 +43,24 @@ export function queueQueryOptions(roleId: string) {
   });
 }
 
+/**
+ * Whether scoring jobs (new resumes or a re-score) are open for the role, and how many. When the last one
+ * finishes, every candidate query is refetched so scores and totals never stay at the last fetch.
+ */
+export function useRoleQueue(roleId: string, enabled = true) {
+  const queryClient = useQueryClient();
+  const queue = useQuery({ ...queueQueryOptions(roleId), enabled: enabled && roleId !== "" });
+  const waiting = queue.data?.waiting ?? 0;
+  const running = queue.data?.running ?? 0;
+  const working = waiting + running > 0;
+  const was = useRef(false);
+  useEffect(() => {
+    if (was.current && !working) void queryClient.invalidateQueries({ queryKey: ["candidates"] });
+    was.current = working;
+  }, [working, queryClient]);
+  return { working, waiting, running };
+}
+
 export function rankedQueryOptions(
   roleId: string,
   stage: Stage | null,
@@ -71,8 +90,12 @@ export function useRescore(roleId: string) {
   });
 }
 
-export const candidateQueryOptions = (id: string) =>
-  queryOptions({ queryKey: candidateKeys.detail(id), queryFn: () => getCandidate(id) });
+export const candidateQueryOptions = (id: string, polling = false) =>
+  queryOptions({
+    queryKey: candidateKeys.detail(id),
+    queryFn: () => getCandidate(id),
+    refetchInterval: polling ? 3000 : false,
+  });
 
 export const anonymizedTextQueryOptions = (id: string) =>
   queryOptions({ queryKey: candidateKeys.text(id), queryFn: () => getAnonymizedText(id) });
@@ -88,7 +111,9 @@ export function useOverride(candidateId: string) {
   return useMutation({
     mutationFn: (v: { criterionId: string; score: number; note: string }) =>
       overrideScore(candidateId, v.criterionId, v.score, v.note),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: candidateKeys.detail(candidateId) }),
+    // The total and the must-have count sit on the ranked list rows, not on the detail, so the
+    // whole candidates tree is refreshed.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["candidates"] }),
   });
 }
 
@@ -97,7 +122,7 @@ export function useChangeStage(candidateId: string) {
   return useMutation({
     mutationFn: (v: { stage: Stage; reason: string | null }) =>
       changeStage(candidateId, v.stage, v.reason),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: candidateKeys.detail(candidateId) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["candidates"] }),
   });
 }
 

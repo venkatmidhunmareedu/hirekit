@@ -10,6 +10,7 @@ import {
 
 import { SignInPage } from "../features/auth/SignInPage";
 import { sessionQueryOptions } from "../features/auth/hooks";
+import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { CandidateDetailPage } from "../features/candidates/CandidateDetailPage";
 import { CandidatesPage } from "../features/candidates/CandidatesPage";
 import { MyCandidatesPage } from "../features/candidates/MyCandidatesPage";
@@ -56,9 +57,16 @@ async function recruiterOnly({ context }: { context: { queryClient: QueryClient 
   if (session.user.role !== "recruiter") throw redirect({ to: "/me/candidates" });
 }
 
+// "/" is the dashboard for every role; the role list lives at /roles.
 const homeRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/",
+  component: DashboardPage,
+});
+
+const rolesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/roles",
   beforeLoad: recruiterOnly,
   component: RolesPage,
 });
@@ -74,6 +82,9 @@ const roleCandidatesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/roles/$roleId/candidates",
   beforeLoad: recruiterOnly,
+  // c is the candidate open in review mode; a missing or empty value means the top-ranked one.
+  validateSearch: (search: Record<string, unknown>): { c?: string } =>
+    typeof search.c === "string" && search.c !== "" ? { c: search.c } : {},
   component: CandidatesPage,
 });
 
@@ -125,6 +136,7 @@ const routeTree = rootRoute.addChildren([
   signInRoute,
   appRoute.addChildren([
     homeRoute,
+    rolesRoute,
     roleSetupRoute,
     roleCandidatesRoute,
     candidateRoute,

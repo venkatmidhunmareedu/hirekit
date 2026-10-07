@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { setCsrfToken } from "../../lib/api";
@@ -40,14 +40,61 @@ describe("my candidates", () => {
       "href",
       "/candidates/c1",
     );
-    expect(screen.getByText("1 to review, 1 submitted")).toBeInTheDocument();
+    expect(screen.getByText("1 of 2 submitted")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Give feedback for C-009" })).toHaveAttribute(
       "href",
       "/candidates/c2",
     );
     expect(screen.getByText("Submitted")).toBeInTheDocument();
-    expect(screen.getByText("Not submitted")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "My candidates" })).toBeInTheDocument();
+    expect(screen.getByText("Not started")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Feedback submitted" })).toHaveAttribute(
+      "aria-valuenow",
+      "1",
+    );
+    // The single primary action is the next unsubmitted candidate.
+    expect(screen.getByRole("link", { name: "Continue with C-009" })).toHaveAttribute(
+      "href",
+      "/candidates/c2",
+    );
+    expect(
+      within(screen.getByRole("navigation", { name: "Main" })).getByRole("link", {
+        name: "My candidates",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  const assigned = (submitted: boolean) => ({
+    "GET /v1/auth/me": () => json(200, INTERVIEWER),
+    "GET /v1/me/candidates": () =>
+      json(200, {
+        data: [1, 2].map((n) => ({
+          candidate_id: `c${n}`,
+          candidate_no: n,
+          role_id: ROLE,
+          role_title: "Backend",
+          has_submitted: submitted,
+        })),
+      }),
+  });
+
+  it("starts with the first candidate when none is submitted", async () => {
+    stubFetch(assigned(false));
+    renderApp("/me/candidates");
+
+    expect(await screen.findByText("0 of 2 submitted")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Start feedback" })).toHaveAttribute(
+      "href",
+      "/candidates/c1",
+    );
+  });
+
+  it("shows no next action when all are submitted", async () => {
+    stubFetch(assigned(true));
+    renderApp("/me/candidates");
+
+    expect(await screen.findByText("2 of 2 submitted")).toBeInTheDocument();
+    expect(screen.getByText("All feedback submitted")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Start feedback|Continue/ })).not.toBeInTheDocument();
   });
 
   it("says so when nothing is assigned", async () => {
