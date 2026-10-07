@@ -1,0 +1,9 @@
+#cloud-config
+# Installs Docker and opens 80 and 443 in the host firewall (the Ubuntu image blocks them).
+# Cloning the repo and filling .env stay manual: see ../README.md.
+package_update: true
+runcmd:
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker ubuntu
+  - iptables -I INPUT 5 -p tcp -m multiport --dports 80,443 -j ACCEPT
+  - netfilter-persistent save
