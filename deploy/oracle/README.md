@@ -24,12 +24,10 @@ terraform apply
   `curl -fsSL https://get.docker.com | sudo sh` and the iptables line from `cloud-init.yaml`.
 
 ## 2. Settings on the VM
-The VM needs only the compose file and a `.env`; no clone, no source code. Run the `scp` from
-`deploy/oracle` on your machine.
+The VM needs only the compose file and a `.env`; no clone, no source code. On your machine:
 ```
-scp docker-compose.yml .env.example ubuntu@<public_ip>:
-# then on the VM:
-cp .env.example .env && chmod 600 .env && nano .env
+cp deploy/oracle/.env.example deploy/oracle/.env && chmod 600 deploy/oracle/.env && nano deploy/oracle/.env
+make vm-copy          # copies both files to ~/hirekit on the VM (VM_IP defaults to the Terraform output)
 ```
 
 ## 3. Build and push the images (on your machine)
@@ -47,7 +45,8 @@ into an image; secrets reach the containers only through `.env` on the VM.
 ## 4. Start (on the VM)
 ```
 # in .env set REGISTRY_NAMESPACE=midhunmareedu (leave IMAGE_TAG empty: it means latest)
-docker compose pull && docker compose up -d     # the migrate service applies the migrations first
+make vm-up            # or on the VM: docker compose pull && docker compose up -d
+# the migrate service applies the migrations first
 docker compose run --rm api python -m app.seed      # first sign-in users; see backend/.env.example for SEED_PASSWORD_*
 ```
 Nothing is built on the VM, so the 1 GB Micro shape is enough.
