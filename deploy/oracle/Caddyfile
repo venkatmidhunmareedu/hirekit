@@ -1,0 +1,16 @@
+# Replace the host with your domain, or <public-ip>.sslip.io for a free name; Caddy gets the
+# certificate by itself. The browser talks to one origin, as with the Vite proxy in web/vite.config.ts.
+hirekit.example.com {
+	encode gzip
+	handle /v1/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle /healthz {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle {
+		root * /opt/hirekit/web/dist
+		try_files {path} /index.html
+		file_server
+	}
+}
