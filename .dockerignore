@@ -1,0 +1,8 @@
+**/node_modules
+**/.venv
+**/__pycache__
+.git
+web/dist
+backend/coverage.xml
+backend/junit.xml
+**/.env

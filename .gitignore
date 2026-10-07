@@ -25,3 +25,9 @@ coverage.xml
 junit.xml
 htmlcov/
 .claude/worktrees/
+
+# Terraform (deploy/oracle/terraform): local state holds resource ids, tfvars holds your values
+.terraform/
+*.tfstate*
+terraform.tfvars
+crash.log

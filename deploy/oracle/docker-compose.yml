@@ -1,0 +1,68 @@
+# On the VM, from this folder: docker compose pull && docker compose up -d. Needs a .env beside it
+# (see .env.example). The images are built and pushed from your machine by build-push.sh.
+# PostgreSQL is external (Supabase): DATABASE_URL comes from .env.
+x-backend-env: &backend-env
+    ENV: production
+    LOG_FORMAT: json
+    DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+    MODEL_MODE: live
+    OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env}
+    # The defaults are the code's own (OpenRouter, Haiku 4.5); set all four together for another provider.
+    MODEL_BASE_URL: ${MODEL_BASE_URL:-https://openrouter.ai/api/v1}
+    MODEL_ID: ${MODEL_ID:-anthropic/claude-haiku-4.5}
+    PRICE_INPUT_USD_PER_MTOK: ${PRICE_INPUT_USD_PER_MTOK:-1}
+    PRICE_OUTPUT_USD_PER_MTOK: ${PRICE_OUTPUT_USD_PER_MTOK:-5}
+
+x-backend: &backend
+  image: ${REGISTRY_NAMESPACE:?set REGISTRY_NAMESPACE in .env}/hirekit-backend:${IMAGE_TAG:-latest}
+  environment: *backend-env
+
+services:
+  # Runs once on every `up`, before the API and Worker start; they do not start if it fails.
+  # Alembic skips migrations that already ran, so repeating it is safe.
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+
+  # Creates the budget row (USD 8 cap, seeded from recordings/spend-ledger.json) the Gateway needs
+  # before any live call; without it every job fails with BudgetNotInitialisedError. It makes no
+  # model call and writes no recording; RECORD_RESPONSES is set here only because the preflight
+  # insists on it. Safe to repeat: the row only ever moves up (GREATEST of database and ledger).
+  budget:
+    <<: *backend
+    restart: "no"
+    command: ["python", "-m", "app.gateway.record", "preflight"]
+    environment:
+      <<: *backend-env
+      RECORD_RESPONSES: "true"
+      # Your word that the model key has a spend limit of at most USD 8 (a prepaid balance counts).
+      KEY_CREDIT_LIMIT_CONFIRMED: ${KEY_CREDIT_LIMIT_CONFIRMED:?set KEY_CREDIT_LIMIT_CONFIRMED=yes in .env once the model key has a limit of at most USD 8}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  api:
+    <<: *backend
+    restart: always
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    <<: *backend
+    restart: always
+    command: ["python", "-m", "app.worker"]
+    stop_grace_period: 90s # finish the job in hand on SIGTERM
+    depends_on:
+      budget: { condition: service_completed_successfully }
+
+  web:
+    image: ${REGISTRY_NAMESPACE}/hirekit-web:${IMAGE_TAG:-latest}
+    restart: always
+    depends_on: [api]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env}
+    ports: ["80:80", "443:443"]
+    volumes: [caddy:/data]
+
+volumes:
+  caddy: {}
