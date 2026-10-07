@@ -1,12 +1,13 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, CircleCheck, Pencil, Sparkles, TextSearch } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { ChevronLeft, CircleCheck, Sparkles, TextSearch } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { SectionNav } from "../../components/SectionNav";
 import { scrollBehavior, useScrollSpy } from "../../lib/scrollSpy";
 
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 import { ErrorNotice } from "../../components/ErrorNotice";
@@ -16,6 +17,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { Section } from "../../components/Section";
 import { sessionQueryOptions } from "../auth/hooks";
 import { FeedbackPanel } from "../feedback/FeedbackPanel";
+import { feedbackQueryOptions } from "../feedback/hooks";
 import { roleCriteriaQueryOptions } from "../kit/hooks";
 
 import {
@@ -27,17 +29,27 @@ import {
   candidateLabel,
 } from "./api";
 import { OverrideDialog } from "./components/OverrideDialog";
-import { EvidenceBlock, ScoreChip } from "./components/ScoreParts";
+import { EvidenceBlock, ScoreMeter, verifiedQuote } from "./components/ScoreParts";
 import { Assignments, AuditHistory, ResumeText, RevealIdentity } from "./components/SidePanels";
 import { StageControl } from "./components/StageControl";
 import { processingLabel } from "./labels";
 import { nextAfter } from "./queue";
-import { candidateQueryOptions, myCandidatesQueryOptions, rankedQueryOptions } from "./hooks";
+import {
+  assignmentsQueryOptions,
+  candidateQueryOptions,
+  myCandidatesQueryOptions,
+  rankedQueryOptions,
+} from "./hooks";
 
 const GROUPS: { kind: Kind; title: string; icon: typeof CircleCheck }[] = [
   { kind: "must_have", title: "Must-have", icon: CircleCheck },
   { kind: "nice_to_have", title: "Nice-to-have", icon: Sparkles },
 ];
+
+/** " (3)" for a tab label once the number is known. */
+const count = (n: number | undefined) => (n === undefined ? "" : ` (${n})`);
+
+const cardId = (id: string) => `criterion-${id}`;
 
 const groupId = (kind: Kind) => `scores-group-${kind}`;
 
@@ -53,18 +65,26 @@ function CriterionRow({
   selected: boolean;
   /** Find this criterion's quote in the resume. */
   onSelect: () => void;
-  onOverride: () => void;
+  /** Open the change-score flow with the clicked segment chosen. */
+  onOverride: (score: number) => void;
 }) {
   return (
     <li
+      id={cardId(cell.criterion_id)}
+      tabIndex={-1}
       className={cn(
-        "flex flex-col items-start gap-2 border-b px-3 py-4 last:border-b-0",
+        "flex scroll-mt-32 flex-col items-start gap-2 border-b px-3 py-4 outline-none last:border-b-0 focus-visible:ring-3 focus-visible:ring-ring/50",
         selected && "bg-muted",
       )}
     >
       <div className="flex w-full flex-wrap items-center justify-between gap-2">
         <h4 className="text-base font-medium">{cell.criterion_name}</h4>
-        <ScoreChip model={cell.model_score} override={cell.override_score} />
+        <ScoreMeter
+          model={cell.model_score}
+          override={cell.override_score}
+          name={cell.criterion_name}
+          onPick={recruiter ? onOverride : undefined}
+        />
       </div>
       {(cell.source === "recruiter_override" || cell.source === "failed" || cell.stale) && (
         <p className="text-sm text-muted-foreground">
@@ -88,16 +108,6 @@ function CriterionRow({
             <TextSearch aria-hidden="true" />
             Show in resume
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10 px-3"
-            aria-label={`Change score for ${cell.criterion_name}`}
-            onClick={onOverride}
-          >
-            <Pencil aria-hidden="true" />
-            Change score
-          </Button>
         </div>
       )}
     </li>
@@ -115,7 +125,7 @@ function ScoresSection({
   recruiter: boolean;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onOverride: (cell: ScoreCell) => void;
+  onOverride: (cell: ScoreCell, score: number) => void;
 }) {
   const groups = GROUPS.map((g) => ({
     ...g,
@@ -176,8 +186,8 @@ function ScoresSection({
                     onSelect={() => {
                       onSelect(cell.criterion_id);
                     }}
-                    onOverride={() => {
-                      onOverride(cell);
+                    onOverride={(score) => {
+                      onOverride(cell, score);
                     }}
                   />
                 ))}
@@ -192,7 +202,7 @@ function ScoresSection({
 
 /**
  * The recruiter's review of one candidate (Design.md 8.4): total, hiring stage, evidence per
- * criterion, resume, feedback, interviewers and history. It renders in the review pane and on
+ * criterion and resume, with interviewers, feedback and history in tabs beside the resume. It renders in the review pane and on
  * the candidate page; `pane` only changes the heading level and the column break.
  */
 export function CandidateReview({
@@ -208,8 +218,25 @@ export function CandidateReview({
 }) {
   // `n` counts requests, so asking for the same quote again scrolls to it again.
   const [located, setLocated] = useState<{ id: string; n: number } | null>(null);
-  const [overriding, setOverriding] = useState<ScoreCell | null>(null);
+  const [overriding, setOverriding] = useState<{ cell: ScoreCell; score: number } | null>(null);
+  const [tab, setTab] = useState("scoring");
+  // A click on a highlight in the resume asks for that criterion's card; `n` repeats the request.
+  const [cardRequest, setCardRequest] = useState<{ id: string; n: number } | null>(null);
   const selected = c.scores.find((s) => s.criterion_id === located?.id) ?? null;
+  // The same queries the tab panels use, so the counts in the tab labels cost no extra request.
+  const assigned = useQuery(assignmentsQueryOptions(c.id));
+  const feedback = useQuery(feedbackQueryOptions(c.id));
+  const marks = c.scores.flatMap((s) => {
+    const quote = verifiedQuote(s);
+    return quote ? [{ id: s.criterion_id, quote }] : [];
+  });
+  // Runs after the Scoring tab has mounted, so the card exists when the tab was another one.
+  useEffect(() => {
+    if (!cardRequest) return;
+    const card = document.getElementById(cardId(cardRequest.id));
+    card?.focus({ preventScroll: true });
+    card?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
+  }, [cardRequest]);
   const from = pane ? "xl" : "lg";
   return (
     <div className="flex flex-col gap-6">
@@ -264,34 +291,81 @@ export function CandidateReview({
       )}
       <div className={cn("grid gap-x-8 gap-y-8", pane ? "xl:grid-cols-5" : "lg:grid-cols-5")}>
         <div className={cn("min-w-0", pane ? "xl:col-span-3" : "lg:col-span-3")}>
-          <ScoresSection
-            c={c}
-            recruiter
-            selectedId={located?.id ?? null}
-            onSelect={(id) => {
-              setLocated((now) => ({ id, n: (now?.n ?? 0) + 1 }));
-            }}
-            onOverride={setOverriding}
-          />
+          <Tabs value={tab} onValueChange={setTab} className="gap-3">
+            <TabsList
+              variant="line"
+              className="h-auto w-full flex-wrap justify-start gap-0 border-b p-0"
+            >
+              <TabsTrigger
+                value="scoring"
+                className="h-9 flex-none px-2.5 after:bottom-[-1px] after:h-[3px] after:bg-primary data-[state=active]:font-semibold data-[state=active]:text-primary"
+              >
+                Scoring
+              </TabsTrigger>
+              <TabsTrigger
+                value="interviewers"
+                className="h-9 flex-none px-2.5 after:bottom-[-1px] after:h-[3px] after:bg-primary data-[state=active]:font-semibold data-[state=active]:text-primary"
+              >
+                Interviewers{count(assigned.data?.length)}
+              </TabsTrigger>
+              <TabsTrigger
+                value="feedback"
+                className="h-9 flex-none px-2.5 after:bottom-[-1px] after:h-[3px] after:bg-primary data-[state=active]:font-semibold data-[state=active]:text-primary"
+              >
+                Feedback
+                {count(feedback.data && new Set(feedback.data.map((r) => r.interviewer_id)).size)}
+              </TabsTrigger>
+              <TabsTrigger
+                value="history"
+                className="h-9 flex-none px-2.5 after:bottom-[-1px] after:h-[3px] after:bg-primary data-[state=active]:font-semibold data-[state=active]:text-primary"
+              >
+                History{count(c.audit.length)}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="scoring">
+              <ScoresSection
+                c={c}
+                recruiter
+                selectedId={located?.id ?? null}
+                onSelect={(id) => {
+                  setLocated((now) => ({ id, n: (now?.n ?? 0) + 1 }));
+                }}
+                onOverride={(cell, score) => {
+                  setOverriding({ cell, score });
+                }}
+              />
+            </TabsContent>
+            <TabsContent value="interviewers">
+              <Assignments candidateId={c.id} />
+            </TabsContent>
+            <TabsContent value="feedback">
+              <FeedbackPanel candidateId={c.id} roleId={c.role_id} viewer="recruiter" />
+            </TabsContent>
+            <TabsContent value="history">
+              <AuditHistory events={c.audit} />
+            </TabsContent>
+          </Tabs>
         </div>
         <div className={cn("min-w-0", pane ? "xl:col-span-2" : "lg:col-span-2")}>
           <ResumeText
             candidateId={c.id}
-            quote={selected?.quote ?? null}
+            marks={marks}
+            activeId={selected?.criterion_id ?? null}
             locate={located?.n ?? 0}
+            onMarkClick={(id) => {
+              setTab("scoring");
+              setLocated((now) => ({ id, n: now?.n ?? 0 }));
+              setCardRequest((now) => ({ id, n: (now?.n ?? 0) + 1 }));
+            }}
             stickyFrom={from}
           />
         </div>
       </div>
-      <FeedbackPanel key={c.id} candidateId={c.id} roleId={c.role_id} viewer="recruiter" />
-      <div className={cn("grid gap-x-8 gap-y-8", pane ? "xl:grid-cols-2" : "lg:grid-cols-2")}>
-        <Assignments key={c.id} candidateId={c.id} />
-        <AuditHistory events={c.audit} />
-      </div>
       {overriding && (
         <OverrideDialog
           candidateId={c.id}
-          cell={overriding}
+          cell={overriding.cell}
+          initialScore={overriding.score}
           onClose={() => {
             setOverriding(null);
           }}

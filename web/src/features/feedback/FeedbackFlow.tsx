@@ -3,6 +3,7 @@ import {
   Check,
   ChevronDown,
   Circle,
+  CircleDashed,
   CircleCheck,
   CircleDot,
   ListChecks,
@@ -68,8 +69,21 @@ function Stepper({
           const review = i === criteria.length;
           const current = i === step;
           const done = !review && isComplete(draft, criteria[i]?.id ?? "");
-          const Icon = review ? ListChecks : current ? CircleDot : done ? CircleCheck : Circle;
-          const state = current ? "current" : done ? "done" : review ? "" : "not done";
+          const started =
+            !review &&
+            !done &&
+            (draft.scores[criteria[i]?.id ?? ""] !== undefined ||
+              (draft.comments[criteria[i]?.id ?? ""] ?? "").trim() !== "");
+          const Icon = review ? ListChecks : current ? CircleDot : started ? CircleDashed : Circle;
+          const state = current
+            ? "current"
+            : done
+              ? "done"
+              : started
+                ? "needs score and comment"
+                : review
+                  ? ""
+                  : "not done";
           return (
             <li key={name} className="min-w-0 flex-1">
               <button
@@ -87,13 +101,25 @@ function Stepper({
                     current ? "bg-primary" : done ? "bg-primary/50" : "bg-input/60",
                   )}
                 />
-                <Icon
-                  aria-hidden="true"
-                  className={cn(
-                    "mx-auto size-4",
-                    current || done ? "text-primary" : "text-muted-foreground",
-                  )}
-                />
+                {done ? (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "mx-auto flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground",
+                      current && "ring-2 ring-primary/30 ring-offset-1",
+                    )}
+                  >
+                    <Check className="size-3" strokeWidth={3} />
+                  </span>
+                ) : (
+                  <Icon
+                    aria-hidden="true"
+                    className={cn(
+                      "mx-auto size-4",
+                      current || started ? "text-primary" : "text-muted-foreground",
+                    )}
+                  />
+                )}
               </button>
             </li>
           );
@@ -412,6 +438,12 @@ export function FeedbackFlow({
                   <Label htmlFor={`comment-${criterion.id}`} className="text-base font-medium">
                     Comment on {criterion.name}
                   </Label>
+                  {draft.scores[criterion.id] !== undefined &&
+                    (draft.comments[criterion.id] ?? "").trim() === "" && (
+                      <p className="text-sm text-muted-foreground">
+                        Add a comment to mark this criterion complete.
+                      </p>
+                    )}
                   <Textarea
                     id={`comment-${criterion.id}`}
                     className="min-h-24"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { splitAtQuote } from "../features/candidates/components/SidePanels";
+import { highlightsFor, splitAtQuote } from "../features/candidates/components/SidePanels";
 
 import { ApiError } from "./api";
 import { errorMessage } from "./errors";
@@ -53,5 +53,23 @@ describe("splitAtQuote", () => {
     expect(splitAtQuote("a led the team", "led a team")).toBeNull();
     expect(splitAtQuote("text", null)).toBeNull();
     expect(splitAtQuote("a (b) c", "(b)")).toEqual(["a ", "(b)", " c"]);
+  });
+});
+
+describe("highlightsFor", () => {
+  it("finds every quote, merges equal spans and drops partial overlaps", () => {
+    const text = "alpha beta gamma delta";
+    expect(
+      highlightsFor(text, [
+        { id: "a", quote: "beta  gamma" },
+        { id: "b", quote: "beta gamma" },
+        { id: "c", quote: "gamma delta" },
+        { id: "d", quote: "missing" },
+        { id: "e", quote: "alpha" },
+      ]),
+    ).toEqual([
+      { start: 0, end: 5, ids: ["e"] },
+      { start: 6, end: 16, ids: ["a", "b"] },
+    ]);
   });
 });

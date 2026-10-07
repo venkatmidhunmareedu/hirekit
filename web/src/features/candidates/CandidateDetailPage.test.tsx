@@ -56,6 +56,7 @@ describe("candidate detail, recruiter", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Must-have" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Nice-to-have" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: /^History/ }));
     expect(screen.getByText("Hiring stage New to Screened")).toBeInTheDocument();
   });
 
@@ -67,8 +68,51 @@ describe("candidate detail, recruiter", () => {
       await screen.findByRole("button", { name: "Show Backend experience in resume" }),
     );
 
-    expect((await screen.findByText(QUOTE, { selector: "mark" })).tagName).toBe("MARK");
+    expect(
+      (await screen.findByText(QUOTE, { selector: "mark [role='button']" })).closest("mark"),
+    ).not.toBeNull();
     expect(screen.queryByText(/Jane/)).not.toBeInTheDocument();
+  });
+
+  it("highlights every verified quote at once and links a highlight to its card", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    stubFetch(recruiterRoutes());
+    renderApp(`/candidates/${CAND}`);
+
+    const mark = await screen.findByRole("button", { name: /Show scoring card for this quote/ });
+    expect(mark).toHaveTextContent(QUOTE);
+    expect(screen.getAllByRole("button", { name: /Show scoring card/ })).toHaveLength(1);
+    await userEvent.click(mark);
+
+    const card = document.getElementById(`criterion-${CRIT_A}`);
+    await waitFor(() => {
+      expect(card).toHaveFocus();
+    });
+    expect(scrollIntoView).toHaveBeenCalled();
+    mark.focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => {
+      expect(card).toHaveFocus();
+    });
+  });
+
+  it("shows the score as a meter, arrow keys move between segments, and clicking opens the dialog", async () => {
+    stubFetch(recruiterRoutes());
+    renderApp(`/candidates/${CAND}`);
+
+    const group = await screen.findByRole("radiogroup", { name: /Score 3 of 4/ });
+    const three = within(group).getByRole("radio", { name: "Set score to 3" });
+    expect(three).toBeChecked();
+    expect(screen.queryByRole("button", { name: /Change score for/ })).not.toBeInTheDocument();
+    three.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(within(group).getByRole("radio", { name: "Set score to 4" })).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(within(group).getByRole("radio", { name: "Set score to 1" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("1")).toBeChecked();
   });
 
   it("scrolls the resume region to the quote and announces it", async () => {
@@ -81,7 +125,7 @@ describe("candidate detail, recruiter", () => {
       await screen.findByRole("button", { name: "Show Backend experience in resume" }),
     );
 
-    await screen.findByText(QUOTE, { selector: "mark" });
+    await screen.findByText(QUOTE, { selector: "mark [role='button']" });
     expect(scrollTo).toHaveBeenCalledTimes(1);
     expect(
       within(screen.getByRole("region", { name: "Anonymized resume" })).getByText(QUOTE),
@@ -145,16 +189,17 @@ describe("candidate detail, recruiter", () => {
     );
     renderApp(`/candidates/${CAND}`);
 
-    await userEvent.click(await screen.findByRole("button", { name: /Change score for Backend/ }));
+    const group = await screen.findByRole("radiogroup", { name: /change score for Backend/ });
+    await userEvent.click(within(group).getByRole("radio", { name: "Set score to 4" }));
     const dialog = await screen.findByRole("dialog");
     const save = within(dialog).getByRole("button", { name: "Save score" });
-    await userEvent.click(within(dialog).getByLabelText("4"));
+    expect(within(dialog).getByLabelText("4")).toBeChecked();
     await userEvent.type(within(dialog).getByLabelText(/Note/), "too short");
     expect(save).toBeDisabled();
     await userEvent.type(within(dialog).getByLabelText(/Note/), " now long enough");
     await userEvent.click(save);
 
-    await screen.findByText("4 / 4");
+    await screen.findByRole("radiogroup", { name: /Score 4 of 4/ });
     const put = calls.find((c) => c.method === "PUT");
     expect(put?.headers.get("X-CSRF-Token")).toBe("csrf-abc");
     expect(JSON.parse(put?.body ?? "{}")).toEqual({
@@ -172,7 +217,8 @@ describe("candidate detail, recruiter", () => {
     );
     renderApp(`/candidates/${CAND}`);
 
-    await userEvent.click(await screen.findByRole("button", { name: /Change score for Backend/ }));
+    const group = await screen.findByRole("radiogroup", { name: /change score for Backend/ });
+    await userEvent.click(within(group).getByRole("radio", { name: "Set score to 2" }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.type(within(dialog).getByLabelText(/Note/), "a long enough note");
     await userEvent.click(within(dialog).getByRole("button", { name: "Save score" }));
@@ -264,22 +310,23 @@ describe("candidate detail, recruiter", () => {
     );
     renderApp(`/candidates/${CAND}`);
 
+    await userEvent.click(await screen.findByRole("tab", { name: /^Interviewers/ }));
     expect(
-      await screen.findByText(
-        "No interviewer assigned. They will see this candidate under My candidates.",
-      ),
+      await screen.findByText("No interviewers assigned. Pick someone to ask for feedback."),
     ).toBeInTheDocument();
-    const assignButton = screen.getByRole("button", { name: "Assign interviewer" });
-    expect(assignButton).toBeDisabled();
-    await userEvent.click(screen.getByLabelText("Interviewer"));
-    await userEvent.click(await screen.findByRole("option", { name: "Ian" }));
-    await userEvent.click(assignButton);
+    await userEvent.click(screen.getByRole("button", { name: "Add interviewer" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Search interviewers" }), "zz");
+    expect(screen.getByText("No interviewer matches that name.")).toBeInTheDocument();
+    await userEvent.clear(screen.getByRole("textbox", { name: "Search interviewers" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Search interviewers" }), "ia");
+    await userEvent.click(screen.getByRole("button", { name: "Assign Ian" }));
+    expect(await screen.findByText("Ian assigned.")).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Interviewers (1)" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
     await userEvent.click(await screen.findByRole("button", { name: "Remove Ian" }));
 
     expect(
-      await screen.findByText(
-        "No interviewer assigned. They will see this candidate under My candidates.",
-      ),
+      await screen.findByText("No interviewers assigned. Pick someone to ask for feedback."),
     ).toBeInTheDocument();
     expect(JSON.parse(calls.find((c) => c.method === "POST")?.body ?? "{}")).toEqual({
       user_id: ian.id,
@@ -304,18 +351,20 @@ describe("candidate detail, recruiter", () => {
     );
     renderApp(`/candidates/${CAND}`);
 
+    await userEvent.click(await screen.findByRole("tab", { name: /^Interviewers/ }));
     expect(await screen.findByRole("button", { name: "Remove Ian" })).toBeInTheDocument();
-    await userEvent.click(screen.getByLabelText("Interviewer"));
-    expect(await screen.findByRole("option", { name: "Ivy" })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "Ian" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Add interviewer" }));
+    expect(await screen.findByRole("button", { name: "Assign Ivy" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Assign Ian" })).not.toBeInTheDocument();
   });
 
   it("says so when no interviewer accounts exist yet", async () => {
     stubFetch(recruiterRoutes());
     renderApp(`/candidates/${CAND}`);
 
+    await userEvent.click(await screen.findByRole("tab", { name: /^Interviewers/ }));
     expect(await screen.findByText("No interviewer accounts exist yet.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Assign interviewer" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add interviewer" })).not.toBeInTheDocument();
   });
 
   it("links back to the ranked list and on to the next ranked candidate", async () => {
@@ -432,6 +481,7 @@ describe("candidate detail, interviewer", () => {
       "/me/candidates",
     );
     expect(screen.queryByText(/Anonymized resume text/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: /change score/ })).not.toBeInTheDocument();
   });
 
   it("lists the questions once and opens the strong and weak answers on demand", async () => {

@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
+import { cn } from "cn";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorNotice } from "../../components/ErrorNotice";
 import { PageHeader } from "../../components/PageHeader";
@@ -44,21 +45,39 @@ function Tile({
   value,
   label,
   hint,
+  quiet = false,
 }: {
   icon: LucideIcon;
   value: ReactNode;
   label: string;
   hint?: string;
+  quiet?: boolean;
 }) {
   return (
     <motion.div
       variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="flex flex-col gap-1 rounded-lg border bg-card p-4"
+      className="flex flex-col gap-3 rounded-lg border bg-card p-4"
     >
-      <Icon aria-hidden="true" className="size-4 text-muted-foreground" />
-      <p className="font-display text-3xl leading-none font-medium tabular-nums">{value}</p>
-      <p className="text-sm font-medium">{label}</p>
+      <div className="flex items-center gap-2.5">
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-md",
+            quiet ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary",
+          )}
+        >
+          <Icon aria-hidden="true" className="size-4" />
+        </span>
+        <p className="text-sm leading-tight font-medium">{label}</p>
+      </div>
+      <p
+        className={cn(
+          "font-display text-4xl leading-none font-medium tabular-nums",
+          quiet && "text-muted-foreground",
+        )}
+      >
+        {value}
+      </p>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </motion.div>
   );
@@ -241,24 +260,28 @@ export function RecruiterDashboard() {
             <Tile
               icon={Eye}
               value={total.needLook}
+              quiet={total.needLook === 0}
               label="Need a look"
               hint="A score was flagged"
             />
             <Tile
               icon={Pencil}
               value={total.changed}
+              quiet={total.changed === 0}
               label="Changed by recruiter"
               hint="At least one score"
             />
             <Tile
               icon={FileClock}
               value={total.outOfDate}
+              quiet={total.outOfDate === 0}
               label="Out of date"
               hint="Criteria changed since"
             />
             <Tile
               icon={Hourglass}
               value={processing}
+              quiet={processing === 0}
               label="Processing now"
               hint="Resumes waiting or running"
             />

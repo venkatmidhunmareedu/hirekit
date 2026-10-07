@@ -35,9 +35,9 @@ export function GrowBar({
       className={cn("h-2.5 w-full overflow-hidden rounded-full bg-muted", className)}
     >
       <motion.div
-        className="h-full rounded-full bg-primary"
-        initial={{ width: 0 }}
-        animate={{ width: `${percent}%` }}
+        className="h-full w-full origin-left rounded-full bg-primary"
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: percent / 100 }}
         transition={transition}
       />
     </div>

@@ -142,9 +142,9 @@ export function AppShell() {
             <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
               <motion.div
                 key={pathname}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.12, ease: "easeOut" }}
               >
                 <Outlet />
               </motion.div>

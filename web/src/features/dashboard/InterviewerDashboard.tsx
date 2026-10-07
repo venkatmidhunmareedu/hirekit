@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { cn } from "cn";
 import { CircleCheck, ClipboardList, Hourglass, Send, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -15,12 +16,38 @@ import { queueProgress } from "../candidates/queue";
 
 import { GrowBar } from "./Charts";
 
-function Count({ icon: Icon, value, label }: { icon: LucideIcon; value: number; label: string }) {
+function Count({
+  icon: Icon,
+  value,
+  label,
+  quiet = false,
+}: {
+  icon: LucideIcon;
+  value: number;
+  label: string;
+  quiet?: boolean;
+}) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border bg-background p-4">
-      <Icon aria-hidden="true" className="size-4 text-muted-foreground" />
-      <p className="font-display text-3xl leading-none font-medium tabular-nums">{value}</p>
-      <p className="text-sm font-medium">{label}</p>
+    <div className="flex flex-col gap-3 rounded-lg border bg-background p-4">
+      <div className="flex items-center gap-2.5">
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-md",
+            quiet ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary",
+          )}
+        >
+          <Icon aria-hidden="true" className="size-4" />
+        </span>
+        <p className="text-sm leading-tight font-medium">{label}</p>
+      </div>
+      <p
+        className={cn(
+          "font-display text-4xl leading-none font-medium tabular-nums",
+          quiet && "text-muted-foreground",
+        )}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -64,8 +91,8 @@ export function InterviewerDashboard() {
           >
             <div className="grid grid-cols-3 gap-3">
               <Count icon={ClipboardList} value={total} label="Assigned" />
-              <Count icon={Send} value={submitted} label="Submitted" />
-              <Count icon={Hourglass} value={remaining} label="Remaining" />
+              <Count icon={Send} value={submitted} label="Submitted" quiet={submitted === 0} />
+              <Count icon={Hourglass} value={remaining} label="Remaining" quiet={remaining === 0} />
             </div>
             <GrowBar percent={Math.round((submitted / total) * 100)} label="Feedback submitted" />
             <div className="flex flex-wrap items-center justify-between gap-3">

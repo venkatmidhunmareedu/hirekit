@@ -1,5 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
-import { CircleAlert, Eye, EyeOff, Lock, Mail, ShieldCheck, TextQuote, Users } from "lucide-react";
+import {
+  Check,
+  CircleAlert,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  ShieldCheck,
+  TextQuote,
+  Users,
+} from "lucide-react";
 import { MotionConfig, motion } from "motion/react";
 import { type SubmitEvent, useEffect, useRef, useState } from "react";
 
@@ -7,6 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 import { Logo } from "../../components/Logo";
 
@@ -24,22 +35,62 @@ const PRINCIPLES = [
   },
 ];
 
+/** A made-up example of the product's promise: a score beside the resume line that backs it. */
+function Specimen() {
+  const score = 3;
+  return (
+    <figure
+      aria-label="Example of a score and its evidence"
+      className="flex max-w-lg flex-col gap-4 rounded-xl bg-background p-5 text-foreground shadow-xl shadow-black/20"
+    >
+      <div className="flex items-center justify-between gap-4">
+        <p className="font-medium">Python proficiency</p>
+        <div role="img" aria-label={`Score ${String(score)} of 4`} className="flex gap-1">
+          {[1, 2, 3, 4].map((n) => (
+            <span
+              key={n}
+              className={cn("h-2 w-7 rounded-full", n <= score ? "bg-primary" : "bg-input")}
+            />
+          ))}
+        </div>
+      </div>
+      <p className="font-serif text-[15px] leading-7 text-muted-foreground">
+        [NAME] | Backend engineer. Five years across two teams.{" "}
+        <motion.mark
+          initial={{ backgroundSize: "0% 100%" }}
+          animate={{ backgroundSize: "100% 100%" }}
+          transition={{ duration: 0.9, delay: 0.5, ease: "easeInOut" }}
+          className="rounded-sm bg-transparent bg-linear-to-r from-mark to-mark [box-decoration-break:clone] bg-no-repeat px-0.5 text-mark-foreground"
+        >
+          Ran a Python pipeline in production for three years and handled its failures on call.
+        </motion.mark>{" "}
+        Earlier at [COMPANY], built internal tooling.
+      </p>
+      <figcaption className="flex items-center gap-1.5 text-sm text-ok">
+        <Check aria-hidden="true" className="size-4" />
+        Quote found in the resume. Example only.
+      </figcaption>
+    </figure>
+  );
+}
+
 /** The deep brand panel: wordmark, the promise and the three principles. Compact below lg. */
 function BrandPanel() {
   return (
-    <aside className="flex flex-col gap-10 bg-brand px-6 py-6 text-brand-foreground lg:w-1/2 lg:justify-between lg:px-14 lg:py-14">
+    <aside className="flex flex-col gap-10 bg-brand px-6 py-6 text-brand-foreground lg:w-1/2 lg:justify-between lg:gap-12 lg:px-14 lg:py-12">
       <Logo inverse />
       <p className="text-sm text-balance text-brand-foreground/85 lg:hidden">
         Scores you can defend, with the evidence beside them.
       </p>
-      <div className="hidden max-w-lg flex-col gap-10 lg:flex">
-        <p className="font-display text-5xl leading-tight font-medium tracking-tight text-balance">
+      <div className="hidden max-w-lg flex-col gap-8 lg:flex">
+        <p className="font-display text-4xl leading-tight font-medium tracking-tight text-balance xl:text-5xl">
           Scores you can defend, with the evidence beside them.
         </p>
-        <ul className="flex flex-col gap-5">
+        <Specimen />
+        <ul className="flex flex-col gap-4 border-t border-brand-foreground/15 pt-8">
           {PRINCIPLES.map(({ icon: Icon, text }) => (
-            <li key={text} className="flex items-start gap-3 text-base text-brand-foreground/85">
-              <Icon aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+            <li key={text} className="flex items-start gap-3 text-sm text-brand-foreground/80">
+              <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
               {text}
             </li>
           ))}
@@ -69,8 +120,7 @@ export function SignInPage() {
     signIn.mutate(
       { email: email.trim(), password },
       {
-        onSuccess: (session) =>
-          void navigate({ to: session.user.role === "interviewer" ? "/me/candidates" : "/" }),
+        onSuccess: () => void navigate({ to: "/" }),
       },
     );
   }
@@ -84,7 +134,7 @@ export function SignInPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="flex w-full max-w-sm flex-col gap-8"
+            className="flex w-full max-w-md flex-col gap-8 rounded-2xl border bg-card p-8 shadow-sm sm:p-10"
           >
             <div className="flex flex-col gap-2">
               <h1 className="font-display text-4xl font-medium">Sign in</h1>

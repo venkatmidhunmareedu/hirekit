@@ -85,7 +85,7 @@ describe("sign-in screen", () => {
     expect(calls[0]?.body).toBe(JSON.stringify({ email: "riya@example.com", password: "pw" }));
   });
 
-  it("sends an interviewer to My candidates", async () => {
+  it("sends an interviewer to the dashboard", async () => {
     stubFetch({
       "POST /v1/auth/login": () => json(200, INTERVIEWER),
       "GET /v1/auth/me": () => json(200, INTERVIEWER),
@@ -95,8 +95,8 @@ describe("sign-in screen", () => {
 
     await submit("ian@example.com", "pw");
 
-    expect(await screen.findByRole("heading", { name: "My candidates" })).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe("/me/candidates");
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
   });
 
   it("explains a wrong email or password and keeps the form", async () => {

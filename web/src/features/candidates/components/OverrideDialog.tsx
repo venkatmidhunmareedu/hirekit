@@ -25,14 +25,19 @@ const MIN_NOTE = 10;
 export function OverrideDialog({
   candidateId,
   cell,
+  initialScore,
   onClose,
 }: {
   candidateId: string;
   cell: ScoreCell;
+  /** The segment the recruiter clicked; the note is still required before anything is saved. */
+  initialScore?: number;
   onClose: () => void;
 }) {
   const override = useOverride(candidateId);
-  const [score, setScore] = useState<number | null>(cell.override_score ?? cell.model_score);
+  const [score, setScore] = useState<number | null>(
+    initialScore ?? cell.override_score ?? cell.model_score,
+  );
   const [note, setNote] = useState("");
   const valid = score !== null && note.trim().length >= MIN_NOTE;
 
