@@ -1,8 +1,9 @@
-# Run from this folder: docker compose up -d --build. Needs a .env beside it (see .env.example).
+# On the VM, from this folder: docker compose pull && docker compose up -d. Needs a .env beside it
+# (see .env.example). The images are built and pushed from your machine by build-push.sh.
 # PostgreSQL is external (Supabase): DATABASE_URL comes from .env.
 services:
   api: &backend
-    build: { context: ../.., dockerfile: deploy/oracle/Dockerfile.backend }
+    image: ghcr.io/${REGISTRY_NAMESPACE:?set REGISTRY_NAMESPACE in .env}/hirekit-backend:${IMAGE_TAG:-latest}
     restart: always
     environment: &backend-env
       ENV: production
@@ -18,7 +19,7 @@ services:
     stop_grace_period: 90s # finish the job in hand on SIGTERM
 
   web:
-    build: { context: ../.., dockerfile: deploy/oracle/Dockerfile.web }
+    image: ghcr.io/${REGISTRY_NAMESPACE}/hirekit-web:${IMAGE_TAG:-latest}
     restart: always
     depends_on: [api]
     environment:

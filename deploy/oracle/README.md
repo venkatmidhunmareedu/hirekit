@@ -14,8 +14,8 @@ terraform apply
 ```
 `apply` creates the network and a free Ampere A1 VM (2 OCPU, 12 GB, Ubuntu 24.04).
 - "Out of host capacity" on the default Ampere shape: add `shape = "VM.Standard.E2.1.Micro"` to
-  `terraform.tfvars` for the free 1 GB AMD VM, which has no capacity problem. It is slow: the first
-  `docker compose up --build` takes 15 to 30 minutes and leans on the 2 GB swap that cloud-init adds.
+  `terraform.tfvars` for the free 1 GB AMD VM, which has no capacity problem. Images are built on
+  your machine, so the VM only pulls and runs them.
   Or retry later (Hyderabad has one availability domain, so `availability_domain_index` does not help).
 - The output `public_ip` is the address. Point a domain's A record at it, or use `<ip>.sslip.io`.
 - Cloud-init installs Docker and opens ports 80 and 443 on the VM; give it a minute after apply.
@@ -23,27 +23,40 @@ terraform apply
 - By hand in the console instead: same ports (22 from your IP only, 80 and 443 public), then
   `curl -fsSL https://get.docker.com | sudo sh` and the iptables line from `cloud-init.yaml`.
 
-## 2. Code and settings
+## 2. Settings on the VM
+The VM needs only the compose file and a `.env`; no clone, no source code. Run the `scp` from
+`deploy/oracle` on your machine.
 ```
-git clone <repo url> hirekit && cd hirekit/deploy/oracle
+scp docker-compose.yml .env.example ubuntu@<public_ip>:
+# then on the VM:
 cp .env.example .env && chmod 600 .env && nano .env
 ```
 
-## 3. Start
+## 3. Build and push the images (on your machine)
 ```
-docker compose up -d --build
+echo "$GHCR_TOKEN" | docker login ghcr.io -u <github user> --password-stdin   # token: write:packages
+REGISTRY_NAMESPACE=<github user, lower case> ./deploy/oracle/build-push.sh
+```
+It prints the tag. The packages are private by default; keep them that way.
+
+## 4. Start (on the VM)
+```
+echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u <github user> --password-stdin   # token: read:packages only
+# in .env set REGISTRY_NAMESPACE and IMAGE_TAG (the tag from the build)
+docker compose pull && docker compose up -d
 docker compose run --rm api alembic upgrade head
 docker compose run --rm api python -m app.seed      # first sign-in users; see backend/.env.example for SEED_PASSWORD_*
 ```
-The first build takes several minutes on the VM.
+Nothing is built on the VM, so the 1 GB Micro shape is enough.
 
-## 4. Check
+## 5. Check
 - `curl https://<SITE_ADDRESS>/healthz` returns `{"status":"ok",...}`.
 - `docker compose logs -f worker` shows `worker_started`.
 - Sign in, upload a resume, watch it leave "queued".
 
 ## Update
-`git pull && docker compose up -d --build && docker compose run --rm api alembic upgrade head`
+On your machine run `build-push.sh`; on the VM set the new `IMAGE_TAG`, then
+`docker compose pull && docker compose up -d && docker compose run --rm api alembic upgrade head`.
 
 ## Database (Supabase)
 - Use the **session pooler** connection string (Project Settings, Database, Connection string,

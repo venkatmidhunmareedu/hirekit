@@ -1,0 +1,6 @@
+# Added by build-push.sh on your machine only: tells compose how to build the two images.
+services:
+  api:
+    build: { context: ../.., dockerfile: deploy/oracle/Dockerfile.backend, platforms: [linux/amd64] }
+  web:
+    build: { context: ../.., dockerfile: deploy/oracle/Dockerfile.web, platforms: [linux/amd64] }
