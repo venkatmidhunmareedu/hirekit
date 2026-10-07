@@ -26,3 +26,14 @@ globalThis.ResizeObserver = ResizeObserverStub;
 afterEach(() => {
   cleanup();
 });
+
+// jsdom has no matchMedia: every query is false (the narrow layout) unless a test stubs it.
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }),
+});

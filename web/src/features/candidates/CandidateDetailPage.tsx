@@ -1,10 +1,9 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, Pencil, TextSearch } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import { ErrorNotice } from "../../components/ErrorNotice";
@@ -16,9 +15,15 @@ import { sessionQueryOptions } from "../auth/hooks";
 import { FeedbackPanel } from "../feedback/FeedbackPanel";
 import { KitQuestions } from "../kit/KitPage";
 
-import { type Kind, type ScoreCell, candidateLabel } from "./api";
+import {
+  type CandidateDetail,
+  type Kind,
+  type RankedCandidate,
+  type ScoreCell,
+  candidateLabel,
+} from "./api";
 import { OverrideDialog } from "./components/OverrideDialog";
-import { EvidenceBlock, ScoreChip, sourceLabel } from "./components/ScoreParts";
+import { EvidenceBlock, ScoreChip } from "./components/ScoreParts";
 import { Assignments, AuditHistory, ResumeText, RevealIdentity } from "./components/SidePanels";
 import { StageControl } from "./components/StageControl";
 import { processingLabel } from "./labels";
@@ -53,10 +58,13 @@ function CriterionRow({
         <h4 className="text-base font-medium">{cell.criterion_name}</h4>
         <ScoreChip model={cell.model_score} override={cell.override_score} />
       </div>
-      <p className="text-sm text-muted-foreground">
-        {sourceLabel(cell)}
-        {cell.stale && " (scores are out of date)"}
-      </p>
+      {(cell.source === "recruiter_override" || cell.source === "failed" || cell.stale) && (
+        <p className="text-sm text-muted-foreground">
+          {cell.source === "recruiter_override" && "Changed by recruiter"}
+          {cell.source === "failed" && "Scoring failed"}
+          {cell.stale && " (scores are out of date)"}
+        </p>
+      )}
       {recruiter && <EvidenceBlock cell={cell} />}
       {cell.override_note && <p>Note on the changed score: {cell.override_note}</p>}
       {recruiter && (
@@ -88,38 +96,25 @@ function CriterionRow({
   );
 }
 
-/** Candidate detail (Design.md 8.4): evidence per criterion, changed scores, hiring stage, history, feedback. */
-export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
-  const { data: session } = useSuspenseQuery(sessionQueryOptions);
-  const recruiter = session.user.role === "recruiter";
-  const candidate = useQuery(candidateQueryOptions(candidateId));
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [overriding, setOverriding] = useState<ScoreCell | null>(null);
-  const mine = useQuery({ ...myCandidatesQueryOptions, enabled: !recruiter });
-  // The first ranked page is enough to find the next candidate; no match means no link.
-  const ranked = useQuery({
-    ...rankedQueryOptions(candidate.data?.role_id ?? "", null, 0, false),
-    enabled: recruiter && candidate.data !== undefined,
-  });
-
-  if (candidate.isPending) return <Loading label="Loading the candidate" />;
-  if (candidate.isError) {
-    return (
-      <ErrorNotice
-        error={candidate.error}
-        retry={() => {
-          void candidate.refetch();
-        }}
-      />
-    );
-  }
-  const c = candidate.data;
-  const list = ranked.data?.data ?? [];
-  const next = list[list.findIndex((r) => r.id === c.id) + 1];
-  const selected = c.scores.find((s) => s.criterion_id === selectedId) ?? null;
-
-  const scores = (
-    <Section id="scores-heading" title="Scores">
+function ScoresSection({
+  c,
+  recruiter,
+  selectedId,
+  onSelect,
+  onOverride,
+}: {
+  c: CandidateDetail;
+  recruiter: boolean;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  onOverride: (cell: ScoreCell) => void;
+}) {
+  return (
+    <Section
+      id="scores-heading"
+      title="Scores"
+      description={c.scores.length > 0 ? "Scores are AI suggestions." : undefined}
+    >
       {c.scores.length === 0 ? (
         <p className="text-muted-foreground">
           {recruiter
@@ -141,10 +136,10 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
                       recruiter={recruiter}
                       selected={cell.criterion_id === selectedId}
                       onSelect={() => {
-                        setSelectedId(cell.criterion_id === selectedId ? null : cell.criterion_id);
+                        onSelect(cell.criterion_id === selectedId ? null : cell.criterion_id);
                       }}
                       onOverride={() => {
-                        setOverriding(cell);
+                        onOverride(cell);
                       }}
                     />
                   ))}
@@ -156,6 +151,168 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
       )}
     </Section>
   );
+}
+
+/**
+ * The recruiter's review of one candidate (Design.md 8.4): total, hiring stage, evidence per
+ * criterion, resume, feedback, interviewers and history. It renders in the review pane and on
+ * the candidate page; `pane` only changes the heading level and the column break.
+ */
+export function CandidateReview({
+  c,
+  summary,
+  pane,
+  controls,
+}: {
+  c: CandidateDetail;
+  summary: RankedCandidate | undefined;
+  pane: boolean;
+  controls?: ReactNode;
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [overriding, setOverriding] = useState<ScoreCell | null>(null);
+  const selected = c.scores.find((s) => s.criterion_id === selectedId) ?? null;
+  return (
+    <div className="flex flex-col gap-6">
+      <div
+        role="region"
+        aria-label="Decision"
+        className="flex flex-col gap-4 rounded-lg border bg-card px-5 py-4"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+          {pane ? (
+            <h2 className="font-mono text-2xl font-semibold tracking-tight">
+              Candidate {candidateLabel(c.candidate_no)}
+            </h2>
+          ) : (
+            <span />
+          )}
+          {controls}
+        </div>
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3 border-t pt-4">
+          {summary?.processing_status === "done" && (
+            <dl className="flex gap-8">
+              <div>
+                <dt className="text-xs text-muted-foreground">Weighted total</dt>
+                <dd className="font-mono text-2xl font-semibold tabular-nums">
+                  {summary.total.toFixed(1)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Must-haves covered</dt>
+                <dd className="font-mono text-2xl font-semibold tabular-nums">
+                  {summary.must_have_covered}{" "}
+                  <span className="font-sans text-base font-normal">of</span>{" "}
+                  {summary.must_have_total}
+                </dd>
+              </div>
+            </dl>
+          )}
+          <StageControl candidateId={c.id} stage={c.stage} />
+          <RevealIdentity key={c.id} candidateId={c.id} />
+        </div>
+      </div>
+      {c.processing_status && c.processing_status !== "done" && (
+        <Notice>
+          Processing: {processingLabel(c.processing_status).toLowerCase()}. Scores appear when
+          processing is finished.
+        </Notice>
+      )}
+      {c.scores.some((s) => s.stale) && (
+        <Notice tone="warning">
+          Scores are out of date because the criteria changed. Re-score from the ranked list.
+        </Notice>
+      )}
+      <div className={cn("grid gap-x-8 gap-y-8", pane ? "xl:grid-cols-5" : "lg:grid-cols-5")}>
+        <div className={cn("min-w-0", pane ? "xl:col-span-3" : "lg:col-span-3")}>
+          <ScoresSection
+            c={c}
+            recruiter
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onOverride={setOverriding}
+          />
+        </div>
+        <div className={cn("min-w-0", pane ? "xl:col-span-2" : "lg:col-span-2")}>
+          <ResumeText candidateId={c.id} quote={selected?.quote ?? null} />
+        </div>
+      </div>
+      <FeedbackPanel key={c.id} candidateId={c.id} roleId={c.role_id} viewer="recruiter" />
+      <div className={cn("grid gap-x-8 gap-y-8", pane ? "xl:grid-cols-2" : "lg:grid-cols-2")}>
+        <Assignments key={c.id} candidateId={c.id} />
+        <AuditHistory events={c.audit} />
+      </div>
+      {overriding && (
+        <OverrideDialog
+          candidateId={c.id}
+          cell={overriding}
+          onClose={() => {
+            setOverriding(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** The review pane's body: loads the candidate, then shows the review. */
+export function ReviewPane({
+  candidateId,
+  summary,
+  controls,
+}: {
+  candidateId: string;
+  summary: RankedCandidate | undefined;
+  controls: ReactNode;
+}) {
+  const candidate = useQuery(candidateQueryOptions(candidateId));
+  if (candidate.isPending) return <Loading label="Loading the candidate" />;
+  if (candidate.isError) {
+    return (
+      <ErrorNotice
+        error={candidate.error}
+        retry={() => {
+          void candidate.refetch();
+        }}
+      />
+    );
+  }
+  // key: drafts and open dialogs belong to one candidate.
+  return (
+    <CandidateReview
+      key={candidateId}
+      c={candidate.data}
+      summary={summary}
+      pane
+      controls={controls}
+    />
+  );
+}
+
+/** Candidate page (Design.md 8.4): the recruiter's review or the interviewer's feedback form. */
+export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
+  const { data: session } = useSuspenseQuery(sessionQueryOptions);
+  const recruiter = session.user.role === "recruiter";
+  const candidate = useQuery(candidateQueryOptions(candidateId));
+  const mine = useQuery({ ...myCandidatesQueryOptions, enabled: !recruiter });
+  // The first ranked page is enough to find the next candidate; no match means no link.
+  const ranked = useQuery({
+    ...rankedQueryOptions(candidate.data?.role_id ?? "", null, 0, false),
+    enabled: recruiter && candidate.data !== undefined,
+  });
+
+  if (candidate.isPending) return <Loading label="Loading the candidate" />;
+  if (candidate.isError) {
+    return (
+      <ErrorNotice
+        error={candidate.error}
+        retry={() => {
+          void candidate.refetch();
+        }}
+      />
+    );
+  }
+  const c = candidate.data;
 
   if (!recruiter) {
     const submitted = mine.data?.find((m) => m.candidate_id === c.id)?.has_submitted ?? false;
@@ -198,19 +355,14 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
             Feedback submitted. Thank you.
           </Notice>
         )}
-        <div className="grid gap-x-10 gap-y-8 lg:grid-cols-5">
-          <div className="flex min-w-0 flex-col gap-8 lg:col-span-3">
-            <FeedbackPanel key={c.id} candidateId={c.id} roleId={c.role_id} viewer="interviewer" />
-            {scores}
-          </div>
-          <div className="min-w-0 lg:col-span-2">
-            <KitQuestions roleId={c.role_id} />
-          </div>
-        </div>
+        <InterviewerView c={c} />
       </div>
     );
   }
 
+  const list = ranked.data?.data ?? [];
+  const at = list.findIndex((r) => r.id === c.id);
+  const next = list[at + 1];
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
@@ -242,45 +394,28 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
           </>
         }
       />
-      {c.processing_status && c.processing_status !== "done" && (
-        <Notice>
-          Processing: {processingLabel(c.processing_status).toLowerCase()}. Scores appear when
-          processing is finished.
-        </Notice>
-      )}
-      {c.scores.some((s) => s.stale) && (
-        <Notice tone="warning">
-          Scores are out of date because the criteria changed. Re-score from the ranked list.
-        </Notice>
-      )}
-      <Card
-        role="region"
-        aria-label="Decision"
-        className="flex-row flex-wrap items-end justify-between gap-x-8 gap-y-4 px-5"
-      >
-        <StageControl candidateId={c.id} stage={c.stage} />
-        <RevealIdentity key={c.id} candidateId={c.id} />
-      </Card>
-      <div className="grid gap-x-10 gap-y-8 lg:grid-cols-5">
-        <div className="flex min-w-0 flex-col gap-8 lg:col-span-3">
-          {scores}
-          <FeedbackPanel key={c.id} candidateId={c.id} roleId={c.role_id} viewer="recruiter" />
-        </div>
-        <div className="flex min-w-0 flex-col gap-8 lg:col-span-2">
-          <ResumeText candidateId={c.id} quote={selected?.quote ?? null} />
-          <Assignments key={c.id} candidateId={c.id} />
-          <AuditHistory events={c.audit} />
-        </div>
-      </div>
-      {overriding && (
-        <OverrideDialog
-          candidateId={c.id}
-          cell={overriding}
-          onClose={() => {
-            setOverriding(null);
-          }}
+      <CandidateReview key={c.id} c={c} summary={list[at]} pane={false} />
+    </div>
+  );
+}
+
+/** Interviewer layout, unchanged from before the review pane (stage 4 redoes it). */
+function InterviewerView({ c }: { c: CandidateDetail }) {
+  return (
+    <div className="grid gap-x-10 gap-y-8 lg:grid-cols-5">
+      <div className="flex min-w-0 flex-col gap-8 lg:col-span-3">
+        <FeedbackPanel key={c.id} candidateId={c.id} roleId={c.role_id} viewer="interviewer" />
+        <ScoresSection
+          c={c}
+          recruiter={false}
+          selectedId={null}
+          onSelect={() => undefined}
+          onOverride={() => undefined}
         />
-      )}
+      </div>
+      <div className="min-w-0 lg:col-span-2">
+        <KitQuestions roleId={c.role_id} />
+      </div>
     </div>
   );
 }

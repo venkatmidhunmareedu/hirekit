@@ -172,6 +172,11 @@
   }
 }
 
+/* The review list scrolls inside the viewport, below the sticky header. */
+@utility review-rail {
+  max-height: calc(100svh - 6rem);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

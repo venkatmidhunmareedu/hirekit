@@ -168,6 +168,7 @@ A compact chip showing a score on the rubric scale, for example `3 / 4`.
 - Neutral gray fill, `--ink` text, mono numerals.
 - Scores changed by a recruiter show the new value with a small pencil icon, and the original AI value as a smaller struck-through number beside it.
 - No red or green fills. Optional subtle bar length to show the value.
+- The chip does not say where the score came from. "Scores are AI suggestions" appears once per section (the ranked list, the Scores section); only a changed row adds "Changed by recruiter", next to the chip that carries the struck-through AI value. Chips live in the candidate detail, not in the ranked list.
 
 ### 7.3 Evidence block
 
@@ -179,6 +180,7 @@ The signature component of the product.
   - **No evidence found** (dash icon, `--gray-500`): shown in plain text, no quote box.
   - **Needs a look** (triangle icon, `--warning`): the AI's quote failed the check and was downgraded. Shows a "why" line.
 - Long quotes are truncated after 3 lines with a "Show more" control.
+- Review mode shows these blocks in the detail pane beside the list, so a recruiter reads evidence without leaving the ranking (8.3).
 
 ### 7.4 Criterion row
 
@@ -241,17 +243,20 @@ Criteria screen: the job description sits beside the editor in a collapsible reg
 ### 8.3 Candidates: upload and ranked list
 
 - Top: upload bar. A single row ("Upload resumes", drop or choose files, outline button) once the role has candidates; a full block with a primary button while there are none. The ranked list is the first large thing on the screen.
-- Below: ranked table with columns: rank, candidate ID (see 9), weighted score, must-have coverage, one chip per criterion, "Needs a look" count, hiring stage.
-- Row click opens the candidate detail panel.
-- Filter bar: hiring stage, needs a look only, changed by recruiter. One helper line states what each filter covers.
+- Below: review mode (from 1024px wide). Left, a compact ranked list in a rail that scrolls inside the viewport: select box, rank, candidate ID in mono, weighted total, must-have coverage ("3 of 3 must-haves"), hiring stage and, only where true, the markers Needs a look, Changed by recruiter and Out of date (icon and words). No per-criterion chips, no colour by score, every candidate stays listed. Right, the open candidate (8.4), with Previous and Next buttons and "3 of 14 on this page".
+- The open candidate is the `c` search param of `/roles/$roleId/candidates` (reload and back work); with none it is the top-ranked one. `/candidates/$candidateId` still renders the same detail as its own page, for deep links and interviewers.
+- Below 1024px the list is the whole screen and a row opens the candidate page.
+- Keyboard: `j` and `k` (and the arrow keys while a row has focus) move the open candidate; keys are ignored in fields, selects and dialogs, and focus is never trapped. A visible hint says "j and k move between candidates". The open row carries `aria-current`, and a polite status says "Showing C-014, 3 of 14". The shortcuts move through the loaded page (up to 100); at its end the pane says so and points to Next page.
+- Toolbar above the list: hiring stage filter, Needs a look only, Changed by recruiter, and one helper line: the stage covers every candidate, the two checkboxes cover the loaded page. The out-of-date banner with Re-score stays, one line.
+- Compare tray: while one or more rows are ticked, a bar fixed to the bottom of the viewport (a labelled region, with bottom padding so it never covers content) says "N selected", gives a hint at the wrong count, enables Compare at 2 to 4 and offers Clear. Compare is its one primary action; the selection count is announced by a polite status.
 - A must-have coverage indicator shows how many must-haves have verified evidence, so a high total cannot hide a gap.
 
-### 8.4 Candidate detail (side panel or page)
+### 8.4 Candidate detail (review pane or page)
 
-- Header: candidate ID, hiring stage control, total score.
-- Criterion rows (7.4) with evidence blocks and "Change score" controls.
-- Anonymized resume text on the right, with matched quotes highlighted when a criterion is selected.
-- Hiring stage and score change history at the bottom.
+- Header: candidate ID, weighted total and must-haves covered, hiring stage control (a select; Reject asks first, 7.7), show candidate name, Previous and Next in review mode.
+- Scores section: "Scores are AI suggestions" once, then criterion rows (7.4) with evidence blocks and "Change score" controls.
+- Anonymized resume text beside the scores (wide screens), with the matched quote highlighted when a criterion is selected.
+- Interviewer feedback, assigned interviewers (the picker is hidden when everyone is assigned) and history in readable wording at the bottom.
 
 ### 8.5 Interview kit
 

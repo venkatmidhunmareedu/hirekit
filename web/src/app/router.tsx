@@ -74,6 +74,9 @@ const roleCandidatesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/roles/$roleId/candidates",
   beforeLoad: recruiterOnly,
+  // c is the candidate open in review mode; a missing or empty value means the top-ranked one.
+  validateSearch: (search: Record<string, unknown>): { c?: string } =>
+    typeof search.c === "string" && search.c !== "" ? { c: search.c } : {},
   component: CandidatesPage,
 });
 

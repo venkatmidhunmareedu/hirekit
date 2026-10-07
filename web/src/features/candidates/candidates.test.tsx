@@ -118,19 +118,19 @@ describe("candidates page", () => {
 
     renderApp(PATH);
 
-    const table = await screen.findByRole("table", { name: /ranked by weighted total/ });
-    const first = within(table).getByRole("row", { name: /^1 C-014/ });
-    const second = within(table).getByRole("row", { name: /^2 C-003/ });
-    expect(within(first).getByText("C-014")).toBeInTheDocument();
-    expect(within(first).getByText("4 / 4")).toBeInTheDocument();
+    const list = await screen.findByRole("list", { name: /ranked by weighted total/ });
+    const rows = within(list).getAllByRole("listitem");
+    const [first, second] = [rows[0], rows[1]];
+    if (!first || !second) throw new Error("expected two rows");
+    expect(first).toHaveTextContent(/^1C-01411\.52 of 3 must-havesScreened/);
+    expect(within(first).getByText("Needs a look")).toBeInTheDocument();
     expect(within(first).getByText("Changed by recruiter")).toBeInTheDocument();
-    expect(within(first).getByText("No evidence found")).toBeInTheDocument();
-    expect(within(first).getByText("11.5")).toBeInTheDocument();
-    expect(within(first).getByText("2 of 3")).toBeInTheDocument();
-    expect(within(first).getByText("Screened")).toBeInTheDocument();
-    expect(within(second).getByText("C-003")).toBeInTheDocument();
+    expect(second).toHaveTextContent(/^2C-0034\.0/);
+    expect(within(second).getByText("New")).toBeInTheDocument();
+    expect(within(second).getByText("Out of date")).toBeInTheDocument();
     expect(within(second).getByText(/Possible duplicate of C-014/)).toBeInTheDocument();
-    expect(within(second).getByText("AI suggestion")).toBeInTheDocument();
+    expect(screen.queryByText("AI suggestion")).not.toBeInTheDocument();
+    expect(screen.queryByText(/\d \/ 4/)).not.toBeInTheDocument();
     expect(screen.getByText(/The criteria changed after some resumes/)).toBeInTheDocument();
     expect(screen.queryByText("secret evidence quote")).not.toBeInTheDocument();
   });
@@ -175,7 +175,7 @@ describe("candidates page", () => {
     });
     renderApp(PATH);
 
-    await userEvent.click(await screen.findByLabelText("Hiring stage"));
+    await userEvent.click(await screen.findByLabelText("Filter by stage"));
     await userEvent.click(await screen.findByRole("option", { name: "Interview" }));
 
     expect(await screen.findByText("No candidates are in this hiring stage.")).toBeInTheDocument();
@@ -317,7 +317,7 @@ describe("ranked list filters and navigation", () => {
     stubFetch({ ...approved, ...idle, [LIST]: rows });
     renderApp(PATH);
 
-    const link = await screen.findByRole("link", { name: "C-001" });
+    const link = await screen.findByRole("link", { name: /C-001/ });
 
     expect(link).toHaveAttribute("href", "/candidates/30000000-0000-4000-8000-000000000001");
   });

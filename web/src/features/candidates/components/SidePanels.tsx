@@ -181,36 +181,34 @@ export function Assignments({ candidateId }: { candidateId: string }) {
               });
             }}
           >
-            <div className="flex w-full flex-col gap-1.5">
-              <Label htmlFor="assign-user">Interviewer</Label>
-              <Select value={userId} onValueChange={setUserId}>
-                <SelectTrigger
-                  id="assign-user"
-                  className="h-10 w-full"
-                  disabled={available.length === 0}
-                >
-                  <SelectValue
-                    placeholder={available.length === 0 ? "All assigned" : "Choose an interviewer"}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {available.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              type="submit"
-              variant="outline"
-              className="h-10 px-4"
-              disabled={userId === "" || assign.isPending}
-            >
-              <UserPlus aria-hidden="true" />
-              Assign interviewer
-            </Button>
+            {available.length > 0 && (
+              <div className="flex w-full flex-col gap-1.5">
+                <Label htmlFor="assign-user">Interviewer</Label>
+                <Select value={userId} onValueChange={setUserId}>
+                  <SelectTrigger id="assign-user" className="h-10 w-full">
+                    <SelectValue placeholder="Choose an interviewer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {available.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {available.length > 0 && (
+              <Button
+                type="submit"
+                variant="outline"
+                className="h-10 px-4"
+                disabled={userId === "" || assign.isPending}
+              >
+                <UserPlus aria-hidden="true" />
+                Assign interviewer
+              </Button>
+            )}
           </form>
         )}
         {assigned.data.length === 0 ? (
@@ -260,8 +258,20 @@ function describe(event: AuditEvent): string {
       return `Hiring stage ${event.from_stage ? STAGE_LABEL[event.from_stage] : "none"} to ${event.to_stage ? STAGE_LABEL[event.to_stage] : "none"}`;
     case "identity_reveal":
       return "Candidate name shown";
-    default:
-      return event.kind.replaceAll("_", " ");
+    case "feedback_edit_approved":
+      return "Edit of interviewer feedback approved";
+    case "feedback_edited":
+      return "Interviewer feedback edited";
+    case "scored":
+      return "Scored by the AI";
+    case "override":
+      return "Score changed";
+    case "stage":
+      return "Hiring stage changed";
+    default: {
+      const words = event.kind.replaceAll("_", " ");
+      return words.charAt(0).toUpperCase() + words.slice(1);
+    }
   }
 }
 
