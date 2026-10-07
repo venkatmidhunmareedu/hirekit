@@ -47,8 +47,19 @@ into an image; secrets reach the containers only through `.env` on the VM.
 # in .env set REGISTRY_NAMESPACE=midhunmareedu (leave IMAGE_TAG empty: it means latest)
 make vm-up            # or on the VM: docker compose pull && docker compose up -d
 # the migrate service applies the migrations first
-docker compose run --rm api python -m app.seed      # first sign-in users; see backend/.env.example for SEED_PASSWORD_*
 ```
+The migrations create no accounts. The sign-in users come from the seed command, which also loads
+the sample roles and resumes. Because `ENV=production`, it needs `--allow-production` and both
+passwords (at least 16 characters), which you type without echo so they stay out of shell history:
+```
+read -rsp "recruiter password: " SEED_PASSWORD_RECRUITER; echo
+read -rsp "interviewer password: " SEED_PASSWORD_INTERVIEWER; echo
+export SEED_PASSWORD_RECRUITER SEED_PASSWORD_INTERVIEWER
+docker compose run --rm -e SEED_PASSWORD_RECRUITER -e SEED_PASSWORD_INTERVIEWER api python -m app.seed --allow-production
+```
+Sign in as `recruiter@hirekit.local` or `interviewer@hirekit.local`. Running it again keeps existing
+users; add `--reset-passwords` to change their passwords.
+
 Nothing is built on the VM, so the 1 GB Micro shape is enough.
 
 ## 5. Check
