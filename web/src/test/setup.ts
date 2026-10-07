@@ -11,6 +11,7 @@ Element.prototype.hasPointerCapture = () => false;
 Element.prototype.setPointerCapture = () => undefined;
 Element.prototype.releasePointerCapture = () => undefined;
 Element.prototype.scrollIntoView = () => undefined;
+Element.prototype.scrollTo = () => undefined;
 class ResizeObserverStub {
   observe() {
     return undefined;

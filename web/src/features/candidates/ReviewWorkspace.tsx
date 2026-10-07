@@ -12,6 +12,17 @@ import { type RankedPage, candidateLabel } from "./api";
 import { PAGE_SIZE } from "./api";
 import { isTypingTarget, step } from "./selection";
 
+function Kbd({ children }: { children: string }) {
+  return (
+    <kbd
+      aria-hidden="true"
+      className="rounded border bg-muted px-1.5 font-mono text-xs text-muted-foreground"
+    >
+      {children}
+    </kbd>
+  );
+}
+
 export const WIDE = "(min-width: 1024px)";
 
 /**
@@ -115,6 +126,7 @@ export function ReviewWorkspace({
         >
           <ChevronUp aria-hidden="true" />
           Previous
+          <Kbd>k</Kbd>
         </Button>
         <Button
           type="button"
@@ -128,6 +140,7 @@ export function ReviewWorkspace({
         >
           <ChevronDown aria-hidden="true" />
           Next
+          <Kbd>j</Kbd>
         </Button>
       </div>
       {!after && more && (

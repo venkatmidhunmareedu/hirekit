@@ -245,6 +245,21 @@
   max-height: calc(100svh - 6rem);
 }
 
+/* Interviewer columns sit under the header and the criterion navigator (8rem), so they get less height. */
+@utility review-rail-nav {
+  max-height: calc(100svh - 9rem);
+}
+
+/* The sticky resume region: the viewport minus the header, the section heading and some air. */
+@utility resume-rail {
+  max-height: calc(100svh - 12rem);
+}
+
+/* A grouped section stops below the sticky header and navigator when a jump scrolls to it. */
+@utility scroll-below-nav {
+  scroll-margin-top: 8rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

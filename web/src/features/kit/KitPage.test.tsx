@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -46,6 +46,19 @@ function routes(extra: Record<string, () => Response> = {}, who = session) {
 }
 
 describe("interview kit, recruiter", () => {
+  it("lists every criterion with its question count in a navigator", async () => {
+    stubFetch(routes());
+    renderApp(`/roles/${ROLE}/kit`);
+
+    const nav = await screen.findByRole("navigation", { name: "Criteria in this kit" });
+    const chips = within(nav).getAllByRole("button");
+    expect(chips).toHaveLength(2);
+    expect(chips[0]).toHaveTextContent("Backend experience");
+    expect(chips[0]).toHaveTextContent("2");
+    expect(chips[0]).toHaveAttribute("aria-current", "true");
+    expect(chips[1]).toHaveTextContent("1");
+  });
+
   it("groups questions by criterion with strong and weak answers", async () => {
     stubFetch(routes());
     renderApp(`/roles/${ROLE}/kit`);

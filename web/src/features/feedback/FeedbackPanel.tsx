@@ -32,6 +32,9 @@ import { feedbackQueryOptions, useApproveEdit, useSubmitFeedback } from "./hooks
 
 const LEVELS = [0, 1, 2, 3, 4];
 
+/** DOM id of one criterion's block in the form, for the navigator and the kit to follow. */
+export const feedbackSectionId = (criterionId: string) => `fb-${criterionId}`;
+
 /** The segmented 0 to 4 score for one criterion: native radios, so arrow keys and labels just work. */
 function ScoreSelector({
   criterion,
@@ -148,7 +151,7 @@ function FeedbackForm({
         submit.mutate({ items, isEdit: rows.length > 0 });
       }}
     >
-      <div className="sticky top-14 z-10 -mx-1 flex flex-col gap-2 border-b bg-background px-1 pt-2 pb-3">
+      <div className="sticky top-14 z-10 -mx-1 flex flex-col gap-2 border-b bg-background px-1 pt-2 pb-3 lg:top-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p role="status" className="text-sm font-medium">
             {done} of {criteria.length} criteria scored
@@ -168,7 +171,7 @@ function FeedbackForm({
           .filter((q) => q.criterion_id === c.id)
           .sort((a, b) => a.position - b.position);
         return (
-          <Card key={c.id} className="px-5">
+          <Card key={c.id} id={feedbackSectionId(c.id)} className="scroll-below-nav px-5">
             <fieldset disabled={readOnly} className="flex min-w-0 flex-col gap-4">
               <legend className="mb-3 text-lg font-medium">{c.name}</legend>
               {asked.length > 0 && (

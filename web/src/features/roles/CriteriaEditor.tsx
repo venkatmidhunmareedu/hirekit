@@ -1,9 +1,18 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -246,45 +255,6 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
         </p>
       )}
       {failure && <Notice tone="danger">{errorMessage(failure)}</Notice>}
-      {confirming && (
-        <div role="group" aria-label="Confirm approval">
-          <Notice
-            tone="warning"
-            role="status"
-            action={
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  className="h-10 px-4"
-                  disabled={approve.isPending}
-                  onClick={() => {
-                    approve.mutate(role.criteria_version, {
-                      onSettled: () => {
-                        setConfirming(false);
-                      },
-                    });
-                  }}
-                >
-                  Confirm approval
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10 px-4"
-                  onClick={() => {
-                    setConfirming(false);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            }
-          >
-            Approve these criteria? This unlocks resume upload and scoring. Resumes are scored only
-            against the criteria you approve.
-          </Notice>
-        </div>
-      )}
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background/95 px-4 py-3 backdrop-blur">
         <Button
           type="button"
@@ -297,18 +267,57 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
         >
           {save.isPending ? "Saving draft" : "Save draft"}
         </Button>
-        <Button
-          type="button"
-          variant={role.status === "draft" && rows.length > 0 ? "default" : "outline"}
-          className="h-10 px-4"
-          aria-describedby={approveBlocker ? "approve-blocker" : undefined}
-          disabled={!canApprove || approve.isPending}
-          onClick={() => {
-            setConfirming(true);
-          }}
-        >
-          Approve criteria
-        </Button>
+        <Dialog open={confirming} onOpenChange={setConfirming}>
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              variant={role.status === "draft" && rows.length > 0 ? "default" : "outline"}
+              className="h-10 px-4"
+              aria-describedby={approveBlocker ? "approve-blocker" : undefined}
+              disabled={!canApprove || approve.isPending}
+            >
+              Approve criteria
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-2xl font-medium">
+                <ShieldCheck aria-hidden="true" className="size-6 text-primary" />
+                Approve these criteria?
+              </DialogTitle>
+              <DialogDescription>
+                This unlocks resume upload and scoring. Resumes are scored only against the criteria
+                you approve.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 px-4"
+                onClick={() => {
+                  setConfirming(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="h-10 px-4"
+                disabled={approve.isPending}
+                onClick={() => {
+                  approve.mutate(role.criteria_version, {
+                    onSettled: () => {
+                      setConfirming(false);
+                    },
+                  });
+                }}
+              >
+                Confirm approval
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         {problem !== null && dirty && (
           <span className="text-sm text-muted-foreground">{problem}</span>
         )}

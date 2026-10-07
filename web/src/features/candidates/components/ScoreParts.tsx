@@ -53,7 +53,14 @@ export function sourceLabel(cell: ScoreCell): string {
  * Evidence block (Design.md 7.3): verified quote, no evidence found, or needs a look. The
  * quote carries the reserved highlighter; every state has an icon and words.
  */
-export function EvidenceBlock({ cell }: { cell: ScoreCell }) {
+export function EvidenceBlock({
+  cell,
+  onLocate,
+}: {
+  cell: ScoreCell;
+  /** Clicking the quote finds it in the resume; the Show in resume button is the keyboard route. */
+  onLocate?: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   if (cell.flag_reason) {
@@ -81,14 +88,7 @@ export function EvidenceBlock({ cell }: { cell: ScoreCell }) {
   return (
     <div className="flex flex-col items-start gap-2">
       <StatusTag tone="success">Verified</StatusTag>
-      <blockquote
-        className={cn(
-          "rounded-md bg-mark px-3 py-2 font-display text-base text-mark-foreground italic",
-          !expanded && "line-clamp-3",
-        )}
-      >
-        &ldquo;{cell.quote}&rdquo;
-      </blockquote>
+      <QuoteBox quote={cell.quote} clamp={!expanded} onLocate={onLocate} />
       {cell.quote.length > 160 && (
         <Button
           type="button"
@@ -104,5 +104,35 @@ export function EvidenceBlock({ cell }: { cell: ScoreCell }) {
         </Button>
       )}
     </div>
+  );
+}
+
+/** The verified quote in the highlighter. With `onLocate` the whole box finds the quote in the resume. */
+function QuoteBox({
+  quote,
+  clamp,
+  onLocate,
+}: {
+  quote: string;
+  clamp: boolean;
+  onLocate: (() => void) | undefined;
+}) {
+  const classes = cn(
+    "w-full rounded-md bg-mark px-3 py-2 text-left font-display text-base text-mark-foreground italic",
+    clamp && "line-clamp-3",
+  );
+  if (!onLocate) return <blockquote className={classes}>&ldquo;{quote}&rdquo;</blockquote>;
+  return (
+    <button
+      type="button"
+      title="Find this quote in the resume"
+      onClick={onLocate}
+      className={cn(
+        classes,
+        "cursor-pointer focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+      )}
+    >
+      &ldquo;{quote}&rdquo;
+    </button>
   );
 }

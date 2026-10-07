@@ -195,7 +195,7 @@ describe("role setup", () => {
     });
 
     await userEvent.click(screen.getByRole("button", { name: "Approve criteria" }));
-    const confirm = screen.getByRole("group", { name: "Confirm approval" });
+    const confirm = await screen.findByRole("dialog", { name: "Approve these criteria?" });
     expect(confirm).toHaveTextContent("unlocks resume upload");
     await userEvent.click(within(confirm).getByRole("button", { name: "Confirm approval" }));
 

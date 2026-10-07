@@ -1,8 +1,8 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { setCsrfToken } from "../../lib/api";
-import { CRIT_A, CRIT_B } from "../../test/fixtures";
+import { CRIT_A, CRIT_B, ROLE, candidate, role } from "../../test/fixtures";
 import { json, session, stubFetch } from "../../test/fetch";
 import { renderApp } from "../../test/renderApp";
 
@@ -77,9 +77,38 @@ describe("compare", () => {
     expect(screen.getByRole("rowheader", { name: "Nice-to-have" })).toBeInTheDocument();
     expect(screen.getByText("Changed by recruiter")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "C-001" })).toHaveAttribute("href", "/candidates/c1");
+    // Auth and the comparison; the first candidate is read only for the role's name and link.
     expect(
-      calls.filter((c) => !c.path.includes("cost-log") && c.path !== "/v1/roles"),
+      calls.filter(
+        (c) =>
+          !c.path.includes("cost-log") && c.path !== "/v1/roles" && c.path !== "/v1/candidates/c1",
+      ),
     ).toHaveLength(2);
+  });
+
+  it("marks the highest score per criterion, counts them and links back to the role", async () => {
+    stubFetch({
+      "GET /v1/auth/me": () => json(200, session),
+      "GET /v1/compare?ids=c1%2Cc2": () => json(200, comparison),
+      "GET /v1/candidates/c1": () => json(200, candidate),
+      [`GET /v1/roles/${ROLE}`]: () => json(200, role),
+    });
+    renderApp("/compare?ids=c1,c2");
+
+    const row = (await screen.findByRole("rowheader", { name: /Backend experience/ })).closest(
+      "tr",
+    );
+    if (!row) throw new Error("no row");
+    expect(within(row).getAllByText("Highest")).toHaveLength(1);
+    expect(within(row).queryByText("Tied")).not.toBeInTheDocument();
+    const band = screen.getByRole("region", { name: "Highest scores per candidate" });
+    expect(within(band).getByText("Highest on 1 criterion")).toBeInTheDocument();
+    expect(within(band).getByText("Highest on 0 criteria")).toBeInTheDocument();
+    expect(screen.getByText(/People decide\./)).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /Back to ranked candidates/ })).toHaveAttribute(
+      "href",
+      `/roles/${ROLE}/candidates`,
+    );
   });
 
   it("puts the table in a focusable, labelled scroll region", async () => {

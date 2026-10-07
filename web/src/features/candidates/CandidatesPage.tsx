@@ -20,14 +20,14 @@ import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { Section } from "../../components/Section";
 import { errorMessage } from "../../lib/errors";
-import { useMediaQuery } from "../../lib/useMediaQuery";
 import { RoleHeader } from "../roles/RoleHeader";
 import { budgetQueryOptions } from "../cost/hooks";
 import { roleQueryOptions } from "../roles/hooks";
 
 import { CompareTray } from "./CompareTray";
 import { type Entry } from "./RankedList";
-import { ReviewWorkspace, WIDE } from "./ReviewWorkspace";
+import { RankingInfo } from "./RankingInfo";
+import { ReviewWorkspace } from "./ReviewWorkspace";
 import { UploadZone } from "./UploadZone";
 import { STAGES, type RankedPage, type Stage } from "./api";
 import { STAGE_LABEL } from "./labels";
@@ -106,7 +106,6 @@ function RankedList({ roleId }: { roleId: string }) {
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [overridesOnly, setOverridesOnly] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
-  const wide = useMediaQuery(WIDE);
   const queue = useQuery(queueQueryOptions(roleId));
   const working = (queue.data?.waiting ?? 0) + (queue.data?.running ?? 0) > 0;
   const ranked = useQuery(rankedQueryOptions(roleId, stage, offset, working));
@@ -165,16 +164,12 @@ function RankedList({ roleId }: { roleId: string }) {
           </div>
         }
       >
-        <p className="-mt-1 flex flex-wrap justify-between gap-x-6 text-xs text-muted-foreground">
-          <span>
-            Scores are AI suggestions. Hiding names reduces some bias but does not remove it:
-            schools, clubs and wording can still show.
-          </span>
-          <span>
-            Stage covers every candidate; the checkboxes cover this page.
-            {wide && " j and k move between candidates."}
-          </span>
-        </p>
+        <RankingInfo />
+        {(flaggedOnly || overridesOnly) && (
+          <p className="-mt-1 text-xs text-muted-foreground">
+            These checkboxes filter the loaded page only; the stage filter covers every candidate.
+          </p>
+        )}
         {working && (
           <Notice>
             Processing resumes: {queue.data?.waiting ?? 0} waiting, {queue.data?.running ?? 0}{" "}

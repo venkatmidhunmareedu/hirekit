@@ -1,7 +1,11 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, Pencil, TextSearch } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { ChevronLeft, CircleCheck, Pencil, Sparkles, TextSearch } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+
+import { type NavItem, SectionNav } from "../../components/SectionNav";
+import { scrollBehavior, revealIn, useScrollSpy } from "../../lib/scrollSpy";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,8 +16,9 @@ import { Notice } from "../../components/Notice";
 import { PageHeader } from "../../components/PageHeader";
 import { Section } from "../../components/Section";
 import { sessionQueryOptions } from "../auth/hooks";
-import { FeedbackPanel } from "../feedback/FeedbackPanel";
-import { KitQuestions } from "../kit/KitPage";
+import { FeedbackPanel, feedbackSectionId } from "../feedback/FeedbackPanel";
+import { kitQueryOptions, roleCriteriaQueryOptions } from "../kit/hooks";
+import { KitQuestions, kitSectionId } from "../kit/KitPage";
 
 import {
   type CandidateDetail,
@@ -31,10 +36,16 @@ import { processingLabel } from "./labels";
 import { nextAfter } from "./queue";
 import { candidateQueryOptions, myCandidatesQueryOptions, rankedQueryOptions } from "./hooks";
 
-const GROUPS: { kind: Kind; title: string }[] = [
-  { kind: "must_have", title: "Must-have" },
-  { kind: "nice_to_have", title: "Nice-to-have" },
+const GROUPS: { kind: Kind; title: string; icon: typeof CircleCheck }[] = [
+  { kind: "must_have", title: "Must-have", icon: CircleCheck },
+  { kind: "nice_to_have", title: "Nice-to-have", icon: Sparkles },
 ];
+
+// The form region's sticky progress strip, so a jumped-to criterion starts just under it.
+const FORM_INSET = 72;
+const LG = "(min-width: 1024px)";
+
+const groupId = (kind: Kind) => `scores-group-${kind}`;
 
 function CriterionRow({
   cell,
@@ -46,6 +57,7 @@ function CriterionRow({
   cell: ScoreCell;
   recruiter: boolean;
   selected: boolean;
+  /** Find this criterion's quote in the resume. */
   onSelect: () => void;
   onOverride: () => void;
 }) {
@@ -67,7 +79,7 @@ function CriterionRow({
           {cell.stale && " (scores are out of date)"}
         </p>
       )}
-      {recruiter && <EvidenceBlock cell={cell} />}
+      {recruiter && <EvidenceBlock cell={cell} onLocate={onSelect} />}
       {cell.override_note && <p>Note on the changed score: {cell.override_note}</p>}
       {recruiter && (
         <div className="flex flex-wrap items-center gap-2">
@@ -108,9 +120,18 @@ function ScoresSection({
   c: CandidateDetail;
   recruiter: boolean;
   selectedId: string | null;
-  onSelect: (id: string | null) => void;
+  onSelect: (id: string) => void;
   onOverride: (cell: ScoreCell) => void;
 }) {
+  const groups = GROUPS.map((g) => ({
+    ...g,
+    cells: c.scores.filter((s) => s.kind === g.kind),
+  })).filter((g) => g.cells.length > 0);
+  // The sticky header is 3.5rem and the navigator about 3rem; the top band of the page is "in view".
+  const [active, setActive] = useScrollSpy(
+    groups.map((g) => groupId(g.kind)),
+    { rootMargin: "-112px 0px -55% 0px" },
+  );
   return (
     <Section
       id="scores-heading"
@@ -124,32 +145,52 @@ function ScoresSection({
             : "AI scores stay hidden until you submit your feedback, so they do not anchor your view."}
         </p>
       ) : (
-        GROUPS.map(({ kind, title }) => {
-          const cells = c.scores.filter((s) => s.kind === kind);
-          return (
-            cells.length > 0 && (
-              <div key={kind} className="flex flex-col gap-1">
-                <h3 className="text-lg font-medium">{title}</h3>
-                <ul className="flex flex-col">
-                  {cells.map((cell) => (
-                    <CriterionRow
-                      key={cell.criterion_id}
-                      cell={cell}
-                      recruiter={recruiter}
-                      selected={cell.criterion_id === selectedId}
-                      onSelect={() => {
-                        onSelect(cell.criterion_id === selectedId ? null : cell.criterion_id);
-                      }}
-                      onOverride={() => {
-                        onOverride(cell);
-                      }}
-                    />
-                  ))}
-                </ul>
+        <>
+          <SectionNav
+            label="Score groups"
+            className="sticky top-14 z-10 -mx-1 border-b bg-background px-1 py-1"
+            active={active}
+            items={groups.map((g) => ({
+              id: groupId(g.kind),
+              label: g.title,
+              count: g.cells.length,
+              icon: g.icon,
+            }))}
+            onSelect={(id) => {
+              setActive(id);
+              document
+                .getElementById(id)
+                ?.scrollIntoView({ block: "start", behavior: scrollBehavior() });
+            }}
+          />
+          {groups.map(({ kind, title, icon: Icon, cells }) => (
+            <div key={kind} id={groupId(kind)} className="flex scroll-below-nav flex-col gap-2">
+              <div className="flex items-center gap-2 rounded-md border-b bg-muted px-3 py-2">
+                <Icon aria-hidden="true" className="size-5 text-primary" />
+                <h3 className="text-lg font-semibold">{title}</h3>
+                <span className="ml-auto font-mono text-sm text-muted-foreground">
+                  {cells.length} {cells.length === 1 ? "criterion" : "criteria"}
+                </span>
               </div>
-            )
-          );
-        })
+              <ul className="flex flex-col">
+                {cells.map((cell) => (
+                  <CriterionRow
+                    key={cell.criterion_id}
+                    cell={cell}
+                    recruiter={recruiter}
+                    selected={cell.criterion_id === selectedId}
+                    onSelect={() => {
+                      onSelect(cell.criterion_id);
+                    }}
+                    onOverride={() => {
+                      onOverride(cell);
+                    }}
+                  />
+                ))}
+              </ul>
+            </div>
+          ))}
+        </>
       )}
     </Section>
   );
@@ -171,9 +212,11 @@ export function CandidateReview({
   pane: boolean;
   controls?: ReactNode;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // `n` counts requests, so asking for the same quote again scrolls to it again.
+  const [located, setLocated] = useState<{ id: string; n: number } | null>(null);
   const [overriding, setOverriding] = useState<ScoreCell | null>(null);
-  const selected = c.scores.find((s) => s.criterion_id === selectedId) ?? null;
+  const selected = c.scores.find((s) => s.criterion_id === located?.id) ?? null;
+  const from = pane ? "xl" : "lg";
   return (
     <div className="flex flex-col gap-6">
       <div
@@ -230,13 +273,20 @@ export function CandidateReview({
           <ScoresSection
             c={c}
             recruiter
-            selectedId={selectedId}
-            onSelect={setSelectedId}
+            selectedId={located?.id ?? null}
+            onSelect={(id) => {
+              setLocated((now) => ({ id, n: (now?.n ?? 0) + 1 }));
+            }}
             onOverride={setOverriding}
           />
         </div>
         <div className={cn("min-w-0", pane ? "xl:col-span-2" : "lg:col-span-2")}>
-          <ResumeText candidateId={c.id} quote={selected?.quote ?? null} />
+          <ResumeText
+            candidateId={c.id}
+            quote={selected?.quote ?? null}
+            locate={located?.n ?? 0}
+            stickyFrom={from}
+          />
         </div>
       </div>
       <FeedbackPanel key={c.id} candidateId={c.id} roleId={c.role_id} viewer="recruiter" />
@@ -367,6 +417,38 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
 function InterviewerView({ c, mine }: { c: CandidateDetail; mine: MyCandidate[] }) {
   const [justSubmitted, setJustSubmitted] = useState(false);
   const next = nextAfter(mine, c.id);
+  const wide = useMediaQuery(LG);
+  const formRef = useRef<HTMLDivElement>(null);
+  const kitRef = useRef<HTMLDivElement>(null);
+  const role = useQuery(roleCriteriaQueryOptions(c.role_id));
+  const kit = useQuery(kitQueryOptions(c.role_id));
+  const criteria = [...(role.data?.criteria ?? [])].sort((a, b) => a.position - b.position);
+  const navItems: NavItem[] = criteria.map((crit) => ({
+    id: feedbackSectionId(crit.id),
+    label: crit.name,
+    count: (kit.data?.questions ?? []).filter((q) => q.criterion_id === crit.id).length,
+    icon: crit.kind === "must_have" ? CircleCheck : Sparkles,
+  }));
+  // The form is the leader: whichever criterion it shows, the kit follows. A click on a chip
+  // moves the form; the kit then follows through the same path, so the two never fight.
+  const [active, setActive] = useScrollSpy(
+    navItems.map((i) => i.id),
+    { rootRef: formRef, scoped: wide, rootMargin: "0px 0px -60% 0px" },
+  );
+  useEffect(() => {
+    const region = kitRef.current;
+    const target =
+      active === null ? null : document.getElementById(kitSectionId(active.replace(/^fb-/, "")));
+    if (wide && region && target) revealIn(region, target, "start");
+  }, [active, wide]);
+  const jump = (id: string) => {
+    setActive(id);
+    const target = document.getElementById(id);
+    const region = formRef.current;
+    if (!target) return;
+    if (wide && region) revealIn(region, target, "start", FORM_INSET);
+    else target.scrollIntoView({ block: "start", behavior: scrollBehavior() });
+  };
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -403,8 +485,20 @@ function InterviewerView({ c, mine }: { c: CandidateDetail; mine: MyCandidate[] 
           {next ? "" : " That was your last candidate."}
         </Notice>
       )}
+      {navItems.length > 1 && (
+        <SectionNav
+          label="Criteria"
+          className="sticky top-14 z-20 -mx-1 border-b bg-background px-1 py-1"
+          active={active}
+          items={navItems}
+          onSelect={jump}
+        />
+      )}
       <div className="grid gap-x-10 gap-y-8 lg:grid-cols-5">
-        <div className="flex min-w-0 flex-col gap-8 lg:col-span-3">
+        <div
+          ref={formRef}
+          className="flex min-w-0 flex-col gap-8 lg:sticky lg:top-32 lg:col-span-3 lg:review-rail-nav lg:self-start lg:overflow-y-auto"
+        >
           <FeedbackPanel
             key={c.id}
             candidateId={c.id}
@@ -422,7 +516,10 @@ function InterviewerView({ c, mine }: { c: CandidateDetail; mine: MyCandidate[] 
             onOverride={() => undefined}
           />
         </div>
-        <div className="min-w-0 lg:sticky lg:top-20 lg:col-span-2 lg:review-rail lg:self-start lg:overflow-y-auto">
+        <div
+          ref={kitRef}
+          className="min-w-0 lg:sticky lg:top-32 lg:col-span-2 lg:review-rail-nav lg:self-start lg:overflow-y-auto"
+        >
           <KitQuestions roleId={c.role_id} />
         </div>
       </div>

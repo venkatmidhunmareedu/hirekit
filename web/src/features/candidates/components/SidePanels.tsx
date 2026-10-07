@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Eye, UserMinus, UserPlus } from "lucide-react";
-import { type SubmitEvent, useState } from "react";
+import { motion } from "motion/react";
+import { type SubmitEvent, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import { ErrorNotice } from "../../../components/ErrorNotice";
 import { Loading } from "../../../components/Loading";
 import { Notice } from "../../../components/Notice";
 import { Section } from "../../../components/Section";
+import { revealIn, scrollBehavior } from "../../../lib/scrollSpy";
 import { type AuditEvent, type Identity } from "../api";
 import { STAGE_LABEL } from "../labels";
 import {
@@ -45,35 +47,87 @@ export function splitAtQuote(text: string, quote: string | null): [string, strin
   return [text.slice(0, hit.index), hit[0], text.slice(hit.index + hit[0].length)];
 }
 
-/** The anonymized resume text, with the selected criterion's quote highlighted (Design.md 8.4). */
-export function ResumeText({ candidateId, quote }: { candidateId: string; quote: string | null }) {
+const STICKY = {
+  lg: "lg:sticky lg:top-20 lg:self-start",
+  xl: "xl:sticky xl:top-20 xl:self-start",
+} as const;
+const RAIL = { lg: "lg:resume-rail", xl: "xl:resume-rail" } as const;
+
+/**
+ * The anonymized resume text, with the selected criterion's quote highlighted (Design.md 8.4).
+ * It is a scroll region of its own (sticky where the scores sit beside it). `locate` is a counter:
+ * each increase scrolls the region to the quote and flashes it once.
+ */
+export function ResumeText({
+  candidateId,
+  quote,
+  locate = 0,
+  stickyFrom,
+}: {
+  candidateId: string;
+  quote: string | null;
+  locate?: number;
+  stickyFrom: "lg" | "xl";
+}) {
   const text = useQuery(anonymizedTextQueryOptions(candidateId));
+  const regionRef = useRef<HTMLDivElement>(null);
+  const parts = text.data === undefined ? null : splitAtQuote(text.data, quote);
+  const found = parts !== null;
+  useEffect(() => {
+    const region = regionRef.current;
+    const mark = region?.querySelector("mark");
+    if (locate === 0 || !region || !mark) return;
+    revealIn(region, mark);
+    region.scrollIntoView({ block: "nearest", behavior: scrollBehavior() });
+  }, [locate, found]);
+
   if (text.isPending) return <Loading label="Loading the resume text" />;
   if (text.isError) return <ErrorNotice error={text.error} />;
-  const parts = splitAtQuote(text.data, quote);
+  const missing = locate > 0 && !found;
   return (
-    <Section
-      id="resume-heading"
-      title="Anonymized resume text"
-      description="Identity signals are removed by code. Some signals, such as schools or career gaps, can remain."
-    >
-      <div
-        role="region"
-        aria-label="Anonymized resume"
-        tabIndex={0}
-        className="max-h-120 max-w-prose overflow-auto rounded-lg border bg-card p-4 whitespace-pre-wrap"
+    <div className={STICKY[stickyFrom]}>
+      <Section
+        id="resume-heading"
+        title="Anonymized resume text"
+        description="Identity signals are removed by code. Some signals, such as schools or career gaps, can remain."
       >
-        {parts ? (
-          <>
-            {parts[0]}
-            <mark className="rounded-sm bg-mark px-0.5 text-mark-foreground">{parts[1]}</mark>
-            {parts[2]}
-          </>
-        ) : (
-          text.data
+        <p role="status" className="sr-only">
+          {locate > 0 && found ? "Quote located in the resume" : ""}
+        </p>
+        {missing && (
+          <Notice tone="warning">
+            {quote === null
+              ? "This criterion has no quote to show."
+              : "This quote was not found in the resume text, so it cannot be shown here."}
+          </Notice>
         )}
-      </div>
-    </Section>
+        <div
+          ref={regionRef}
+          role="region"
+          aria-label="Anonymized resume"
+          tabIndex={0}
+          className={`max-h-120 max-w-prose overflow-auto rounded-lg border bg-card p-4 whitespace-pre-wrap ${RAIL[stickyFrom]}`}
+        >
+          {parts ? (
+            <>
+              {parts[0]}
+              <motion.mark
+                key={locate}
+                initial={locate > 0 ? { outlineWidth: 8 } : false}
+                animate={{ outlineWidth: 0 }}
+                transition={{ duration: 0.6 }}
+                className="rounded-sm bg-mark px-0.5 text-mark-foreground outline-primary outline-solid"
+              >
+                {parts[1]}
+              </motion.mark>
+              {parts[2]}
+            </>
+          ) : (
+            text.data
+          )}
+        </div>
+      </Section>
+    </div>
   );
 }
 

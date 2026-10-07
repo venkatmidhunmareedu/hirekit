@@ -146,6 +146,17 @@ describe("candidates page", () => {
     expect(screen.queryByText(/fair/i)).not.toBeInTheDocument();
   });
 
+  it("puts the note away for the visit but keeps the rule one click away", async () => {
+    stubFetch({ ...approved, ...idle, [LIST]: () => json(200, page([candidate(1)])) });
+
+    renderApp(PATH);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Hide note" }));
+    expect(screen.queryByText(/does not remove it/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "About these scores" }));
+    expect(await screen.findByText(/does not remove it/)).toBeInTheDocument();
+  });
+
   it("keeps a candidate that is still processing or failed in the list", async () => {
     stubFetch({
       ...approved,

@@ -5,10 +5,12 @@ import {
   ArrowUp,
   Check,
   ChevronLeft,
+  CircleCheck,
   Minus,
   Pencil,
   Printer,
   RefreshCw,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
@@ -23,7 +25,8 @@ import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { PageHeader } from "../../components/PageHeader";
-import { Section } from "../../components/Section";
+import { type NavItem, SectionNav } from "../../components/SectionNav";
+import { scrollBehavior, useScrollSpy } from "../../lib/scrollSpy";
 import { RoleHeader } from "../roles/RoleHeader";
 import { sessionQueryOptions } from "../auth/hooks";
 
@@ -214,6 +217,20 @@ function QuestionCard({
   );
 }
 
+export const kitSectionId = (criterionId: string) => `kit-${criterionId}`;
+
+/** The criteria that have questions, with the question count, for the section navigator. */
+export function kitNavItems(criteria: RoleCriterion[], questions: Question[]): NavItem[] {
+  return criteria
+    .map((crit) => ({
+      id: kitSectionId(crit.id),
+      label: crit.name,
+      count: questions.filter((q) => q.criterion_id === crit.id).length,
+      icon: crit.kind === "must_have" ? CircleCheck : Sparkles,
+    }))
+    .filter((item) => item.count > 0);
+}
+
 function QuestionGroups({
   roleId,
   criteria,
@@ -232,8 +249,24 @@ function QuestionGroups({
       .filter((q) => q.criterion_id === crit.id)
       .sort((a, b) => a.position - b.position);
     if (questions.length === 0) return null;
+    const Icon = crit.kind === "must_have" ? CircleCheck : Sparkles;
     return (
-      <Section key={crit.id} id={`criterion-${crit.id}`} title={crit.name}>
+      <section
+        key={crit.id}
+        id={kitSectionId(crit.id)}
+        aria-labelledby={`${kitSectionId(crit.id)}-title`}
+        className="flex scroll-below-nav flex-col gap-3"
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border-b bg-muted px-3 py-2">
+          <Icon aria-hidden="true" className="size-5 text-primary" />
+          <h2 id={`${kitSectionId(crit.id)}-title`}>{crit.name}</h2>
+          <span className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
+            <span>{crit.kind === "must_have" ? "Must-have" : "Nice-to-have"}</span>
+            <span className="font-mono">
+              {questions.length} {questions.length === 1 ? "question" : "questions"}
+            </span>
+          </span>
+        </div>
         <ul className="flex flex-col gap-4">
           {questions.map((q, i) => (
             <QuestionCard
@@ -246,7 +279,7 @@ function QuestionGroups({
             />
           ))}
         </ul>
-      </Section>
+      </section>
     );
   });
 }
@@ -261,10 +294,8 @@ export function KitQuestions({ roleId }: { roleId: string }) {
   if (kit.data.questions.length === 0) {
     return <EmptyState message="The interview kit is not ready yet." />;
   }
-  const criteria = [...role.data.criteria].sort(
-    (a, b) =>
-      Number(b.kind === "must_have") - Number(a.kind === "must_have") || a.position - b.position,
-  );
+  // Same order as the feedback form beside it, so the two stay in step.
+  const criteria = [...role.data.criteria].sort((a, b) => a.position - b.position);
   return (
     <div className="flex flex-col gap-6">
       <h2 className="text-xl font-medium">Interview kit</h2>
@@ -317,6 +348,7 @@ export function KitPage({ roleId }: { roleId: string }) {
       Number(b.kind === "must_have") - Number(a.kind === "must_have") || a.position - b.position,
   );
   const hasQuestions = kit.data.questions.length > 0;
+  const navItems = kitNavItems(criteria, kit.data.questions);
   const draftRole = role.data.status === "draft";
 
   return (
@@ -389,13 +421,51 @@ export function KitPage({ roleId }: { roleId: string }) {
           }
         />
       )}
-      <QuestionGroups
+      <KitSections
+        navItems={navItems}
         roleId={roleId}
         criteria={criteria}
         questions={kit.data.questions}
         recruiter={recruiter}
         onJob={setJobId}
       />
+    </div>
+  );
+}
+
+/** The criterion navigator (sticky chips with question counts) above the grouped questions. */
+function KitSections({
+  navItems,
+  ...groups
+}: {
+  navItems: NavItem[];
+  roleId: string;
+  criteria: RoleCriterion[];
+  questions: Question[];
+  recruiter: boolean;
+  onJob: (id: number) => void;
+}) {
+  const [active, setActive] = useScrollSpy(
+    navItems.map((i) => i.id),
+    { rootMargin: "-112px 0px -55% 0px" },
+  );
+  return (
+    <div className="flex flex-col gap-6">
+      {navItems.length > 1 && (
+        <SectionNav
+          label="Criteria in this kit"
+          className="sticky top-14 z-10 -mx-1 border-b bg-background px-1 py-1 print:hidden"
+          active={active}
+          items={navItems}
+          onSelect={(id) => {
+            setActive(id);
+            document
+              .getElementById(id)
+              ?.scrollIntoView({ block: "start", behavior: scrollBehavior() });
+          }}
+        />
+      )}
+      <QuestionGroups {...groups} />
     </div>
   );
 }

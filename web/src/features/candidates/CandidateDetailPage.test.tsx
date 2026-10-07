@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { setCsrfToken } from "../../lib/api";
 import {
@@ -69,6 +69,58 @@ describe("candidate detail, recruiter", () => {
 
     expect((await screen.findByText(QUOTE, { selector: "mark" })).tagName).toBe("MARK");
     expect(screen.queryByText(/Jane/)).not.toBeInTheDocument();
+  });
+
+  it("scrolls the resume region to the quote and announces it", async () => {
+    const scrollTo = vi.fn();
+    Element.prototype.scrollTo = scrollTo;
+    stubFetch(recruiterRoutes());
+    renderApp(`/candidates/${CAND}`);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show Backend experience in resume" }),
+    );
+
+    await screen.findByText(QUOTE, { selector: "mark" });
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(
+      within(screen.getByRole("region", { name: "Anonymized resume" })).getByText(QUOTE),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Quote located in the resume")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Show Backend experience in resume" }),
+    );
+    expect(scrollTo).toHaveBeenCalledTimes(2);
+  });
+
+  it("says so when the quote is not in the resume text", async () => {
+    stubFetch(
+      recruiterRoutes({
+        [`GET /v1/candidates/${CAND}/text`]: () =>
+          json(200, { raw_text: "x", anonymized_text: "Nothing like it here." }),
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show Backend experience in resume" }),
+    );
+
+    expect(await screen.findByText(/not found in the resume text/)).toBeInTheDocument();
+    expect(screen.queryByText("Quote located in the resume")).not.toBeInTheDocument();
+  });
+
+  it("lists the score groups in a navigator with counts", async () => {
+    stubFetch(recruiterRoutes());
+    renderApp(`/candidates/${CAND}`);
+
+    const nav = await screen.findByRole("navigation", { name: "Score groups" });
+    expect(within(nav).getByRole("button", { name: /Must-have/ })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    expect(within(nav).getByRole("button", { name: /Nice-to-have/ })).toBeInTheDocument();
   });
 
   it("requires a 10 character note, then sends the override and refetches", async () => {
@@ -353,6 +405,41 @@ describe("candidate detail, interviewer", () => {
       "/me/candidates",
     );
     expect(screen.queryByText(/Anonymized resume text/)).not.toBeInTheDocument();
+  });
+
+  it("lists the criteria with their question counts and jumps to one in the form", async () => {
+    const question = (id: string, criterion_id: string, position: number) => ({
+      id,
+      criterion_id,
+      question_text: `Question ${id}`,
+      strong_answer: "s",
+      weak_answer: "w",
+      position,
+    });
+    stubFetch(
+      interviewerRoutes({
+        [`GET /v1/roles/${ROLE}/kit`]: () =>
+          json(200, {
+            stale: false,
+            questions: [question("q1", CRIT_A, 1), question("q2", CRIT_A, 2)],
+          }),
+      }),
+    );
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderApp(`/candidates/${CAND}`);
+
+    const nav = await screen.findByRole("navigation", { name: "Criteria" });
+    const first = within(nav).getByRole("button", { name: /Backend experience/ });
+    expect(first).toHaveTextContent("2");
+    expect(first).toHaveAttribute("aria-current", "true");
+    await userEvent.click(within(nav).getByRole("button", { name: /Mentoring/ }));
+
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(within(nav).getByRole("button", { name: /Mentoring/ })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
   });
 
   it("offers the next candidate to review after submitting", async () => {
