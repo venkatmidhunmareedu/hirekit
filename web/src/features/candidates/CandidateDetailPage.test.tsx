@@ -196,7 +196,10 @@ describe("candidate detail, recruiter", () => {
     expect(within(dialog).getByLabelText("4")).toBeChecked();
     await userEvent.type(within(dialog).getByLabelText(/Note/), "too short");
     expect(save).toBeDisabled();
+    expect(within(dialog).getByText("9 of 10 characters")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/Note/)).toHaveAccessibleDescription("9 of 10 characters");
     await userEvent.type(within(dialog).getByLabelText(/Note/), " now long enough");
+    expect(within(dialog).getByText("Ready to save")).toBeInTheDocument();
     await userEvent.click(save);
 
     await screen.findByRole("radiogroup", { name: /Score 4 of 4/ });
@@ -207,6 +210,72 @@ describe("candidate detail, recruiter", () => {
       note: "too short now long enough",
     });
   });
+
+  // HK-86 regression: the weighted total comes from the ranked list, so an override must refresh it.
+  it("updates the weighted total after a score is overridden", async () => {
+    let overridden = false;
+    stubFetch(
+      recruiterRoutes({
+        [`GET /v1/roles/${candidate.role_id}/candidates?limit=100&offset=0`]: () =>
+          json(200, {
+            data: [
+              {
+                id: CAND,
+                candidate_no: 14,
+                stage: "new",
+                processing_status: "done",
+                failure_reason: null,
+                total: overridden ? 12 : 4,
+                must_have_covered: 1,
+                must_have_total: 1,
+                stale: false,
+                duplicate_of_candidate_no: null,
+                scores: [],
+              },
+            ],
+            page: { limit: 100, offset: 0, total: 1 },
+          }),
+        [`PUT /v1/candidates/${CAND}/scores/${CRIT_A}/override`]: () => {
+          overridden = true;
+          return json(200, { ...scores[0], override_score: 4 });
+        },
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+
+    expect(await screen.findByText("4.0")).toBeInTheDocument();
+    const group = await screen.findByRole("radiogroup", { name: /change score for Backend/ });
+    await userEvent.click(within(group).getByRole("radio", { name: "Set score to 4" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/Note/), "Confirmed in the interview");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save score" }));
+
+    expect(await screen.findByText("12.0")).toBeInTheDocument();
+  });
+
+  // HK-86 regression: scores stayed at the last fetch while a re-score job ran.
+  it("refetches the scores once the re-score jobs have finished", async () => {
+    let polls = 0;
+    stubFetch(
+      recruiterRoutes({
+        [`GET /v1/roles/${candidate.role_id}/queue`]: () => {
+          polls += 1;
+          return json(200, polls === 1 ? { waiting: 0, running: 1 } : { waiting: 0, running: 0 });
+        },
+        [`GET /v1/candidates/${CAND}`]: () =>
+          json(200, {
+            ...candidate,
+            scores: polls > 1 ? [{ ...scores[0], model_score: 4 }, ...scores.slice(1)] : scores,
+          }),
+      }),
+    );
+    renderApp(`/candidates/${CAND}`);
+
+    await screen.findByRole("radiogroup", { name: /Score 3 of 4/ });
+    expect(
+      await screen.findByRole("radiogroup", { name: /Score 4 of 4/ }, { timeout: 6000 }),
+    ).toBeInTheDocument();
+  }, 10000);
 
   it("explains a failed override and keeps the dialog open", async () => {
     stubFetch(

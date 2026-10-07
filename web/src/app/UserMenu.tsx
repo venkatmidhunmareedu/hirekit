@@ -8,9 +8,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+import { THEMES } from "../components/ThemeToggle";
+import { type Theme, useTheme } from "../lib/theme";
 
 import { initials } from "./crumbs";
 
@@ -45,6 +50,7 @@ export function UserMenu({
   signingOut: boolean;
   onSignOut: () => void;
 }) {
+  const [theme, setTheme] = useTheme();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -65,6 +71,23 @@ export function UserMenu({
           <span className="truncate text-xs text-muted-foreground">{user.email}</span>
           <RoleBadge role={user.role} />
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+          Theme
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={theme}
+          onValueChange={(value) => {
+            setTheme(value as Theme);
+          }}
+        >
+          {THEMES.map(({ value, label, Icon }) => (
+            <DropdownMenuRadioItem key={value} value={value} className="h-9">
+              <Icon aria-hidden="true" />
+              {label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="h-10"

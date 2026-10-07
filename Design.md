@@ -18,34 +18,21 @@ Version 0.1 (draft) · Companion to `PRD.md`
 
 ### 2.1 Name
 
-**HireKit** is set as one word with a capital H and a capital K. In two-tone use, "Hire" takes the text color and "Kit" takes the accent, set in Source Serif 4 with "Kit" in italic (section 4).
+**HireKit** is set as one word with a capital H and a capital K, never in capitals. In two-tone use, "Hire" takes the text color and "Kit" takes `--primary`, at the same weight.
 
 ### 2.2 Logo
 
-The mark is a **briefcase with a check**: a rounded body, a handle, and a check mark. The briefcase says "hiring", the "kit" idea is in the toolbox form, and the check stands for verified evidence.
+The mark is a **check on a rounded tile, underlined by a highlighter bar** (HK-86). The check says "verified", the yellow bar is the evidence highlight (section 3), so the mark carries the product idea: a score backed by a quoted source.
 
-- **Wordmark:** Source Serif 4 medium (500), 24px at standard size, "Kit" in italic.
-- **Clear space:** at least the height of the briefcase handle on every side.
-- **Minimum size:** mark alone 16px, mark with wordmark 96px wide.
-- **Do not:** stretch, rotate, add gradients or shadows, or change the check color to something without enough contrast.
+- **Mark:** 32 unit square, corner radius 9 (about 28%), tile in `--primary`, check in `--primary-foreground` (4-unit round-capped stroke), bar 16 by 3 units in the highlighter yellow. In the dark theme the tile lightens with `--primary`.
+- **Inverse:** on the `brand` ground the tile is `--brand-foreground` and the check is `--brand`; the bar stays yellow.
+- **Wordmark:** Hanken Grotesk (the UI sans) semibold (600), 20px at standard size, tracking tight, one word, no italic or serif.
+- **Mark alone:** the collapsed icon rail and the favicon show the tile without the wordmark.
+- **Accessibility:** the mark is `aria-hidden`; the wordmark text is the accessible name, once.
+- **Clear space:** at least a quarter of the tile width on every side. **Minimum size:** mark 16px, mark with wordmark 96px wide.
+- **Do not:** stretch, rotate, add gradients, shadows or motion, or recolor the check to a color without 3:1 contrast on the tile.
 
-#### Mark source (SVG, 270 × 70 area, mark drawn in a 84 × 70 box)
-
-The shape is unchanged. The emerald fills below are **superseded**: in the app the case and handle take `currentColor` set to `--primary` and the check takes `--primary-foreground` (section 3).
-
-```svg
-<svg width="96" height="80" viewBox="88 58 96 80" xmlns="http://www.w3.org/2000/svg" role="img">
-  <title>HireKit</title>
-  <path d="M116 76V70a6 6 0 0 1 6-6h26a6 6 0 0 1 6 6v6"
-        fill="none" stroke="#3ECF8E" stroke-width="6" stroke-linecap="round"/>
-  <rect x="93" y="76" width="84" height="58" rx="10" fill="#3ECF8E"/>
-  <polyline points="116,106 129,119 154,92"
-            fill="none" stroke="#1C1C1C" stroke-width="7"
-            stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-```
-
-Swap the two colors for other treatments (see section 3.3).
+Source: `web/src/components/Logo.tsx` (theme tokens) and `web/public/favicon.svg` (fixed sRGB: tile `#4338ca`, check `#ffffff`, bar `#f6e46a`, its own background so it works on light and dark browser chrome). The bar is the sRGB of `--mark` in the light theme and is kept bright in the dark theme, where the `--mark` token is a dim olive.
 
 ### 2.3 Palette status
 
@@ -106,7 +93,7 @@ Three families, self-hosted through `@fontsource-variable` packages (no font hos
 | Role | Family | Fallback |
 |---|---|---|
 | UI text: navigation, tables, forms, body, section headings | Hanken Grotesk | `ui-sans-serif`, `system-ui`, `Segoe UI`, sans-serif |
-| Serif: the wordmark, page titles and evidence quotes (italic) only | Source Serif 4 | `Iowan Old Style`, `Palatino Linotype`, Georgia, serif |
+| Serif: page titles and evidence quotes (italic) only | Source Serif 4 | `Iowan Old Style`, `Palatino Linotype`, Georgia, serif |
 | Code, IDs, scores, cost figures | JetBrains Mono | `ui-monospace`, `SF Mono`, Menlo, monospace |
 
 | Use | Family | Weight | Size / line height |

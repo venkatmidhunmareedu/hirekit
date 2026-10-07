@@ -1,25 +1,18 @@
 import { useNavigate } from "@tanstack/react-router";
-import {
-  Check,
-  CircleAlert,
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  ShieldCheck,
-  TextQuote,
-  Users,
-} from "lucide-react";
+import { CircleAlert, Eye, EyeOff, Lock, Mail, ShieldCheck, TextQuote, Users } from "lucide-react";
 import { MotionConfig, motion } from "motion/react";
 import { type SubmitEvent, useEffect, useRef, useState } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 
 import { Logo } from "../../components/Logo";
+import { StatusTag } from "../../components/StatusTag";
+import { ThemeToggle } from "../../components/ThemeToggle";
+import { ScoreMeter } from "../candidates/components/ScoreParts";
 
 import { signInErrorMessage, useLogin } from "./hooks";
 
@@ -37,24 +30,22 @@ const PRINCIPLES = [
 
 /** A made-up example of the product's promise: a score beside the resume line that backs it. */
 function Specimen() {
-  const score = 3;
   return (
     <figure
       aria-label="Example of a score and its evidence"
-      className="flex max-w-lg flex-col gap-4 rounded-xl bg-background p-5 text-foreground shadow-xl shadow-black/20"
+      className="flex max-w-lg flex-col gap-4 rounded-xl border bg-card p-5 text-card-foreground"
     >
-      <div className="flex items-center justify-between gap-4">
-        <p className="font-medium">Python proficiency</p>
-        <div role="img" aria-label={`Score ${String(score)} of 4`} className="flex gap-1">
-          {[1, 2, 3, 4].map((n) => (
-            <span
-              key={n}
-              className={cn("h-2 w-7 rounded-full", n <= score ? "bg-primary" : "bg-input")}
-            />
-          ))}
-        </div>
+      <div className="flex items-center gap-2">
+        <p className="mr-auto font-medium">Python proficiency</p>
+        <Badge variant="outline" className="h-6 px-2 text-xs">
+          Must-have
+        </Badge>
+        <Badge variant="secondary" className="h-6 px-2 text-xs text-muted-foreground">
+          Example
+        </Badge>
       </div>
-      <p className="font-serif text-[15px] leading-7 text-muted-foreground">
+      <ScoreMeter model={3} override={null} name="Python proficiency" />
+      <blockquote className="text-sm leading-6 text-muted-foreground">
         [NAME] | Backend engineer. Five years across two teams.{" "}
         <motion.mark
           initial={{ backgroundSize: "0% 100%" }}
@@ -65,11 +56,11 @@ function Specimen() {
           Ran a Python pipeline in production for three years and handled its failures on call.
         </motion.mark>{" "}
         Earlier at [COMPANY], built internal tooling.
-      </p>
-      <figcaption className="flex items-center gap-1.5 text-sm text-ok">
-        <Check aria-hidden="true" className="size-4" />
-        Quote found in the resume. Example only.
-      </figcaption>
+      </blockquote>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <StatusTag tone="success">Verified</StatusTag>
+        Quote found in the resume.
+      </div>
     </figure>
   );
 }
@@ -129,7 +120,10 @@ export function SignInPage() {
     <MotionConfig reducedMotion="user">
       <main className="flex min-h-svh flex-col lg:flex-row">
         <BrandPanel />
-        <div className="flex flex-1 items-start justify-center px-6 py-10 lg:items-center">
+        <div className="relative flex flex-1 items-start justify-center px-6 py-10 lg:items-center">
+          <div className="absolute top-4 right-4">
+            <ThemeToggle />
+          </div>
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}

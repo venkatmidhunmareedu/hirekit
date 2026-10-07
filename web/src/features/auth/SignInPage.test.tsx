@@ -10,6 +10,8 @@ import { INTERVIEWER } from "../../test/fixtures";
 import { json, networkDown, session, stubFetch, unauthenticated } from "../../test/fetch";
 
 afterEach(() => {
+  document.documentElement.removeAttribute("data-theme");
+  localStorage.clear();
   setCsrfToken(null);
 });
 
@@ -36,6 +38,17 @@ async function submit(email: string, password: string) {
 }
 
 describe("sign-in screen", () => {
+  it("lets the visitor choose a theme", async () => {
+    stubFetch({});
+    renderSignIn();
+    const dark = await screen.findByRole("button", { name: "Dark" });
+    await userEvent.click(dark);
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+    expect(dark).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: "System" }));
+    expect(document.documentElement).not.toHaveAttribute("data-theme");
+  });
+
   it("labels both fields and has one primary action", async () => {
     stubFetch({});
 

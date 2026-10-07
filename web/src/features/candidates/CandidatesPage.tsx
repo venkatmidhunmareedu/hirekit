@@ -31,7 +31,7 @@ import { ReviewWorkspace } from "./ReviewWorkspace";
 import { UploadZone } from "./UploadZone";
 import { STAGES, type RankedPage, type Stage } from "./api";
 import { STAGE_LABEL } from "./labels";
-import { queueQueryOptions, rankedQueryOptions, useRescore } from "./hooks";
+import { rankedQueryOptions, useRescore, useRoleQueue } from "./hooks";
 
 /** Candidates: upload and ranked list (Design.md 8.3, PRD steps 4 and 6). */
 export function CandidatesPage() {
@@ -106,8 +106,7 @@ function RankedList({ roleId }: { roleId: string }) {
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [overridesOnly, setOverridesOnly] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
-  const queue = useQuery(queueQueryOptions(roleId));
-  const working = (queue.data?.waiting ?? 0) + (queue.data?.running ?? 0) > 0;
+  const { working, waiting, running } = useRoleQueue(roleId);
   const ranked = useQuery(rankedQueryOptions(roleId, stage, offset, working));
 
   return (
@@ -172,8 +171,7 @@ function RankedList({ roleId }: { roleId: string }) {
         )}
         {working && (
           <Notice>
-            Processing resumes: {queue.data?.waiting ?? 0} waiting, {queue.data?.running ?? 0}{" "}
-            running. The list refreshes by itself.
+            Processing resumes: {waiting} waiting, {running} running. The list refreshes by itself.
           </Notice>
         )}
         {ranked.isPending && <Loading label="Loading candidates" />}

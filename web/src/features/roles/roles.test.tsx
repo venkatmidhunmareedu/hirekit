@@ -94,7 +94,7 @@ describe("role list", () => {
     const create = await screen.findByRole("button", { name: "Create role" });
     expect(create).toBeDisabled();
     await userEvent.type(screen.getByLabelText("Role title"), "  Backend engineer ");
-    await userEvent.type(screen.getByLabelText("Job description"), "Build things");
+    await userEvent.type(screen.getByRole("textbox", { name: "Job description" }), "Build things");
     await userEvent.click(create);
 
     expect(await screen.findByRole("heading", { name: "Backend engineer" })).toBeInTheDocument();
@@ -117,7 +117,7 @@ describe("role list", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "New role" }));
     await userEvent.type(await screen.findByLabelText("Role title"), "T");
-    await userEvent.type(screen.getByLabelText("Job description"), "D");
+    await userEvent.type(screen.getByRole("textbox", { name: "Job description" }), "D");
     await userEvent.click(screen.getByRole("button", { name: "Create role" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Your role cannot do this.");
@@ -267,7 +267,7 @@ describe("role setup", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Propose criteria" }));
 
     expect(await screen.findByLabelText("Name")).toHaveValue("Python experience");
-    expect(screen.queryByLabelText("Proposing criteria")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reading your job description")).not.toBeInTheDocument();
   });
 
   it("shows progress while the proposal runs and cancels it", async () => {
@@ -281,7 +281,8 @@ describe("role setup", () => {
     renderApp(`/roles/${ROLE_ID}`);
 
     await userEvent.click(await screen.findByRole("button", { name: "Propose criteria" }));
-    expect(await screen.findByLabelText("Proposing criteria")).toBeInTheDocument();
+    expect(await screen.findByText("Reading your job description")).toBeInTheDocument();
+    expect(screen.getByText(/Working for \d+s/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     await waitFor(() => {
@@ -314,8 +315,44 @@ describe("role setup", () => {
     });
     renderApp(`/roles/${ROLE_ID}`);
 
-    await userEvent.click(await screen.findByRole("button", { name: "Propose criteria" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Regenerate" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Regenerate" }),
+    );
 
     expect(await screen.findByRole("alert")).toHaveTextContent("budget has been reached");
+  });
+
+  it("offers Regenerate when criteria exist and proposes only after confirming", async () => {
+    const { calls } = stubFetch({
+      ...me,
+      [`GET /v1/roles/${ROLE_ID}`]: () => json(200, detail),
+      [`POST /v1/roles/${ROLE_ID}/criteria:propose`]: () => json(202, { job_id: 41 }),
+      "GET /v1/jobs/41": () => json(200, { id: 41, status: "running" }),
+    });
+    renderApp(`/roles/${ROLE_ID}`);
+
+    expect(screen.queryByRole("button", { name: "Propose criteria" })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Regenerate" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(dialog.getByText("Regenerate criteria?")).toBeInTheDocument();
+    expect(calls.some((c) => c.path.endsWith("criteria:propose"))).toBe(false);
+
+    await userEvent.click(dialog.getByRole("button", { name: "Regenerate" }));
+
+    expect(await screen.findByText("Reading your job description")).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("Python experience");
+    expect(calls.some((c) => c.path.endsWith("criteria:propose"))).toBe(true);
+  });
+
+  it("has no Regenerate for an approved role", async () => {
+    stubFetch({
+      ...me,
+      [`GET /v1/roles/${ROLE_ID}`]: () => json(200, { ...detail, status: "approved" }),
+    });
+    renderApp(`/roles/${ROLE_ID}`);
+
+    expect(await screen.findByLabelText("Name")).toHaveValue("Python experience");
+    expect(screen.queryByRole("button", { name: "Regenerate" })).not.toBeInTheDocument();
   });
 });

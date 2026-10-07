@@ -1,47 +1,45 @@
 import { cn } from "@/lib/utils";
 
-/** The HireKit mark and wordmark (Design.md section 2): a case with a check, "Kit" in italic serif. */
+/** The highlighter yellow of the `--mark` token as sRGB; the SVG favicon repeats it (Design.md 2.2). */
+const HIGHLIGHT = "#f6e46a";
+
+/** The HireKit mark and wordmark (Design.md section 2): a check on a tile, underlined like a highlighted quote. */
 export function Logo({
   wordmarkClassName,
   inverse = false,
 }: {
+  /** Extra classes for the wordmark; `hidden` leaves the mark alone (collapsed rail). */
   wordmarkClassName?: string;
-  /** Light mark and wordmark for the deep brand ground. */
+  /** White tile on the deep brand ground. */
   inverse?: boolean;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2",
-        inverse ? "text-brand-foreground" : "text-primary",
-      )}
-    >
-      <svg width="28" height="24" viewBox="88 58 96 80" aria-hidden="true" focusable="false">
-        <path
-          d="M116 76V70a6 6 0 0 1 6-6h26a6 6 0 0 1 6 6v6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="6"
-          strokeLinecap="round"
+    <span className="inline-flex items-center gap-2.5">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <rect
+          width="32"
+          height="32"
+          rx="9"
+          className={inverse ? "fill-brand-foreground" : "fill-primary"}
         />
-        <rect x="93" y="76" width="84" height="58" rx="10" fill="currentColor" />
-        <polyline
-          points="116,106 129,119 154,92"
+        <path
+          d="M8 16l4.5 4.5L21 10.5"
           fill="none"
           className={inverse ? "stroke-brand" : "stroke-primary-foreground"}
-          strokeWidth="8"
+          strokeWidth="3.6"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+        <rect x="8" y="24" width="16" height="3" rx="1.5" fill={HIGHLIGHT} />
       </svg>
       <span
         className={cn(
-          "font-display text-2xl leading-none font-medium tracking-tight",
+          "font-sans text-xl leading-none font-semibold tracking-tight",
           inverse ? "text-brand-foreground" : "text-foreground",
           wordmarkClassName,
         )}
       >
-        Hire<em className={inverse ? undefined : "text-primary"}>Kit</em>
+        Hire<span className={inverse ? undefined : "text-primary"}>Kit</span>
       </span>
     </span>
   );

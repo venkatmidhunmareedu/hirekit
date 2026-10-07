@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type SubmitEvent } from "react";
 
+import { MarkdownEditor } from "@/components/RichText";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -16,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorNotice } from "../../components/ErrorNotice";
@@ -51,7 +51,7 @@ export function RolesPage() {
         }
       />
       <Dialog open={creating} onOpenChange={setCreating}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">New role</DialogTitle>
             <DialogDescription>
@@ -186,13 +186,11 @@ function NewRoleForm({ onCancel }: { onCancel: () => void }) {
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="role-jd">Job description</Label>
-        <Textarea
+        <MarkdownEditor
           id="role-jd"
-          rows={8}
+          label="Job description"
           value={description}
-          onChange={(e) => {
-            setDescription(e.target.value);
-          }}
+          onChange={setDescription}
         />
       </div>
       {create.isError && <ErrorNotice error={create.error} />}

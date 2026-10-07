@@ -19,6 +19,7 @@ import { ErrorNotice } from "../../../components/ErrorNotice";
 import { Loading } from "../../../components/Loading";
 import { Notice } from "../../../components/Notice";
 import { Section } from "../../../components/Section";
+import { type ResumeBlock, resumeBlocks } from "../../../lib/resumeBlocks";
 import { revealIn, scrollBehavior } from "../../../lib/scrollSpy";
 import { type AuditEvent, type Identity } from "../api";
 import { STAGE_LABEL } from "../labels";
@@ -118,40 +119,88 @@ export function ResumeText({
   if (text.isPending) return <Loading label="Loading the resume text" />;
   if (text.isError) return <ErrorNotice error={text.error} />;
   const missing = locate > 0 && !found;
+  const content = text.data;
+  const pieces = (block: ResumeBlock): ReactNode[] => {
+    // Soft-wrapped lines show as one space, the same thing whitespace-normalized matching sees.
+    const show = (t: string) => (block.kind === "header" ? t : t.replace(/\s*\n\s*/g, " "));
+    const out: ReactNode[] = [];
+    let at = block.start;
+    for (const h of highlights) {
+      const from = Math.max(h.start, block.start);
+      const to = Math.min(h.end, block.end);
+      if (from >= to) continue;
+      const active = activeId !== null && h.ids.includes(activeId);
+      out.push(show(content.slice(at, from)));
+      out.push(
+        <mark key={h.start} className="bg-transparent">
+          <span
+            role="button"
+            tabIndex={0}
+            data-ids={h.ids.join(" ")}
+            aria-label={`Show scoring card for this quote: ${content.slice(h.start, h.end).replace(/\s+/g, " ")}`}
+            onClick={() => {
+              // A drag-select across the highlight is not a click on it.
+              if (window.getSelection()?.isCollapsed === false) return;
+              onMarkClick(h.ids[0] ?? "");
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              onMarkClick(h.ids[0] ?? "");
+            }}
+            className={cn(
+              "cursor-pointer rounded-sm px-0.5 text-mark-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+              active ? "bg-mark outline-2 outline-primary" : "bg-mark/40",
+            )}
+          >
+            {show(content.slice(from, to))}
+          </span>
+        </mark>,
+      );
+      at = to;
+    }
+    out.push(show(content.slice(at, block.end)));
+    return out;
+  };
   const body: ReactNode[] = [];
-  let at = 0;
-  for (const h of highlights) {
-    const active = activeId !== null && h.ids.includes(activeId);
-    body.push(text.data.slice(at, h.start));
-    body.push(
-      <mark key={h.start} className="bg-transparent">
-        <span
-          role="button"
-          tabIndex={0}
-          data-ids={h.ids.join(" ")}
-          aria-label={`Show scoring card for this quote: ${text.data.slice(h.start, h.end)}`}
-          onClick={() => {
-            // A drag-select across the highlight is not a click on it.
-            if (window.getSelection()?.isCollapsed === false) return;
-            onMarkClick(h.ids[0] ?? "");
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-            event.preventDefault();
-            onMarkClick(h.ids[0] ?? "");
-          }}
-          className={cn(
-            "cursor-pointer rounded-sm px-0.5 text-mark-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-            active ? "bg-mark outline-2 outline-primary" : "bg-mark/40",
-          )}
+  const blocks = resumeBlocks(content);
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    if (!block) continue;
+    if (block.kind === "bullet") {
+      const items = [block];
+      for (let next = blocks[i + 1]; next?.kind === "bullet" && next.ordered === block.ordered;) {
+        items.push(next);
+        next = blocks[++i + 1];
+      }
+      const List = block.ordered ? "ol" : "ul";
+      body.push(
+        <List
+          key={block.start}
+          className={cn("my-2 space-y-1 pl-5", block.ordered ? "list-decimal" : "list-disc")}
         >
-          {text.data.slice(h.start, h.end)}
-        </span>
-      </mark>,
-    );
-    at = h.end;
+          {items.map((item) => (
+            <li key={item.start}>{pieces(item)}</li>
+          ))}
+        </List>,
+      );
+    } else if (block.kind === "heading") {
+      body.push(
+        <h3 key={block.start} className="mt-5 mb-1 text-lg font-medium first:mt-0">
+          {pieces(block)}
+        </h3>,
+      );
+    } else {
+      body.push(
+        <p
+          key={block.start}
+          className={cn("my-2 leading-relaxed", block.kind === "header" && "whitespace-pre-line")}
+        >
+          {pieces(block)}
+        </p>,
+      );
+    }
   }
-  body.push(text.data.slice(at));
   return (
     <div className={STICKY[stickyFrom]}>
       <Section
@@ -174,7 +223,7 @@ export function ResumeText({
           role="region"
           aria-label="Anonymized resume"
           tabIndex={0}
-          className={`max-h-120 max-w-prose overflow-auto rounded-lg border bg-card p-4 whitespace-pre-wrap ${RAIL[stickyFrom]}`}
+          className={`max-h-120 max-w-prose overflow-auto rounded-lg border bg-card p-4 ${RAIL[stickyFrom]}`}
         >
           {body}
         </div>

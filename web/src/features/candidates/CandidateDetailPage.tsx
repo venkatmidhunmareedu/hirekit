@@ -39,6 +39,7 @@ import {
   candidateQueryOptions,
   myCandidatesQueryOptions,
   rankedQueryOptions,
+  useRoleQueue,
 } from "./hooks";
 
 const GROUPS: { kind: Kind; title: string; icon: typeof CircleCheck }[] = [
@@ -414,10 +415,13 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
   const { data: session } = useSuspenseQuery(sessionQueryOptions);
   const recruiter = session.user.role === "recruiter";
   const candidate = useQuery(candidateQueryOptions(candidateId));
+  const { working } = useRoleQueue(candidate.data?.role_id ?? "", recruiter);
+  // A second observer of the same query polls while scoring jobs are open.
+  useQuery({ ...candidateQueryOptions(candidateId, true), enabled: working });
   const mine = useQuery({ ...myCandidatesQueryOptions, enabled: !recruiter });
   // The first ranked page is enough to find the next candidate; no match means no link.
   const ranked = useQuery({
-    ...rankedQueryOptions(candidate.data?.role_id ?? "", null, 0, false),
+    ...rankedQueryOptions(candidate.data?.role_id ?? "", null, 0, working),
     enabled: recruiter && candidate.data !== undefined,
   });
 

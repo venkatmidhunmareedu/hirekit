@@ -42,3 +42,10 @@ Object.defineProperty(window, "matchMedia", {
 
 // Motion would animate opacity and position in jsdom; jump to the end state so tests never wait on it.
 MotionGlobalConfig.skipAnimations = true;
+
+// ProseMirror (the rich text editor) measures text ranges and hit-tests; jsdom has no layout.
+const emptyRect = { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 };
+Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
+Range.prototype.getBoundingClientRect = () => ({ ...emptyRect, toJSON: () => emptyRect });
+Element.prototype.getClientRects = () => [] as unknown as DOMRectList;
+document.elementFromPoint = () => null;
