@@ -8,6 +8,8 @@ export interface NavItem {
   label: string;
   /** Shown beside the label; also read out ("Must-have, 6"). */
   count?: number;
+  /** A second line under the label in a column, e.g. "Must-have". */
+  meta?: string;
   icon?: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 }
 
@@ -48,7 +50,8 @@ export function SectionNav({
                   onSelect(item.id);
                 }}
                 className={cn(
-                  "relative flex min-h-10 w-full items-center gap-2 rounded-md px-3 text-left text-sm whitespace-nowrap outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50",
+                  "relative flex min-h-10 w-full items-center gap-2 rounded-md px-3 text-left text-sm outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50",
+                  column ? "py-1.5" : "whitespace-nowrap",
                   current ? "font-semibold text-foreground" : "text-muted-foreground",
                 )}
               >
@@ -64,7 +67,12 @@ export function SectionNav({
                   />
                 )}
                 {Icon && <Icon aria-hidden className="size-4 shrink-0" />}
-                <span className="min-w-0 flex-1">{item.label}</span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span>{item.label}</span>
+                  {item.meta && (
+                    <span className="text-xs font-normal text-muted-foreground">{item.meta}</span>
+                  )}
+                </span>
                 {item.count !== undefined && (
                   <span className="rounded-full bg-muted px-2 font-mono text-xs text-foreground tabular-nums">
                     <span className="sr-only">, </span>

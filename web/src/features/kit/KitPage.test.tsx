@@ -11,10 +11,10 @@ afterEach(() => {
   setCsrfToken(null);
 });
 
-async function first(name: string, index = 0): Promise<HTMLElement> {
-  const found = (await screen.findAllByRole("button", { name })).at(index);
-  if (!found) throw new Error(`no button ${name} at ${index}`);
-  return found;
+/** Open the overflow menu of question `n` (1-based, in page order) and pick an item. */
+async function act(n: number, item: string) {
+  await userEvent.click(await screen.findByRole("button", { name: `Actions for question ${n}` }));
+  await userEvent.click(await screen.findByRole("menuitem", { name: item }));
 }
 
 const q = (id: string, crit: string, position: number, text: string) => ({
@@ -54,20 +54,63 @@ describe("interview kit, recruiter", () => {
     const chips = within(nav).getAllByRole("button");
     expect(chips).toHaveLength(2);
     expect(chips[0]).toHaveTextContent("Backend experience");
+    expect(chips[0]).toHaveTextContent("Must-have");
     expect(chips[0]).toHaveTextContent("2");
     expect(chips[0]).toHaveAttribute("aria-current", "true");
     expect(chips[1]).toHaveTextContent("1");
   });
 
-  it("groups questions by criterion with strong and weak answers", async () => {
+  it("groups questions by criterion and keeps strong and weak answers closed until asked", async () => {
     stubFetch(routes());
     renderApp(`/roles/${ROLE}/kit`);
 
     expect(await screen.findByRole("heading", { name: "Backend experience" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Tell me about APIs" })).toBeInTheDocument();
-    expect(screen.getByText("strong Tell me about APIs")).toBeInTheDocument();
-    expect(screen.getByText("weak Tell me about APIs")).toBeInTheDocument();
+    const toggle =
+      screen.getAllByRole("button", { name: "Strong and weak answers" })[0] ?? document.body;
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("strong Tell me about APIs")).not.toBeVisible();
+
+    await userEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("strong Tell me about APIs")).toBeVisible();
+    expect(screen.getByText("weak Tell me about APIs")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Print interview kit" })).not.toBeInTheDocument();
+  });
+
+  it("expands and collapses every answer from the toolbar", async () => {
+    stubFetch(routes());
+    renderApp(`/roles/${ROLE}/kit`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Expand all answers" }));
+    for (const toggle of screen.getAllByRole("button", { name: "Strong and weak answers" })) {
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+    }
+
+    await userEvent.click(screen.getByRole("button", { name: "Collapse all answers" }));
+    for (const toggle of screen.getAllByRole("button", { name: "Strong and weak answers" })) {
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+    }
+  });
+
+  it("puts the question actions in one menu and disables impossible moves", async () => {
+    stubFetch(routes());
+    renderApp(`/roles/${ROLE}/kit`);
+
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Actions for question 1" }));
+
+    expect(await screen.findByRole("menuitem", { name: "Move up" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByRole("menuitem", { name: "Move down" })).not.toHaveAttribute(
+      "aria-disabled",
+    );
+    for (const name of ["Edit", "Regenerate", "Delete"]) {
+      expect(screen.getByRole("menuitem", { name })).toBeInTheDocument();
+    }
   });
 
   it("warns that a stale kit belongs to older criteria", async () => {
@@ -119,6 +162,8 @@ describe("interview kit, recruiter", () => {
     renderApp(`/roles/${ROLE}/kit`);
 
     await userEvent.click(await screen.findByRole("button", { name: "Regenerate interview kit" }));
+    expect(await screen.findByText(/replaces every question/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Replace the kit" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("AI budget has been reached");
   });
@@ -131,7 +176,7 @@ describe("interview kit, recruiter", () => {
     );
     renderApp(`/roles/${ROLE}/kit`);
 
-    await userEvent.click(await first("Edit"));
+    await act(1, "Edit");
     const field = screen.getByLabelText("Question");
     await userEvent.clear(field);
     await userEvent.type(field, "New wording");
@@ -150,7 +195,7 @@ describe("interview kit, recruiter", () => {
     );
     renderApp(`/roles/${ROLE}/kit`);
 
-    await userEvent.click(await first("Move down"));
+    await act(1, "Move down");
 
     await screen.findByRole("heading", { name: "Backend experience" });
     const puts = calls.filter((c) => c.method === "PUT");
@@ -167,9 +212,9 @@ describe("interview kit, recruiter", () => {
     );
     renderApp(`/roles/${ROLE}/kit`);
 
-    await userEvent.click(await first("Regenerate"));
+    await act(1, "Regenerate");
     expect(await screen.findByText(/did not finish/)).toBeInTheDocument();
-    await userEvent.click(await first("Delete", 2));
+    await act(3, "Delete");
 
     await screen.findByRole("heading", { name: "Backend experience" });
     expect(calls.some((c) => c.method === "DELETE")).toBe(true);
@@ -224,7 +269,7 @@ describe("interview kit, interviewer", () => {
     renderApp(`/roles/${ROLE}/kit`);
 
     expect(await screen.findByRole("button", { name: "Print interview kit" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Actions for question/ })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Generate interview kit|Regenerate interview kit/ }),
     ).not.toBeInTheDocument();

@@ -269,6 +269,23 @@
   scroll-margin-top: 8rem;
 }
 
+/* A section stops below the sticky top bar (3.5rem) when a jump scrolls to it. */
+@utility scroll-below-header {
+  scroll-margin-top: 5rem;
+}
+
+/* The interview kit: a 16rem criterion rail beside the content from lg on screen; one column in print. */
+@utility kit-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  @media screen and (min-width: 64rem) {
+    display: grid;
+    grid-template-columns: 16rem minmax(0, 1fr);
+    gap: 2rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

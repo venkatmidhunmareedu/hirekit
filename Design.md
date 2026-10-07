@@ -264,10 +264,12 @@ Criteria screen: the job description sits beside the editor in a collapsible reg
 
 ### 8.5 Interview kit
 
-- Grouped by criterion. A sticky navigator of chips lists every criterion with its question count, marks the one in view (bar, bold, `aria-current`) and jumps on click. Each group opens with a band (icon, name, Must-have or Nice-to-have, question count). Each question card shows the question, a **Strong answer** panel and a **Weak answer** panel.
-- Both panels are neutral: Strong has a check icon on a quiet filled panel, Weak a minus icon on a dashed outline. No red or green blocks.
-- Recruiters can edit, reorder, delete and regenerate a single question.
-- Interviewers get a read-only view with a "Back to My candidates" link; "Print interview kit" stays available as a quiet ghost button, not a primary action.
+- Grouped by criterion, one page scroll, no horizontal scrollbar. From lg a sticky left rail (16rem, its own height capped to the viewport, thin scrollbar only if the criteria overflow) lists every criterion: name, a Must-have or Nice-to-have line (icon and text), question count; the one in view carries the sliding bar, bold text and `aria-current` and a click jumps to its section, which lands below the top bar. Below lg the rail becomes one "Jump to criterion" select above the content (not sticky).
+- Toolbar, one row and not sticky: "Interview kit" with the question total, a quiet "Expand all answers" or "Collapse all answers" toggle, a quiet Print (recruiters; interviewers keep "Print interview kit" in the page header) and the one primary "Regenerate interview kit". Regenerating replaces every question including edited ones, so it opens a confirmation first. With no kit yet, one primary "Generate interview kit" sits in the empty state under a sentence on what it does.
+- Each criterion opens with a band (icon, name, Must-have or Nice-to-have, question count). Each question is a compact card: the numbered question text, one overflow menu for recruiters (aria-label "Actions for question N": Edit, Regenerate, Move up, Move down, Delete in destructive style; Move up or down is disabled at the ends) and a closed "Strong and weak answers" disclosure (button with `aria-expanded`, 180ms height and opacity, none under reduced motion) that opens to the two panels. Reordering animates the cards into place. Editing happens inline in the card.
+- Both panels are neutral: Strong has a check icon on a quiet filled panel, Weak a minus icon on a dashed outline. No red or green blocks. They are guidance for the interviewer, not a correct answer.
+- Print shows a single column with every answer open and no rail, menus or toolbar buttons.
+- Interviewers get the same layout read-only (no menus, no regenerate) with a "Back to My candidates" link; Print stays a quiet ghost button.
 
 ### 8.6 Interviewer flow
 
