@@ -48,21 +48,21 @@ variable "availability_domain_index" {
 
 variable "ocpus" {
   type        = number
-  description = "Ampere A1 OCPUs. The Always Free total is 4 across all instances."
+  description = "Ampere A1 OCPUs. The Always Free total is 2 across all instances (Oracle lowered it from 4)."
   default     = 2
   validation {
-    condition     = var.ocpus >= 1 && var.ocpus <= 4
-    error_message = "ocpus must be between 1 and 4 (Always Free limit)."
+    condition     = var.ocpus >= 1 && var.ocpus <= 2
+    error_message = "ocpus must be between 1 and 2 (Always Free limit)."
   }
 }
 
 variable "memory_gb" {
   type        = number
-  description = "Memory in GB. The Always Free total is 24 across all instances."
+  description = "Memory in GB. The Always Free total is 12 across all instances."
   default     = 12
   validation {
-    condition     = var.memory_gb >= 6 && var.memory_gb <= 24
-    error_message = "memory_gb must be between 6 and 24 (Always Free limit)."
+    condition     = var.memory_gb >= 6 && var.memory_gb <= 12
+    error_message = "memory_gb must be between 6 and 12 (Always Free limit)."
   }
 }
 
