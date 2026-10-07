@@ -2,6 +2,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -84,6 +85,11 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
       ? "Add at least one criterion first."
       : null;
 
+  const totalWeight = rows.reduce(
+    (sum, r) => sum + (Number(r.weight) > 0 ? Number(r.weight) : 0),
+    0,
+  );
+
   function update(key: string, patch: Partial<Row>) {
     setRows((current) => current.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
@@ -109,6 +115,13 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
           key={kind}
           id={`group-${kind}`}
           title={kind === "must_have" ? "Must-have" : "Nice-to-have"}
+          action={
+            <span className="text-sm text-muted-foreground">
+              {rows.filter((r) => r.kind === kind).length === 1
+                ? "1 criterion"
+                : `${rows.filter((r) => r.kind === kind).length} criteria`}
+            </span>
+          }
         >
           {rows.filter((r) => r.kind === kind).length === 0 && (
             <p className="text-muted-foreground">
@@ -118,10 +131,22 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
           {rows
             .filter((r) => r.kind === kind)
             .map((row) => (
-              <Card key={row.key} className="px-5 py-5">
+              <Card
+                key={row.key}
+                className={cn(
+                  "border-l-4 px-5 py-5",
+                  kind === "must_have" ? "border-l-primary" : "border-l-border",
+                )}
+              >
                 <fieldset className="flex min-w-0 flex-col gap-4">
                   <legend className="mb-3 text-base font-semibold">
                     {row.name.trim() || "New criterion"}
+                    {Number(row.weight) > 0 && totalWeight > 0 && (
+                      <span className="ml-3 font-mono text-sm font-normal text-muted-foreground">
+                        weight {row.weight}, {Math.round((Number(row.weight) / totalWeight) * 100)}%
+                        of the total
+                      </span>
+                    )}
                   </legend>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor={`name-${row.key}`}>Name</Label>
@@ -215,7 +240,6 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
         </Button>
       </div>
 
-      {problem !== null && dirty && <p className="text-muted-foreground">{problem}</p>}
       {role.status === "approved" && (
         <p className="text-muted-foreground">
           Saving changes returns this role to Draft until you approve again.
@@ -261,10 +285,10 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
           </Notice>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background/95 px-4 py-3 backdrop-blur">
         <Button
           type="button"
-          variant={dirty ? "default" : "outline"}
+          variant="outline"
           className="h-10 px-4"
           disabled={!dirty || problem !== null || save.isPending}
           onClick={() => {
@@ -275,7 +299,7 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
         </Button>
         <Button
           type="button"
-          variant={dirty ? "outline" : "default"}
+          variant={role.status === "draft" && rows.length > 0 ? "default" : "outline"}
           className="h-10 px-4"
           aria-describedby={approveBlocker ? "approve-blocker" : undefined}
           disabled={!canApprove || approve.isPending}
@@ -285,8 +309,11 @@ export function CriteriaEditor({ role }: { role: RoleDetail }) {
         >
           Approve criteria
         </Button>
+        {problem !== null && dirty && (
+          <span className="text-sm text-muted-foreground">{problem}</span>
+        )}
         {role.status === "draft" && approveBlocker && (
-          <span id="approve-blocker" className="text-muted-foreground">
+          <span id="approve-blocker" className="text-sm text-muted-foreground">
             {approveBlocker}
           </span>
         )}

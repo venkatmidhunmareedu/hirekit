@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,10 @@ import { Progress } from "@/components/ui/progress";
 import { ErrorNotice } from "../../components/ErrorNotice";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
-import { PageHeader } from "../../components/PageHeader";
 import { Section } from "../../components/Section";
 
 import { CriteriaEditor } from "./CriteriaEditor";
-import { RoleTabs } from "./RoleTabs";
+import { RoleHeader } from "./RoleHeader";
 import type { RoleDetail } from "./api";
 import {
   jobQueryOptions,
@@ -44,32 +43,23 @@ function RoleSetup({ roleId }: { roleId: string }) {
     );
   }
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader title={role.data.title} />
-      <RoleTabs roleId={roleId} status={role.data.status} current="criteria" />
-      <Section id="job-description" title="Job description">
-        <p className="max-w-prose whitespace-pre-line">{role.data.job_description}</p>
-      </Section>
-      {role.data.status === "draft" ? (
-        <Notice>Draft. Approve the criteria to start uploading and scoring resumes.</Notice>
-      ) : (
-        <Notice
-          action={
-            <Button asChild className="h-10 px-4">
-              <Link to="/roles/$roleId/candidates" params={{ roleId }}>
-                Next: upload resumes
-              </Link>
-            </Button>
-          }
-        >
-          Approved. You can upload resumes on the Candidates step.
-        </Notice>
-      )}
-      <Proposal role={role.data} />
-      <CriteriaEditor
-        key={`${role.data.criteria_version}:${role.data.updated_at}:${JSON.stringify(role.data.criteria)}`}
-        role={role.data}
-      />
+    <div className="flex flex-col gap-6">
+      <RoleHeader role={role.data} current="criteria" />
+      <div className="grid items-start gap-6 lg:grid-cols-3">
+        <details open className="rounded-lg border bg-card p-4 lg:sticky lg:top-20">
+          <summary className="cursor-pointer text-base font-semibold">Job description</summary>
+          <p className="mt-3 max-w-prose text-sm whitespace-pre-line">
+            {role.data.job_description}
+          </p>
+        </details>
+        <div className="flex flex-col gap-8 lg:col-span-2">
+          <Proposal role={role.data} />
+          <CriteriaEditor
+            key={`${role.data.criteria_version}:${role.data.updated_at}:${JSON.stringify(role.data.criteria)}`}
+            role={role.data}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -97,12 +87,12 @@ function Proposal({ role }: { role: RoleDetail }) {
     <Section
       id="proposed-criteria"
       title="Proposed criteria"
-      description="The AI suggests criteria. Edit each one, then approve."
+      description="The AI suggests criteria from the job description. Edit them, then approve."
     >
       <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
-          variant="outline"
+          variant={role.criteria.length === 0 ? "default" : "outline"}
           className="h-10 px-4"
           disabled={propose.isPending || openJob !== null}
           onClick={() => {

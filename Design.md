@@ -226,18 +226,21 @@ A small persistent pill in the top bar for recruiters: `$3.42 of $8.00`.
 
 ### 8.1 Role list
 
-Cards or rows per role with title, status (`Draft` or `Approved`), candidate count and last activity. Primary action: "New role".
+One row per role: title, status (`Draft` or `Approved`) and a single action that carries the same label as the role's next-up (8.2). Candidate counts appear in the row only when the roles API returns them (it does not yet). "New role" is the one primary button.
 
-### 8.2 Role setup and criteria approval
+### 8.2 Role workspace: header and criteria
 
-1. Job description text area with a "Propose criteria" button.
-2. Loading state while the model responds, with a cancel option.
-3. Rubric editor showing must-have and nice-to-have groups.
-4. "Approve criteria" as the single primary action. Until approved, the tabs for Candidates and Interview kit are visible but locked with an explanation.
+Every role screen (criteria, candidates, interview kit) shares one header:
+
+- Title and status tag.
+- **Next up**: one action computed from state by `nextUp` (`features/roles/nextUp.ts`): Draft with no criteria "Propose criteria"; Draft with criteria "Approve criteria"; Approved with no candidates "Upload resumes"; resumes processing "Processing N resumes" (status text, not a button); otherwise "Review candidates". It is a primary button only when it leads to another step and the screen has no primary of its own; on its own step it is plain text, because the screen's own primary does the work. Out-of-date scores are a warning banner with "Re-score", never the next-up.
+- A progress strip of four steps (Criteria, Candidates, Interview kit, Compare), each with its real state and counts (for example "14 scored, 3 need a look, 2 processing", "Ready", "Needs approval"). The current step has `aria-current="step"`; a locked step is plain text with a one-phrase reason ("Approve criteria first"). A count that is not loaded is left out.
+
+Criteria screen: the job description sits beside the editor in a collapsible region. Must-have and Nice-to-have are separate groups; each criterion shows its weight and its share of the total. A sticky footer holds "Save draft" and the single primary "Approve criteria" (with the confirmation before it takes effect); the Propose button is primary only while there are no criteria.
 
 ### 8.3 Candidates: upload and ranked list
 
-- Top: upload zone (collapsible once files are processed).
+- Top: upload bar. A single row ("Upload resumes", drop or choose files, outline button) once the role has candidates; a full block with a primary button while there are none. The ranked list is the first large thing on the screen.
 - Below: ranked table with columns: rank, candidate ID (see 9), weighted score, must-have coverage, one chip per criterion, "Needs a look" count, hiring stage.
 - Row click opens the candidate detail panel.
 - Filter bar: hiring stage, needs a look only, changed by recruiter. One helper line states what each filter covers.

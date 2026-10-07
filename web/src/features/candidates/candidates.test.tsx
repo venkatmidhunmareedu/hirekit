@@ -81,7 +81,7 @@ describe("candidates page", () => {
     expect(await screen.findByText(/Approve the criteria to start uploading/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Choose files/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Go to criteria" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Propose criteria" })).toHaveAttribute(
       "href",
       `/roles/${ROLE_ID}`,
     );

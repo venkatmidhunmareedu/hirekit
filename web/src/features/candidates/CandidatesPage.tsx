@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -17,10 +17,9 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorNotice } from "../../components/ErrorNotice";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
-import { PageHeader } from "../../components/PageHeader";
 import { Section } from "../../components/Section";
 import { errorMessage } from "../../lib/errors";
-import { RoleTabs } from "../roles/RoleTabs";
+import { RoleHeader } from "../roles/RoleHeader";
 import { budgetQueryOptions } from "../cost/hooks";
 import { roleQueryOptions } from "../roles/hooks";
 
@@ -54,29 +53,25 @@ function Candidates({ roleId }: { roleId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader title={role.data.title} />
-      <RoleTabs roleId={roleId} status={role.data.status} current="candidates" />
+    <div className="flex flex-col gap-6">
+      <RoleHeader role={role.data} current="candidates" />
       {role.data.status === "draft" ? (
-        <Notice
-          action={
-            <Button asChild className="h-10 px-4">
-              <Link to="/roles/$roleId" params={{ roleId }}>
-                Go to criteria
-              </Link>
-            </Button>
-          }
-        >
-          Approve the criteria to start uploading and scoring resumes. Candidates stay locked until
-          then.
-        </Notice>
+        <Notice>Approve the criteria to start uploading and scoring resumes.</Notice>
       ) : (
-        <>
-          <UploadZone roleId={roleId} />
-          <RankedList roleId={roleId} />
-        </>
+        <UploadAndList roleId={roleId} />
       )}
     </div>
+  );
+}
+
+/** The ranked list is first; the upload zone is a full block only while there are no candidates. */
+function UploadAndList({ roleId }: { roleId: string }) {
+  const total = useQuery(rankedQueryOptions(roleId, null, 0, false)).data?.total;
+  return (
+    <>
+      <UploadZone roleId={roleId} compact={total !== undefined && total > 0} />
+      <RankedList roleId={roleId} />
+    </>
   );
 }
 

@@ -50,13 +50,14 @@ describe("role list", () => {
     expect(link).toHaveAttribute("href", `/roles/${ROLE_ID}`);
     expect(screen.getByText("Approved")).toBeInTheDocument();
     expect(screen.getByText("Draft")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Next: approve criteria" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Approve criteria" })).toHaveAttribute(
       "href",
       `/roles/${ROLE_ID}`,
     );
-    expect(
-      screen.getByRole("link", { name: "Next: upload and review candidates" }),
-    ).toHaveAttribute("href", "/roles/x/candidates");
+    expect(screen.getByRole("link", { name: "Open candidates" })).toHaveAttribute(
+      "href",
+      "/roles/x/candidates",
+    );
   });
 
   it("shows an empty state and an error with a retry", async () => {
@@ -127,12 +128,15 @@ describe("role setup", () => {
     renderApp(`/roles/${ROLE_ID}`);
 
     expect(await screen.findByText(/Build and run our payments API/)).toBeInTheDocument();
-    expect(screen.getByText(/Draft\. Approve the criteria/)).toBeInTheDocument();
+    expect(screen.getByText("Draft")).toBeInTheDocument();
+    expect(screen.getByText(/Next up:/)).toHaveTextContent("Approve criteria");
     expect(screen.getByLabelText("Name")).toHaveValue("Python experience");
     expect(screen.getByLabelText("Score 4 looks like")).toHaveValue("Level 4 text");
-    expect(
-      screen.getAllByText("Locked until criteria are approved", { selector: "small" }),
-    ).toHaveLength(2);
+    expect(screen.getAllByText("Approve criteria first")).toHaveLength(2);
+    expect(screen.getByText("Needs approval").closest("[aria-current]")).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
     expect(screen.queryByRole("link", { name: /Candidates/ })).not.toBeInTheDocument();
   });
 
@@ -193,8 +197,8 @@ describe("role setup", () => {
     expect(confirm).toHaveTextContent("unlocks resume upload");
     await userEvent.click(within(confirm).getByRole("button", { name: "Confirm approval" }));
 
-    expect(await screen.findByText(/Approved\. You can upload/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Next: upload resumes" })).toHaveAttribute(
+    expect(await screen.findByText("Approved")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Open candidates" })).toHaveAttribute(
       "href",
       `/roles/${ROLE_ID}/candidates`,
     );

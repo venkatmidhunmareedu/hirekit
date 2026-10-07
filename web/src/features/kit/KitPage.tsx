@@ -13,7 +13,7 @@ import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { PageHeader } from "../../components/PageHeader";
 import { Section } from "../../components/Section";
-import { RoleTabs } from "../roles/RoleTabs";
+import { RoleHeader } from "../roles/RoleHeader";
 import { sessionQueryOptions } from "../auth/hooks";
 
 import { type Question, type RoleCriterion } from "./api";
@@ -310,21 +310,12 @@ export function KitPage({ roleId }: { roleId: string }) {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
-        title={`Interview kit: ${role.data.title}`}
-        action={
-          recruiter ? (
-            <Button
-              type="button"
-              className="h-10 px-4"
-              disabled={draftRole || running || generate.isPending}
-              onClick={() => {
-                generate.mutate(undefined, { onSuccess: setJobId });
-              }}
-            >
-              {hasQuestions ? "Regenerate interview kit" : "Generate interview kit"}
-            </Button>
-          ) : (
+      {recruiter ? (
+        <RoleHeader role={role.data} current="kit" pageHasPrimary />
+      ) : (
+        <PageHeader
+          title={`Interview kit: ${role.data.title}`}
+          action={
             <Button
               type="button"
               variant="outline"
@@ -336,10 +327,24 @@ export function KitPage({ roleId }: { roleId: string }) {
               <Printer aria-hidden="true" />
               Print interview kit
             </Button>
-          )
-        }
-      />
-      {recruiter && <RoleTabs roleId={roleId} status={role.data.status} current="kit" />}
+          }
+        />
+      )}
+      {recruiter && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2>Interview kit</h2>
+          <Button
+            type="button"
+            className="h-10 px-4"
+            disabled={draftRole || running || generate.isPending}
+            onClick={() => {
+              generate.mutate(undefined, { onSuccess: setJobId });
+            }}
+          >
+            {hasQuestions ? "Regenerate interview kit" : "Generate interview kit"}
+          </Button>
+        </div>
+      )}
       {draftRole && <Notice>Approve the criteria to start generating the interview kit.</Notice>}
       {kit.data.stale && (
         <Notice tone="warning">

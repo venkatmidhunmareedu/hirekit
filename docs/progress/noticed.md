@@ -261,3 +261,9 @@ Backfilled on 2026-10-03 from the reports of HK-17 to HK-40. Owner task numbers 
 | N-W38 | HK-86 | Mock API and Playwright screenshot script live in untracked .scratch/ and use the Playwright in ~/QA/node_modules | Not reproducible by others; no committed e2e screenshot harness exists | unassigned | open |
 | N-W39 | HK-86 | Button default height is now 36px (h-9); Design.md says controls are 40px and several call sites pass h-10 | Touch target rule (40px) is not met by default buttons; decide in stage 2 | unassigned | open |
 | N-W40 | HK-86 | Compare step hint under RoleTabs and the candidate history list still show raw audit kinds ("scored", "override", "stage") | Glossary says readable wording; not touched in stage 1 scope | unassigned | open |
+| N-W41 | HK-86 | Header counts (scored, need a look) come from the first ranked page (up to 100 rows); the total is exact | With over 100 candidates "scored" and "need a look" undercount | unassigned | open |
+| N-W42 | HK-86 | "Criteria edited, not approved" cannot drive next-up: the edit state is local to the editor | The header says "Approve criteria" for any draft with criteria | unassigned | open |
+| N-W43 | HK-86 | "Review candidates" next-up links to the ranked list, not the first candidate (stage 3 builds review mode) | Re-point it in stage 3 | HK-86 | open |
+| N-W44 | HK-86 | On the candidates screen with candidates present no button is primary (next-up is text on its own step, upload bar is outline) | Stage 3 should give review mode its primary | HK-86 | open |
+| N-W45 | HK-86 | Role list rows show no counts (N-W27) so they carry only status and next-up; interviewers still see the old PageHeader on the kit page | Needs counts in GET /v1/roles | unassigned | open |
+| N-W46 | HK-86 | Button default stays h-9; the new header and footer buttons pass h-10 explicitly, so N-W39 is still open | Decide in stage 4 | HK-86 | open |

@@ -23,6 +23,7 @@ import { Loading } from "../../components/Loading";
 import { PageHeader } from "../../components/PageHeader";
 import { StatusTag } from "../../components/StatusTag";
 
+import { nextUp } from "./nextUp";
 import { rolesQueryOptions, useCreateRole } from "./hooks";
 
 /** Role list (Design.md 8.1) with the new-role form: title and job description (PRD step 1). */
@@ -92,19 +93,7 @@ export function RolesPage() {
                   <StatusTag tone={role.status === "draft" ? "neutral" : "success"}>
                     {role.status === "draft" ? "Draft" : "Approved"}
                   </StatusTag>
-                  <Button asChild variant="outline" className="ml-auto h-10 px-3">
-                    {role.status === "draft" ? (
-                      <Link to="/roles/$roleId" params={{ roleId: role.id }}>
-                        Next: approve criteria
-                        <ArrowRight aria-hidden="true" />
-                      </Link>
-                    ) : (
-                      <Link to="/roles/$roleId/candidates" params={{ roleId: role.id }}>
-                        Next: upload and review candidates
-                        <ArrowRight aria-hidden="true" />
-                      </Link>
-                    )}
-                  </Button>
+                  <RoleAction roleId={role.id} status={role.status} />
                 </Card>
               </li>
             ))}
@@ -112,6 +101,30 @@ export function RolesPage() {
         )}
       </section>
     </div>
+  );
+}
+
+/** The row's single action: the same next-up label the role header shows (counts are unknown here). */
+function RoleAction({ roleId, status }: { roleId: string; status: "draft" | "approved" }) {
+  const next = nextUp({ status });
+  const content = (
+    <>
+      {next.label}
+      <ArrowRight aria-hidden="true" />
+    </>
+  );
+  return (
+    <Button asChild variant="outline" className="ml-auto h-10 px-3">
+      {next.step === "criteria" ? (
+        <Link to="/roles/$roleId" params={{ roleId }}>
+          {content}
+        </Link>
+      ) : (
+        <Link to="/roles/$roleId/candidates" params={{ roleId }}>
+          {content}
+        </Link>
+      )}
+    </Button>
   );
 }
 
