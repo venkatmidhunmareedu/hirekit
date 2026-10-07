@@ -1,9 +1,21 @@
 import { cn } from "@/lib/utils";
 
 /** The HireKit mark and wordmark (Design.md section 2): a case with a check, "Kit" in italic serif. */
-export function Logo({ wordmarkClassName }: { wordmarkClassName?: string }) {
+export function Logo({
+  wordmarkClassName,
+  inverse = false,
+}: {
+  wordmarkClassName?: string;
+  /** Light mark and wordmark for the deep brand ground. */
+  inverse?: boolean;
+}) {
   return (
-    <span className="inline-flex items-center gap-2 text-primary">
+    <span
+      className={cn(
+        "inline-flex items-center gap-2",
+        inverse ? "text-brand-foreground" : "text-primary",
+      )}
+    >
       <svg width="28" height="24" viewBox="88 58 96 80" aria-hidden="true" focusable="false">
         <path
           d="M116 76V70a6 6 0 0 1 6-6h26a6 6 0 0 1 6 6v6"
@@ -16,7 +28,7 @@ export function Logo({ wordmarkClassName }: { wordmarkClassName?: string }) {
         <polyline
           points="116,106 129,119 154,92"
           fill="none"
-          className="stroke-primary-foreground"
+          className={inverse ? "stroke-brand" : "stroke-primary-foreground"}
           strokeWidth="8"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -24,11 +36,12 @@ export function Logo({ wordmarkClassName }: { wordmarkClassName?: string }) {
       </svg>
       <span
         className={cn(
-          "font-display text-2xl leading-none font-medium tracking-tight text-foreground",
+          "font-display text-2xl leading-none font-medium tracking-tight",
+          inverse ? "text-brand-foreground" : "text-foreground",
           wordmarkClassName,
         )}
       >
-        Hire<em className="text-primary">Kit</em>
+        Hire<em className={inverse ? undefined : "text-primary"}>Kit</em>
       </span>
     </span>
   );

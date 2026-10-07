@@ -1,11 +1,10 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, CircleCheck, Pencil, Sparkles, TextSearch } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useState } from "react";
 
-import { type NavItem, SectionNav } from "../../components/SectionNav";
-import { scrollBehavior, revealIn, useScrollSpy } from "../../lib/scrollSpy";
-import { useMediaQuery } from "../../lib/useMediaQuery";
+import { SectionNav } from "../../components/SectionNav";
+import { scrollBehavior, useScrollSpy } from "../../lib/scrollSpy";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,9 +15,8 @@ import { Notice } from "../../components/Notice";
 import { PageHeader } from "../../components/PageHeader";
 import { Section } from "../../components/Section";
 import { sessionQueryOptions } from "../auth/hooks";
-import { FeedbackPanel, feedbackSectionId } from "../feedback/FeedbackPanel";
-import { kitQueryOptions, roleCriteriaQueryOptions } from "../kit/hooks";
-import { KitQuestions, kitSectionId } from "../kit/KitPage";
+import { FeedbackPanel } from "../feedback/FeedbackPanel";
+import { roleCriteriaQueryOptions } from "../kit/hooks";
 
 import {
   type CandidateDetail,
@@ -40,10 +38,6 @@ const GROUPS: { kind: Kind; title: string; icon: typeof CircleCheck }[] = [
   { kind: "must_have", title: "Must-have", icon: CircleCheck },
   { kind: "nice_to_have", title: "Nice-to-have", icon: Sparkles },
 ];
-
-// The form region's sticky progress strip, so a jumped-to criterion starts just under it.
-const FORM_INSET = 72;
-const LG = "(min-width: 1024px)";
 
 const groupId = (kind: Kind) => `scores-group-${kind}`;
 
@@ -410,50 +404,19 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
 }
 
 /**
- * The interviewer's feedback screen (Design.md 8.6): the form on the left, the interview kit on
- * the right in a sticky scroll region. `justSubmitted` lives here, so the confirmation shows only
- * for a submit made in this visit; a revisit shows the read-only form labelled Submitted.
+ * The interviewer's feedback screen (Design.md 8.6): one centred column, one criterion at a time,
+ * one page scroll. `justSubmitted` lives here, so the confirmation shows only for a submit made in
+ * this visit; a revisit shows the read-only summary labelled Submitted, with no notice.
  */
 function InterviewerView({ c, mine }: { c: CandidateDetail; mine: MyCandidate[] }) {
   const [justSubmitted, setJustSubmitted] = useState(false);
   const next = nextAfter(mine, c.id);
-  const wide = useMediaQuery(LG);
-  const formRef = useRef<HTMLDivElement>(null);
-  const kitRef = useRef<HTMLDivElement>(null);
   const role = useQuery(roleCriteriaQueryOptions(c.role_id));
-  const kit = useQuery(kitQueryOptions(c.role_id));
-  const criteria = [...(role.data?.criteria ?? [])].sort((a, b) => a.position - b.position);
-  const navItems: NavItem[] = criteria.map((crit) => ({
-    id: feedbackSectionId(crit.id),
-    label: crit.name,
-    count: (kit.data?.questions ?? []).filter((q) => q.criterion_id === crit.id).length,
-    icon: crit.kind === "must_have" ? CircleCheck : Sparkles,
-  }));
-  // The form is the leader: whichever criterion it shows, the kit follows. A click on a chip
-  // moves the form; the kit then follows through the same path, so the two never fight.
-  const [active, setActive] = useScrollSpy(
-    navItems.map((i) => i.id),
-    { rootRef: formRef, scoped: wide, rootMargin: "0px 0px -60% 0px" },
-  );
-  useEffect(() => {
-    const region = kitRef.current;
-    const target =
-      active === null ? null : document.getElementById(kitSectionId(active.replace(/^fb-/, "")));
-    if (wide && region && target) revealIn(region, target, "start");
-  }, [active, wide]);
-  const jump = (id: string) => {
-    setActive(id);
-    const target = document.getElementById(id);
-    const region = formRef.current;
-    if (!target) return;
-    if (wide && region) revealIn(region, target, "start", FORM_INSET);
-    else target.scrollIntoView({ block: "start", behavior: scrollBehavior() });
-  };
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-180 flex-col gap-6">
       <PageHeader
         title={`Candidate ${candidateLabel(c.candidate_no)}`}
-        purpose="Use the interview kit, then score each criterion with a comment."
+        purpose={role.data?.title}
         breadcrumb={
           <Link
             to="/me/candidates"
@@ -485,44 +448,28 @@ function InterviewerView({ c, mine }: { c: CandidateDetail; mine: MyCandidate[] 
           {next ? "" : " That was your last candidate."}
         </Notice>
       )}
-      {navItems.length > 1 && (
-        <SectionNav
-          label="Criteria"
-          className="sticky top-14 z-20 -mx-1 border-b bg-background px-1 py-1"
-          active={active}
-          items={navItems}
-          onSelect={jump}
+      <FeedbackPanel
+        key={c.id}
+        candidateId={c.id}
+        roleId={c.role_id}
+        viewer="interviewer"
+        onSubmitted={() => {
+          setJustSubmitted(true);
+        }}
+      />
+      {c.scores.length > 0 ? (
+        <ScoresSection
+          c={c}
+          recruiter={false}
+          selectedId={null}
+          onSelect={() => undefined}
+          onOverride={() => undefined}
         />
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          AI scores stay hidden until you submit your feedback, so they do not anchor your view.
+        </p>
       )}
-      <div className="grid gap-x-10 gap-y-8 lg:grid-cols-5">
-        <div
-          ref={formRef}
-          className="flex min-w-0 flex-col gap-8 lg:sticky lg:top-32 lg:col-span-3 lg:review-rail-nav lg:self-start lg:overflow-y-auto"
-        >
-          <FeedbackPanel
-            key={c.id}
-            candidateId={c.id}
-            roleId={c.role_id}
-            viewer="interviewer"
-            onSubmitted={() => {
-              setJustSubmitted(true);
-            }}
-          />
-          <ScoresSection
-            c={c}
-            recruiter={false}
-            selectedId={null}
-            onSelect={() => undefined}
-            onOverride={() => undefined}
-          />
-        </div>
-        <div
-          ref={kitRef}
-          className="min-w-0 lg:sticky lg:top-32 lg:col-span-2 lg:review-rail-nav lg:self-start lg:overflow-y-auto"
-        >
-          <KitQuestions roleId={c.role_id} />
-        </div>
-      </div>
     </div>
   );
 }

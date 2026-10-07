@@ -46,6 +46,8 @@
   --ring: oklch(0.55 0.2 275);
 
   /* Evidence: the highlighter. Only quotes and matched text use it. */
+  --brand: oklch(0.3 0.12 275);
+  --brand-foreground: oklch(0.97 0.01 275);
   --mark: oklch(0.93 0.12 95);
   --mark-foreground: oklch(0.25 0.04 80);
 
@@ -94,6 +96,8 @@
     --border: oklch(0.32 0.014 265);
     --input: oklch(0.6 0.02 265);
     --ring: oklch(0.74 0.14 275);
+    --brand: oklch(0.24 0.07 275);
+    --brand-foreground: oklch(0.97 0.01 275);
     --mark: oklch(0.4 0.08 90);
     --mark-foreground: oklch(0.96 0.03 90);
     --ok: oklch(0.8 0.1 160);
@@ -162,6 +166,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-mark: var(--mark);
   --color-mark-foreground: var(--mark-foreground);
   --color-ok: var(--ok);
@@ -226,6 +232,9 @@
   }
   ::-webkit-scrollbar-thumb:hover {
     background-color: var(--scroll-thumb-hover);
+  }
+  summary::-webkit-details-marker {
+    display: none;
   }
   ::selection {
     @apply bg-mark text-mark-foreground;

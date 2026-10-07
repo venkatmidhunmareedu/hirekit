@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -372,7 +372,31 @@ const withRubric = {
   ),
 };
 
+const NAMES = ["Backend experience", "Incident response", "Mentoring"];
+
+/** Scores 3 and writes a comment on the criterion shown, then moves on with the primary button. */
+async function fillStep(name: string, primary: string) {
+  const group = screen.getByRole("radiogroup", { name: `Score for ${name}` });
+  await userEvent.click(within(group).getByRole("radio", { name: /^3/ }));
+  await userEvent.type(screen.getByLabelText(`Comment on ${name}`), "solid");
+  await userEvent.click(screen.getByRole("button", { name: primary }));
+}
+
+async function fillAll() {
+  await fillStep(NAMES[0] ?? "", "Save and next");
+  await fillStep(NAMES[1] ?? "", "Save and next");
+  await fillStep(NAMES[2] ?? "", "Review and submit");
+}
+
 describe("candidate detail, interviewer", () => {
+  const question = (id: string, criterion_id: string, position: number) => ({
+    id,
+    criterion_id,
+    question_text: `Question ${id}`,
+    strong_answer: `strong ${id}`,
+    weak_answer: `weak ${id}`,
+    position,
+  });
   const interviewerRoutes = (extra: Record<string, () => Response> = {}) => ({
     "GET /v1/auth/me": () => json(200, INTERVIEWER),
     [`GET /v1/candidates/${CAND}`]: () =>
@@ -390,16 +414,19 @@ describe("candidate detail, interviewer", () => {
     expect(await screen.findByText(/stay hidden until you submit/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Hiring stage")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Show candidate name" })).not.toBeInTheDocument();
-    expect(await screen.findByText("0 of 3 criteria scored")).toBeInTheDocument();
+    expect(await screen.findByText("Criterion 1 of 3")).toBeInTheDocument();
   });
 
-  it("shows the rubric text and why submit is disabled", async () => {
+  it("shows one criterion with its rubric text beside each score", async () => {
     stubFetch(interviewerRoutes());
     renderApp(`/candidates/${CAND}`);
 
-    expect(await screen.findByText("Owns services in production")).toBeVisible();
-    expect(screen.getByText(/3 criteria still need a score and a comment/)).toBeInTheDocument();
-    expect(screen.getByText(/Locked after submit; a recruiter can approve an edit/)).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Backend experience" })).toBeInTheDocument();
+    const group = screen.getByRole("radiogroup", { name: "Score for Backend experience" });
+    expect(
+      within(group).getByRole("radio", { name: "3 Owns services in production" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Comment on Incident response")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back to My candidates" })).toHaveAttribute(
       "href",
       "/me/candidates",
@@ -407,15 +434,7 @@ describe("candidate detail, interviewer", () => {
     expect(screen.queryByText(/Anonymized resume text/)).not.toBeInTheDocument();
   });
 
-  it("lists the criteria with their question counts and jumps to one in the form", async () => {
-    const question = (id: string, criterion_id: string, position: number) => ({
-      id,
-      criterion_id,
-      question_text: `Question ${id}`,
-      strong_answer: "s",
-      weak_answer: "w",
-      position,
-    });
+  it("lists the questions once and opens the strong and weak answers on demand", async () => {
     stubFetch(
       interviewerRoutes({
         [`GET /v1/roles/${ROLE}/kit`]: () =>
@@ -425,21 +444,74 @@ describe("candidate detail, interviewer", () => {
           }),
       }),
     );
-    const scrollIntoView = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoView;
     renderApp(`/candidates/${CAND}`);
 
+    expect(await screen.findAllByText("Question q1")).toHaveLength(1);
+    expect(screen.getByText("Question q1").closest("details")).not.toHaveAttribute("open");
+    await userEvent.click(screen.getByText("Question q1"));
+
+    expect(screen.getByText("Question q1").closest("details")).toHaveAttribute("open");
+    expect(screen.getByText("strong q1")).toBeInTheDocument();
+  });
+
+  it("selects a score with the 0 to 4 keys", async () => {
+    stubFetch(interviewerRoutes());
+    renderApp(`/candidates/${CAND}`);
+    const group = await screen.findByRole("radiogroup", { name: "Score for Backend experience" });
+
+    within(group).getByRole("radio", { name: /^1/ }).focus();
+    await userEvent.keyboard("4");
+
+    expect(within(group).getByRole("radio", { name: /^4/ })).toBeChecked();
+  });
+
+  it("moves between criteria with Previous and Save and next and keeps the draft", async () => {
+    stubFetch(interviewerRoutes());
+    renderApp(`/candidates/${CAND}`);
+    await screen.findByRole("heading", { name: "Backend experience" });
+
+    await fillStep("Backend experience", "Save and next");
+
+    expect(await screen.findByRole("heading", { name: "Incident response" })).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("Criterion 2 of 3: Incident response");
+    await userEvent.click(screen.getByRole("button", { name: "Previous" }));
+    const group = await screen.findByRole("radiogroup", { name: "Score for Backend experience" });
+    expect(within(group).getByRole("radio", { name: /^3/ })).toBeChecked();
+    expect(screen.getByLabelText("Comment on Backend experience")).toHaveValue("solid");
+  });
+
+  it("jumps from the progress segments", async () => {
+    stubFetch(interviewerRoutes());
+    renderApp(`/candidates/${CAND}`);
     const nav = await screen.findByRole("navigation", { name: "Criteria" });
-    const first = within(nav).getByRole("button", { name: /Backend experience/ });
-    expect(first).toHaveTextContent("2");
-    expect(first).toHaveAttribute("aria-current", "true");
+
     await userEvent.click(within(nav).getByRole("button", { name: /Mentoring/ }));
 
-    expect(scrollIntoView).toHaveBeenCalled();
+    expect(await screen.findByRole("heading", { name: "Mentoring" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: /Mentoring/ })).toHaveAttribute(
       "aria-current",
-      "true",
+      "step",
     );
+  });
+
+  it("flags missing criteria on the review step and keeps submit disabled", async () => {
+    stubFetch(interviewerRoutes());
+    renderApp(`/candidates/${CAND}`);
+    await screen.findByRole("heading", { name: "Backend experience" });
+    const nav = screen.getByRole("navigation", { name: "Criteria" });
+
+    await userEvent.click(within(nav).getByRole("button", { name: "Review step" }));
+
+    expect(
+      await screen.findByText(/3 criteria still need a score and a comment/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Locked after submit; a recruiter can approve an edit/),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Needs a score and comment")).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Submit feedback" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Edit Mentoring" }));
+    expect(await screen.findByRole("heading", { name: "Mentoring" })).toBeInTheDocument();
   });
 
   it("offers the next candidate to review after submitting", async () => {
@@ -470,15 +542,11 @@ describe("candidate detail, interviewer", () => {
       }),
     );
     renderApp(`/candidates/${CAND}`);
-    await screen.findByText("0 of 3 criteria scored");
+    await screen.findByText("Criterion 1 of 3");
     expect(screen.queryByRole("link", { name: "Next candidate" })).not.toBeInTheDocument();
 
-    for (const name of ["Backend experience", "Incident response", "Mentoring"]) {
-      const group = screen.getByRole("radiogroup", { name: `Score for ${name}` });
-      await userEvent.click(within(group).getByLabelText("3"));
-      await userEvent.type(screen.getByLabelText(`Comment on ${name}`), "solid");
-    }
-    await userEvent.click(screen.getByRole("button", { name: "Submit feedback" }));
+    await fillAll();
+    await userEvent.click(await screen.findByRole("button", { name: "Submit feedback" }));
 
     expect(await screen.findByRole("link", { name: "Next candidate" })).toHaveAttribute(
       "href",
@@ -487,25 +555,22 @@ describe("candidate detail, interviewer", () => {
     expect(screen.getByText(/Feedback submitted/)).toBeInTheDocument();
   });
 
-  it("keeps submit disabled until every criterion has a score and comment, then submits", async () => {
+  it("submits every criterion once, and only when all are complete", async () => {
     const { calls } = stubFetch(
       interviewerRoutes({
         [`POST /v1/candidates/${CAND}/feedback`]: () => json(201, { data: [] }),
       }),
     );
     renderApp(`/candidates/${CAND}`);
-    const submit = await screen.findByRole("button", { name: "Submit feedback" });
+    await screen.findByRole("heading", { name: "Backend experience" });
 
-    for (const name of ["Backend experience", "Incident response", "Mentoring"]) {
-      expect(submit).toBeDisabled();
-      const group = screen.getByRole("radiogroup", { name: `Score for ${name}` });
-      await userEvent.click(within(group).getByLabelText("3"));
-      await userEvent.type(screen.getByLabelText(`Comment on ${name}`), "solid");
-    }
-    expect(screen.getByText("3 of 3 criteria scored")).toBeInTheDocument();
-    await userEvent.click(submit);
+    await fillAll();
+    expect(await screen.findByText("3 of 3 complete")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Submit feedback" }));
 
-    await screen.findByRole("button", { name: "Submit feedback" });
+    await waitFor(() => {
+      expect(calls.some((c) => c.method === "POST")).toBe(true);
+    });
     const post = calls.find((c) => c.method === "POST");
     expect((post?.body ?? "").split('"criterion_id"')).toHaveLength(4);
   });
@@ -532,5 +597,6 @@ describe("candidate detail, interviewer", () => {
     // A revisit is not a fresh submit: no confirmation, no repeated thanks.
     expect(screen.queryByText(/Feedback submitted/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Submit feedback" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Edit / })).not.toBeInTheDocument();
   });
 });

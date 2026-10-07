@@ -46,6 +46,30 @@ describe("sign-in screen", () => {
     expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
   });
 
+  it("shows and hides the password with a labelled toggle", async () => {
+    stubFetch({});
+    renderSignIn();
+    const toggle = await screen.findByRole("button", { name: "Show password" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.click(toggle);
+
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
+    expect(screen.getByRole("button", { name: "Hide password" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Hide password" }));
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
+  });
+
+  it("puts focus in the email field on arrival", async () => {
+    stubFetch({});
+    renderSignIn();
+
+    expect(await screen.findByLabelText("Email")).toHaveFocus();
+  });
+
   it("signs in and opens the app shell", async () => {
     const { calls } = stubFetch({
       "POST /v1/auth/login": () => json(200, session),
