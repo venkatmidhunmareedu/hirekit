@@ -10,7 +10,7 @@ cd "$(dirname "$0")"
 : "${REGISTRY_NAMESPACE:?set REGISTRY_NAMESPACE}"
 export IMAGE_TAG="${IMAGE_TAG:-latest}"
 # Compose requires run-time settings even to build; these dummies never reach an image.
-export DATABASE_URL=unused OPENROUTER_API_KEY=unused SITE_ADDRESS=unused
+export DATABASE_URL=unused OPENROUTER_API_KEY=unused SITE_ADDRESS=unused KEY_CREDIT_LIMIT_CONFIRMED=unused
 step="${1:-all}"
 compose=(docker compose -f docker-compose.yml -f docker-compose.build.yml)
 if [[ $step == build || $step == all ]]; then "${compose[@]}" build api web; fi

@@ -46,7 +46,7 @@ into an image; secrets reach the containers only through `.env` on the VM.
 ```
 # in .env set REGISTRY_NAMESPACE=midhunmareedu (leave IMAGE_TAG empty: it means latest)
 make vm-up            # or on the VM: docker compose pull && docker compose up -d
-# the migrate service applies the migrations first
+# the migrate service applies the migrations, then the budget service creates the USD 8 budget row
 ```
 The migrations create no accounts. The sign-in users come from the seed command, which also loads
 the sample roles and resumes. Because `ENV=production`, it needs `--allow-production` and both
