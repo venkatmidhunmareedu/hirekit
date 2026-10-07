@@ -1,6 +1,6 @@
 # Deploy on one Oracle Always Free VM with Docker Compose (ADR-0014)
 
-PostgreSQL, API, Worker and the web UI behind Caddy, four containers on one Ubuntu VM. Caddy
+API, Worker and the web UI behind Caddy, three containers on one Ubuntu VM; PostgreSQL is Supabase. Caddy
 serves the built web files and proxies `/v1/*` to the API. Nothing here is automated.
 
 ## 1. The VM with Terraform
@@ -42,5 +42,9 @@ The first build takes several minutes on the VM.
 ## Update
 `git pull && docker compose up -d --build && docker compose run --rm api alembic upgrade head`
 
-## Back up the database
-`docker compose exec db pg_dump -U hirekit hirekit | gzip > hirekit-$(date +%F).sql.gz`, then copy it off the VM.
+## Database (Supabase)
+- Use the **session pooler** connection string (Project Settings, Database, Connection string,
+  Session pooler). The direct connection is IPv6 only and this VM has IPv4. Put it in `.env` as
+  `DATABASE_URL`, with the `postgresql+asyncpg://` prefix and `?ssl=require` on the end.
+- URL-encode special characters in the password (`@` becomes `%40`).
+- Backups and restores are Supabase's; check the plan you are on.

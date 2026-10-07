@@ -1,26 +1,13 @@
 # Run from this folder: docker compose up -d --build. Needs a .env beside it (see .env.example).
+# PostgreSQL is external (Supabase): DATABASE_URL comes from .env.
 services:
-  db:
-    image: postgres:16
-    restart: always
-    environment:
-      POSTGRES_DB: hirekit
-      POSTGRES_USER: hirekit
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
-    volumes: [pgdata:/var/lib/postgresql/data]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hirekit"]
-      interval: 5s
-      retries: 10
-
   api: &backend
     build: { context: ../.., dockerfile: deploy/oracle/Dockerfile.backend }
     restart: always
-    depends_on: { db: { condition: service_healthy } }
     environment: &backend-env
       ENV: production
       LOG_FORMAT: json
-      DATABASE_URL: postgresql+asyncpg://hirekit:${DB_PASSWORD}@db:5432/hirekit
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
       MODEL_MODE: live
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env}
       KEY_CREDIT_LIMIT_CONFIRMED: "yes"
@@ -40,5 +27,4 @@ services:
     volumes: [caddy:/data]
 
 volumes:
-  pgdata: {}
   caddy: {}

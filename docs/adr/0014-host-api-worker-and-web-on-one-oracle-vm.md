@@ -24,12 +24,12 @@
 
 ## Decision
 
-We will run PostgreSQL, the API (`uvicorn`), the Worker (`python -m app.worker`) and Caddy as four Docker Compose containers on one Ubuntu VM. Caddy serves `web/dist` and proxies `/v1/*` to the API, so the browser sees one origin, as with the Vite proxy. Files and steps are in `deploy/oracle/`.
+We will run the API (`uvicorn`), the Worker (`python -m app.worker`) and Caddy as three Docker Compose containers on one Ubuntu VM. PostgreSQL is external, on Supabase, reached through its session pooler. Caddy serves `web/dist` and proxies `/v1/*` to the API, so the browser sees one origin, as with the Vite proxy. Files and steps are in `deploy/oracle/`.
 
 ## Consequences
 
 - No platform limits on upload size or job duration; the Worker is the unchanged process.
-- One machine is one point of failure, and the engineer patches the OS, backs up the database and watches disk. Backups are not set up here.
+- One machine is one point of failure, and the engineer patches the OS, backs up the database and watches disk. Backups are Supabase's, not set up here; the database is a second free-tier dependency with its own limits (size, pausing of idle free projects).
 - Oracle can reclaim idle Always Free instances, and capacity for Ampere shapes can be unavailable in a region.
 - Deploys are manual (`git pull` and `docker compose up -d --build`); no CI deploy job, per ground rule 2.
 - Secrets live in `deploy/oracle/.env` on the VM (mode 600, git-ignored) only.
