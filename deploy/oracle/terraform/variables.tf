@@ -6,7 +6,7 @@ variable "oci_profile" {
 
 variable "region" {
   type        = string
-  description = "Home region of the account, for example ap-mumbai-1. Always Free resources live there."
+  description = "Home region of the account, for example ap-hyderabad-1. Always Free resources live there."
 }
 
 variable "compartment_ocid" {
