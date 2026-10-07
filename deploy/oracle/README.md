@@ -3,31 +3,16 @@
 API, Worker and the web UI behind Caddy, three containers on one Ubuntu VM; PostgreSQL is Supabase. Caddy
 serves the built web files and proxies `/v1/*` to the API. Nothing here is automated.
 
-## 1. The VM with Terraform
-Needs `terraform` and an OCI API key (`oci setup config` writes `~/.oci/config`; upload the public
-key under Profile, API keys).
-```
-cd deploy/oracle/terraform
-cp terraform.tfvars.example terraform.tfvars && nano terraform.tfvars
-terraform init && terraform plan
-terraform apply
-```
-`apply` creates the network and a free Ampere A1 VM (2 OCPU, 12 GB, Ubuntu 24.04).
-- "Out of host capacity" on the default Ampere shape: add `shape = "VM.Standard.E2.1.Micro"` to
-  `terraform.tfvars` for the free 1 GB AMD VM, which has no capacity problem. Images are built on
-  your machine, so the VM only pulls and runs them.
-  Or retry later (Hyderabad has one availability domain, so `availability_domain_index` does not help).
-- The output `public_ip` is the address. Point a domain's A record at it, or use `<ip>.sslip.io`.
-- Cloud-init installs Docker and opens ports 80 and 443 on the VM; give it a minute after apply.
-- State stays local and git-ignored; keep a copy, or `terraform destroy` stops working.
-- By hand in the console instead: same ports (22 from your IP only, 80 and 443 public), then
-  `curl -fsSL https://get.docker.com | sudo sh` and the iptables line from `cloud-init.yaml`.
+## 1. The VM
+Created outside this repo (the Terraform lives with the rest of the infra). It needs Ubuntu with Docker,
+ports 80 and 443 public and 22 from your IP. By hand: `curl -fsSL https://get.docker.com | sudo sh`.
+Point a domain's A record at the VM, or use `<ip>.sslip.io`.
 
 ## 2. Settings on the VM
 The VM needs only the compose file and a `.env`; no clone, no source code. On your machine:
 ```
 cp deploy/oracle/.env.example deploy/oracle/.env && chmod 600 deploy/oracle/.env && nano deploy/oracle/.env
-make vm-copy          # copies both files to ~/hirekit on the VM (VM_IP defaults to the Terraform output)
+make vm-copy          # copies both files to ~/hirekit on the VM (pass VM_IP=<address>)
 ```
 
 ## 3. Build and push the images (on your machine)
@@ -45,7 +30,7 @@ into an image; secrets reach the containers only through `.env` on the VM.
 ## 4. Start (on the VM)
 ```
 # in .env set REGISTRY_NAMESPACE=midhunmareedu (leave IMAGE_TAG empty: it means latest)
-make vm-up            # or on the VM: docker compose pull && docker compose up -d
+make vm-up VM_IP=<address>   # or on the VM: docker compose pull && docker compose up -d
 # the migrate service applies the migrations, then the budget service creates the USD 8 budget row
 ```
 The migrations create no accounts. The sign-in users come from the seed command, which also loads

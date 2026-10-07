@@ -6,7 +6,7 @@ BACKEND := backend
 WEB := web
 REGISTRY_NAMESPACE ?= midhunmareedu
 IMAGE_TAG ?= latest
-VM_IP ?= $(shell terraform -chdir=deploy/oracle/terraform output -raw public_ip)
+VM_IP ?=
 
 .PHONY: help vm-copy vm-up images images-build images-push dev-web build-web setup dev worker worker-live check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean
 
@@ -53,13 +53,15 @@ images-push: ## Send the images for IMAGE_TAG to Docker Hub (run images-build fi
 images: ## Build both images and send them to Docker Hub
 	@REGISTRY_NAMESPACE=$(REGISTRY_NAMESPACE) IMAGE_TAG=$(IMAGE_TAG) deploy/oracle/build-push.sh all
 
-# The Oracle VM. VM_IP defaults to the Terraform output; override with VM_IP=1.2.3.4. Both targets
+# The Oracle VM. Pass the address: make vm-copy VM_IP=1.2.3.4. Both targets
 # use your ssh key and need deploy/oracle/.env filled in (copy .env.example, never commit it).
 vm-copy: ## Copy docker-compose.yml and deploy/oracle/.env to the VM (~/hirekit)
+	@[ -n "$(VM_IP)" ] || { echo "vm-copy: pass VM_IP=<address>" >&2; exit 1; }
 	@[ -f deploy/oracle/.env ] || { echo "vm-copy: deploy/oracle/.env is missing; copy .env.example and fill it in" >&2; exit 1; }
 	ssh ubuntu@$(VM_IP) 'mkdir -p hirekit'
 	scp deploy/oracle/docker-compose.yml deploy/oracle/.env ubuntu@$(VM_IP):hirekit/
 	ssh ubuntu@$(VM_IP) 'chmod 600 hirekit/.env'
 
 vm-up: ## On the VM: pull the latest images and start or restart the stack (migrations run first)
+	@[ -n "$(VM_IP)" ] || { echo "vm-up: pass VM_IP=<address>" >&2; exit 1; }
 	ssh ubuntu@$(VM_IP) 'cd hirekit && docker compose pull && docker compose up -d'
