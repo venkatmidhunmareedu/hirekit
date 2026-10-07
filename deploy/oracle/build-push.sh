@@ -8,11 +8,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 : "${REGISTRY_NAMESPACE:?set REGISTRY_NAMESPACE}"
-export IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD)}"
+export IMAGE_TAG="${IMAGE_TAG:-latest}"
 # Compose requires run-time settings even to build; these dummies never reach an image.
 export DATABASE_URL=unused OPENROUTER_API_KEY=unused SITE_ADDRESS=unused
 step="${1:-all}"
 compose=(docker compose -f docker-compose.yml -f docker-compose.build.yml)
 if [[ $step == build || $step == all ]]; then "${compose[@]}" build api web; fi
 if [[ $step == push || $step == all ]]; then "${compose[@]}" push api web; fi
-echo "tag $IMAGE_TAG ($step); on the VM set IMAGE_TAG=$IMAGE_TAG in .env, then: docker compose pull && docker compose up -d"
+echo "tag $IMAGE_TAG ($step); on the VM (IMAGE_TAG empty means latest): docker compose pull && docker compose up -d"

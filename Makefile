@@ -5,7 +5,7 @@ SHELL := /bin/bash
 BACKEND := backend
 WEB := web
 REGISTRY_NAMESPACE ?= midhunmareedu
-IMAGE_TAG ?= $(shell git rev-parse --short HEAD)
+IMAGE_TAG ?= latest
 
 .PHONY: help images images-build images-push dev-web build-web setup dev worker worker-live check check-file fix test test-integration record lint typecheck format format-check migrate migrate-verify migrate-down migrate-new seed eval eval-prompts vuln doctor db db-reset clean
 
@@ -43,7 +43,7 @@ dev worker worker-live test-integration record migrate migrate-verify migrate-do
 	@$(MAKE) --no-print-directory -C $(BACKEND) $@ $(if $(name),name=$(name),)
 
 # Docker Hub images for the Oracle VM (deploy/oracle/README.md). Log in first: docker login -u $(REGISTRY_NAMESPACE)
-images-build: ## Build the backend and web images (linux/amd64); tag = git short sha, IMAGE_TAG= overrides
+images-build: ## Build the backend and web images (linux/amd64); tag latest, IMAGE_TAG= overrides
 	@REGISTRY_NAMESPACE=$(REGISTRY_NAMESPACE) IMAGE_TAG=$(IMAGE_TAG) deploy/oracle/build-push.sh build
 
 images-push: ## Send the images for IMAGE_TAG to Docker Hub (run images-build first)

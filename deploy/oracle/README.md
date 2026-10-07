@@ -46,7 +46,7 @@ into an image; secrets reach the containers only through `.env` on the VM.
 
 ## 4. Start (on the VM)
 ```
-# in .env set REGISTRY_NAMESPACE=midhunmareedu and IMAGE_TAG (the tag from the build)
+# in .env set REGISTRY_NAMESPACE=midhunmareedu (leave IMAGE_TAG empty: it means latest)
 docker compose pull && docker compose up -d
 docker compose run --rm api alembic upgrade head
 docker compose run --rm api python -m app.seed      # first sign-in users; see backend/.env.example for SEED_PASSWORD_*
@@ -59,7 +59,7 @@ Nothing is built on the VM, so the 1 GB Micro shape is enough.
 - Sign in, upload a resume, watch it leave "queued".
 
 ## Update
-On your machine run `build-push.sh`; on the VM set the new `IMAGE_TAG`, then
+On your machine run `build-push.sh`; on the VM
 `docker compose pull && docker compose up -d && docker compose run --rm api alembic upgrade head`.
 
 ## Database (Supabase)
