@@ -242,12 +242,12 @@ Criteria screen: the job description sits beside the editor in a collapsible reg
 
 ### 8.3 Candidates: upload and ranked list
 
-- Top: upload bar. A single row ("Upload resumes", drop or choose files, outline button) once the role has candidates; a full block with a primary button while there are none. The ranked list is the first large thing on the screen.
+- Top: while there are no candidates, a full upload block with a primary button. Once there are some, the zone collapses: the role header carries an "Upload resumes" outline button (`aria-expanded`) that opens the one-row zone, and the zone keeps its upload results while closed. At 1440x900 the list and the open candidate start about 300px from the top of the page.
 - Below: review mode (from 1024px wide). Left, a compact ranked list in a rail that scrolls inside the viewport: select box, rank, candidate ID in mono, weighted total, must-have coverage ("3 of 3 must-haves"), hiring stage and, only where true, the markers Needs a look, Changed by recruiter and Out of date (icon and words). No per-criterion chips, no colour by score, every candidate stays listed. Right, the open candidate (8.4), with Previous and Next buttons and "3 of 14 on this page".
 - The open candidate is the `c` search param of `/roles/$roleId/candidates` (reload and back work); with none it is the top-ranked one. `/candidates/$candidateId` still renders the same detail as its own page, for deep links and interviewers.
 - Below 1024px the list is the whole screen and a row opens the candidate page.
 - Keyboard: `j` and `k` (and the arrow keys while a row has focus) move the open candidate; keys are ignored in fields, selects and dialogs, and focus is never trapped. A visible hint says "j and k move between candidates". The open row carries `aria-current`, and a polite status says "Showing C-014, 3 of 14". The shortcuts move through the loaded page (up to 100); at its end the pane says so and points to Next page.
-- Toolbar above the list: hiring stage filter, Needs a look only, Changed by recruiter, and one helper line: the stage covers every candidate, the two checkboxes cover the loaded page. The out-of-date banner with Re-score stays, one line.
+- Toolbar above the list is one row (its heading is for assistive tech only): the slim out-of-date bar with Re-score, the hiring stage filter, Needs a look only and Changed by recruiter. Under it one small line says scores are AI suggestions and hiding names reduces some bias but does not remove it, and that the stage covers every candidate while the checkboxes cover the loaded page.
 - Compare tray: while one or more rows are ticked, a bar fixed to the bottom of the viewport (a labelled region, with bottom padding so it never covers content) says "N selected", gives a hint at the wrong count, enables Compare at 2 to 4 and offers Clear. Compare is its one primary action; the selection count is announced by a polite status.
 - A must-have coverage indicator shows how many must-haves have verified evidence, so a high total cannot hide a gap.
 
@@ -257,27 +257,31 @@ Criteria screen: the job description sits beside the editor in a collapsible reg
 - Scores section: "Scores are AI suggestions" once, then criterion rows (7.4) with evidence blocks and "Change score" controls.
 - Anonymized resume text beside the scores (wide screens), with the matched quote highlighted when a criterion is selected.
 - Interviewer feedback, assigned interviewers (the picker is hidden when everyone is assigned) and history in readable wording at the bottom.
+- Interviewers never get this screen: they see the focused feedback screen in 8.6 (no identity reveal, stage control, cost or other interviewers' feedback).
 
 ### 8.5 Interview kit
 
 - Grouped by criterion. Each question card shows the question, a **Strong answer** panel and a **Weak answer** panel.
-- Strong uses a check icon with a neutral treatment. Weak uses a minus icon. Avoid strong red/green blocks.
+- Both panels are neutral: Strong has a check icon on a quiet filled panel, Weak a minus icon on a dashed outline. No red or green blocks.
 - Recruiters can edit, reorder, delete and regenerate a single question.
-- Interviewers get a read-only, printable view.
+- Interviewers get a read-only view with a "Back to My candidates" link; "Print interview kit" stays available as a quiet ghost button, not a primary action.
 
-### 8.6 Interviewer feedback form
+### 8.6 Interviewer flow
 
-- One section per criterion: the question list for reference, a score selector (segmented buttons matching the rubric scale), and a comment field.
-- Progress indicator: "3 of 6 criteria scored".
-- Submit is disabled until every criterion has a score. After submission the form is read-only.
+Interviewers land on `/me/candidates` (recruiter-only routes redirect there, never a 403) and see only anonymized ids.
+
+- **My candidates** is a queue: "N of M submitted" with a progress bar (text and bar, never colour alone, announced politely), the next unsubmitted candidate as the one primary action ("Start feedback" with nothing submitted, "Continue with C-005" after), and the list below with a Submitted or Not started tag (icon and text). With everything submitted the primary is replaced by an "All feedback submitted" tag.
+- **Feedback screen** (lg and up, two columns). Left: a progress strip pinned under the header ("3 of 6 criteria scored" with a bar), then one block per criterion: the questions to ask for reference, a segmented 0 to 4 score (native radios in a labelled radio group, 40px targets, the chosen level also marked with a check beside its rubric descriptor) and a comment. Submit is disabled until every criterion has a score and a comment, and says why. Right: the interview kit with the Strong and Weak answer panels (8.5) in a sticky region that scrolls on its own. Below lg the columns stack and the strip pins at the top.
+- **After submit**: a success notice "Feedback submitted. Thank you." with one primary, "Next candidate", or "Back to My candidates" when none are left; the form becomes read-only and the AI scores appear. The notice shows only for a submit made in this visit. A revisit shows the read-only form labelled "Submitted", with no notice.
+- Unsaved input asks before the interviewer leaves the page.
 
 ### 8.7 Comparison view
 
-- Columns are candidates (2 to 4). Rows are criteria, grouped by must-have and nice-to-have.
-- Each cell shows resume score chip, override if any, interviewer scores and a spread indicator.
-- Disagreement between interviewers on a criterion is marked with a warning tag in the cell, not a tooltip.
-- A pinned top row shows weighted totals. The candidate column headers hold stage controls.
-- Cells expand to show evidence quotes and comments.
+- A grid in one scroll region (focusable, labelled, scrolls both ways inside the viewport). The header row and the criterion column are sticky, so no score loses its heading on a small screen.
+- Columns are candidates (2 to 4), each header a link to that candidate. Rows are criteria in two groups, Must-have then Nice-to-have, each with a group row.
+- Each cell shows the resume score chip, "Changed by recruiter" (pencil icon and words) when the score was changed, the interviewer scores and their comments.
+- Disagreement between interviewers on a criterion is an icon-and-text tag in the cell ("Interviewers disagree"), not a tooltip.
+- Not built, because the comparison endpoint does not return them: a pinned weighted-totals row, stage controls in the headers and expandable evidence quotes (N-W17).
 
 ### 8.8 Cost log
 

@@ -384,9 +384,7 @@ describe("candidate detail, interviewer", () => {
     );
     renderApp(`/candidates/${CAND}`);
     await screen.findByText("0 of 3 criteria scored");
-    expect(
-      screen.queryByRole("link", { name: "Next candidate to review" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Next candidate" })).not.toBeInTheDocument();
 
     for (const name of ["Backend experience", "Incident response", "Mentoring"]) {
       const group = screen.getByRole("radiogroup", { name: `Score for ${name}` });
@@ -395,10 +393,11 @@ describe("candidate detail, interviewer", () => {
     }
     await userEvent.click(screen.getByRole("button", { name: "Submit feedback" }));
 
-    expect(await screen.findByRole("link", { name: "Next candidate to review" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "Next candidate" })).toHaveAttribute(
       "href",
       "/candidates/c9",
     );
+    expect(screen.getByText(/Feedback submitted/)).toBeInTheDocument();
   });
 
   it("keeps submit disabled until every criterion has a score and comment, then submits", async () => {
@@ -442,6 +441,9 @@ describe("candidate detail, interviewer", () => {
     renderApp(`/candidates/${CAND}`);
 
     expect(await screen.findByText(/Submitted and locked/)).toBeInTheDocument();
+    expect(screen.getByText("Submitted")).toBeInTheDocument();
+    // A revisit is not a fresh submit: no confirmation, no repeated thanks.
+    expect(screen.queryByText(/Feedback submitted/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Submit feedback" })).not.toBeInTheDocument();
   });
 });

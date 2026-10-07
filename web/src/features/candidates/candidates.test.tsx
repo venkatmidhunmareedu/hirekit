@@ -131,7 +131,9 @@ describe("candidates page", () => {
     expect(within(second).getByText(/Possible duplicate of C-014/)).toBeInTheDocument();
     expect(screen.queryByText("AI suggestion")).not.toBeInTheDocument();
     expect(screen.queryByText(/\d \/ 4/)).not.toBeInTheDocument();
-    expect(screen.getByText(/The criteria changed after some resumes/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Scores are out of date because the criteria changed/),
+    ).toBeInTheDocument();
     expect(screen.queryByText("secret evidence quote")).not.toBeInTheDocument();
   });
 

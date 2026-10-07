@@ -1,5 +1,16 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Check, Minus, Pencil, Printer, RefreshCw, Trash2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronLeft,
+  Minus,
+  Pencil,
+  Printer,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -118,20 +129,20 @@ function QuestionCard({
 
   return (
     <li>
-      <Card className="gap-4 px-5">
+      <Card className="@container gap-4 px-5">
         <h3 className="text-lg font-medium">{question.question_text}</h3>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <p className="flex items-center gap-1.5 text-sm font-medium text-ok">
+        <div className="grid gap-3 @md:grid-cols-2">
+          <div className="flex flex-col gap-1 rounded-md border bg-muted/50 p-3">
+            <p className="flex items-center gap-1.5 text-sm font-medium">
               <Check aria-hidden="true" className="size-4" /> Strong answer
             </p>
-            <p>{question.strong_answer}</p>
+            <p className="text-sm">{question.strong_answer}</p>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 rounded-md border border-dashed p-3">
             <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
               <Minus aria-hidden="true" className="size-4" /> Weak answer
             </p>
-            <p>{question.weak_answer}</p>
+            <p className="text-sm text-muted-foreground">{question.weak_answer}</p>
           </div>
         </div>
         {failure && <ErrorNotice error={failure} />}
@@ -315,11 +326,20 @@ export function KitPage({ roleId }: { roleId: string }) {
       ) : (
         <PageHeader
           title={`Interview kit: ${role.data.title}`}
+          breadcrumb={
+            <Link
+              to="/me/candidates"
+              className="inline-flex min-h-10 items-center gap-1 hover:text-foreground"
+            >
+              <ChevronLeft aria-hidden="true" className="size-4" />
+              Back to My candidates
+            </Link>
+          }
           action={
             <Button
               type="button"
-              variant="outline"
-              className="h-10 px-4"
+              variant="ghost"
+              className="h-10 px-4 text-muted-foreground"
               onClick={() => {
                 window.print();
               }}

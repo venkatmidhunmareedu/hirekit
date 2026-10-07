@@ -44,15 +44,16 @@ function BudgetPill() {
 export function AppShell() {
   const { data: session } = useSuspenseQuery(sessionQueryOptions);
   const logout = useLogout();
+  const recruiter = session.user.role === "recruiter";
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 border-b bg-card print:hidden">
+      <header className="z-20 border-b bg-card sm:sticky sm:top-0 print:hidden">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-0 px-4 sm:px-6">
           <div className="py-3">
             <Logo />
           </div>
-          <nav aria-label="Main" className="flex gap-1 max-sm:order-last max-sm:w-full">
+          <nav aria-label="Main" className="flex gap-1 max-sm:order-3">
             {session.user.role === "recruiter" && (
               <Link to="/" className={NAV_LINK} activeOptions={{ exact: true }}>
                 Roles
@@ -64,16 +65,27 @@ export function AppShell() {
               </Link>
             )}
           </nav>
-          <div className="ml-auto flex flex-wrap items-center gap-3 py-2">
-            {session.user.role === "recruiter" && <BudgetPill />}
-            <span className="flex items-baseline gap-2 border-l pl-4 text-sm">
-              <span className="font-medium">{session.user.name}</span>
-              <span className="text-muted-foreground">{session.user.role}</span>
+          {recruiter && (
+            <div className="py-2 max-sm:order-4 max-sm:ml-auto sm:ml-auto">
+              <BudgetPill />
+            </div>
+          )}
+          <div
+            className={cn(
+              "flex items-center gap-2 py-2 max-sm:order-2 max-sm:ml-auto",
+              !recruiter && "ml-auto",
+            )}
+          >
+            <span className="flex min-w-0 items-baseline gap-2 text-sm sm:border-l sm:pl-4">
+              <span className="max-w-32 truncate font-medium sm:max-w-none">
+                {session.user.name}
+              </span>
+              <span className="text-muted-foreground max-sm:sr-only">{session.user.role}</span>
             </span>
             <Button
               type="button"
               variant="ghost"
-              className="text-muted-foreground"
+              className="h-10 text-muted-foreground"
               disabled={logout.isPending}
               onClick={() => {
                 logout.mutate();

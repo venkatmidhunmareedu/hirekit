@@ -73,6 +73,10 @@ describe("compare", () => {
     expect(screen.getByText("Interviewers disagree")).toBeInTheDocument();
     expect(screen.getAllByText("4 / 4", { selector: ".mono" })).toHaveLength(2);
     expect(screen.getByText("No data")).toBeInTheDocument();
+    expect(screen.getByRole("rowheader", { name: "Must-have" })).toBeInTheDocument();
+    expect(screen.getByRole("rowheader", { name: "Nice-to-have" })).toBeInTheDocument();
+    expect(screen.getByText("Changed by recruiter")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "C-001" })).toHaveAttribute("href", "/candidates/c1");
     expect(calls.filter((c) => !c.path.includes("cost-log"))).toHaveLength(2);
   });
 

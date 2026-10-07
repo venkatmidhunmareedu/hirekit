@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
+import { FileUp, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,12 @@ export function CandidatesPage() {
 
 function Candidates({ roleId }: { roleId: string }) {
   const role = useQuery(roleQueryOptions(roleId));
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const total = useQuery({
+    ...rankedQueryOptions(roleId, null, 0, false),
+    enabled: role.data?.status === "approved",
+  }).data?.total;
+  const hasCandidates = total !== undefined && total > 0;
 
   if (role.isPending) return <Loading label="Loading role" />;
   if (role.isError) {
@@ -56,25 +63,40 @@ function Candidates({ roleId }: { roleId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <RoleHeader role={role.data} current="candidates" />
+    <div className="flex flex-col gap-4">
+      <RoleHeader
+        role={role.data}
+        current="candidates"
+        actions={
+          hasCandidates && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 px-4"
+              aria-expanded={uploadOpen}
+              aria-controls="upload-zone"
+              onClick={() => {
+                setUploadOpen(!uploadOpen);
+              }}
+            >
+              <FileUp aria-hidden="true" />
+              Upload resumes
+            </Button>
+          )
+        }
+      />
       {role.data.status === "draft" ? (
         <Notice>Approve the criteria to start uploading and scoring resumes.</Notice>
       ) : (
-        <UploadAndList roleId={roleId} />
+        <>
+          {/* Hidden, not unmounted, so the result of an upload stays when it is closed. */}
+          <div id="upload-zone" className={hasCandidates && !uploadOpen ? "hidden" : undefined}>
+            <UploadZone roleId={roleId} compact={hasCandidates} />
+          </div>
+          <RankedList roleId={roleId} />
+        </>
       )}
     </div>
-  );
-}
-
-/** The ranked list is first; the upload zone is a full block only while there are no candidates. */
-function UploadAndList({ roleId }: { roleId: string }) {
-  const total = useQuery(rankedQueryOptions(roleId, null, 0, false)).data?.total;
-  return (
-    <>
-      <UploadZone roleId={roleId} compact={total !== undefined && total > 0} />
-      <RankedList roleId={roleId} />
-    </>
   );
 }
 
@@ -94,8 +116,10 @@ function RankedList({ roleId }: { roleId: string }) {
       <Section
         id="ranked-heading"
         title="Ranked candidates"
+        hideTitle
         action={
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+            {ranked.data?.data.some((c) => c.stale) && <StaleBar roleId={roleId} />}
             <div className="flex items-center gap-2">
               <Label htmlFor="stage-filter">Filter by stage</Label>
               <Select
@@ -141,17 +165,16 @@ function RankedList({ roleId }: { roleId: string }) {
           </div>
         }
       >
-        <div className="-mt-1 flex flex-col gap-0.5">
-          <p className="text-sm text-muted-foreground">
+        <p className="-mt-1 flex flex-wrap justify-between gap-x-6 text-xs text-muted-foreground">
+          <span>
             Scores are AI suggestions. Hiding names reduces some bias but does not remove it:
             schools, clubs and wording can still show.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            The hiring stage covers every candidate; the two checkboxes cover the candidates loaded
-            here.
+          </span>
+          <span>
+            Stage covers every candidate; the checkboxes cover this page.
             {wide && " j and k move between candidates."}
-          </p>
-        </div>
+          </span>
+        </p>
         {working && (
           <Notice>
             Processing resumes: {queue.data?.waiting ?? 0} waiting, {queue.data?.running ?? 0}{" "}
@@ -195,40 +218,37 @@ function RankedList({ roleId }: { roleId: string }) {
   );
 }
 
-/** Out-of-date scores banner with the re-score action (Design.md section 11). */
-function StaleBanner({ roleId }: { roleId: string }) {
+/** Out-of-date scores as one slim inline bar with the re-score action (Design.md section 11). */
+function StaleBar({ roleId }: { roleId: string }) {
   const rescore = useRescore(roleId);
   const budget = useQuery(budgetQueryOptions);
   const blocked = budget.data?.model_actions_allowed === false;
   return (
-    <Notice
-      tone="warning"
-      action={
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 px-4"
-          disabled={rescore.isPending || blocked}
-          onClick={() => {
-            rescore.mutate();
-          }}
-        >
-          Re-score
-        </Button>
-      }
-    >
-      Scores are out of date. The criteria changed after some resumes were scored.
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-warn bg-warn-soft py-0.5 pr-1 pl-3 text-sm">
+      <TriangleAlert aria-hidden="true" className="size-4 text-warn" />
+      <span>Scores are out of date because the criteria changed.</span>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-10 px-3"
+        disabled={rescore.isPending || blocked}
+        onClick={() => {
+          rescore.mutate();
+        }}
+      >
+        Re-score
+      </Button>
       {rescore.isSuccess && (
-        <span role="status" className="mt-1 block">
+        <span role="status">
           Re-scoring {rescore.data.queued} candidates; {rescore.data.skipped} skipped
         </span>
       )}
       {rescore.isError && (
-        <span role="alert" className="mt-1 block text-bad">
+        <span role="alert" className="text-bad">
           {errorMessage(rescore.error)}
         </span>
       )}
-    </Notice>
+    </div>
   );
 }
 
@@ -262,7 +282,6 @@ function RankedBody({
       />
     );
   }
-  const anyStale = page.data.some((c) => c.stale);
   // Client-side, on the loaded page only: the API has no such filters.
   const entries: Entry[] = page.data
     .map((candidate, index) => ({ candidate, rank: page.offset + index + 1 }))
@@ -273,7 +292,6 @@ function RankedBody({
     );
   return (
     <>
-      {anyStale && <StaleBanner roleId={roleId} />}
       {page.data.length === 0 ? (
         <EmptyState message="This page is past the last candidate. Go back to the previous page." />
       ) : entries.length === 0 ? (

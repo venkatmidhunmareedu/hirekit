@@ -67,10 +67,13 @@ export function RoleHeader({
   role,
   current,
   pageHasPrimary = false,
+  actions,
 }: {
   role: Pick<RoleDetail, "id" | "title" | "status"> & { criteria: readonly unknown[] };
   current: RoleStep;
   pageHasPrimary?: boolean;
+  /** Quiet buttons that sit beside the next-up action. */
+  actions?: ReactNode;
 }) {
   const approved = role.status === "approved";
   const queue = useQuery({ ...queueQueryOptions(role.id), enabled: approved });
@@ -145,7 +148,8 @@ export function RoleHeader({
             {approved ? "Approved" : "Draft"}
           </StatusTag>
         </div>
-        <div className="print:hidden">
+        <div className="flex flex-wrap items-center gap-3 print:hidden">
+          {actions}
           {next.kind === "status" ? (
             <p role="status" className="text-sm font-medium text-muted-foreground">
               {next.label}

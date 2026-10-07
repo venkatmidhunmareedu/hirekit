@@ -6,18 +6,23 @@ export function Section({
   title,
   description,
   action,
+  hideTitle = false,
   children,
 }: {
   id: string;
   title: ReactNode;
   description?: ReactNode;
   action?: ReactNode;
+  /** Keep the heading for assistive tech when the screen already names the section. */
+  hideTitle?: boolean;
   children: ReactNode;
 }) {
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id={id}>{title}</h2>
+        <h2 id={id} className={hideTitle ? "sr-only" : undefined}>
+          {title}
+        </h2>
         {action}
       </div>
       {description && (

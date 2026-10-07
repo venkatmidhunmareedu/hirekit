@@ -17,6 +17,7 @@ import { KitQuestions } from "../kit/KitPage";
 
 import {
   type CandidateDetail,
+  type MyCandidate,
   type Kind,
   type RankedCandidate,
   type ScoreCell,
@@ -27,6 +28,7 @@ import { EvidenceBlock, ScoreChip } from "./components/ScoreParts";
 import { Assignments, AuditHistory, ResumeText, RevealIdentity } from "./components/SidePanels";
 import { StageControl } from "./components/StageControl";
 import { processingLabel } from "./labels";
+import { nextAfter } from "./queue";
 import { candidateQueryOptions, myCandidatesQueryOptions, rankedQueryOptions } from "./hooks";
 
 const GROUPS: { kind: Kind; title: string }[] = [
@@ -315,49 +317,7 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
   const c = candidate.data;
 
   if (!recruiter) {
-    const submitted = mine.data?.find((m) => m.candidate_id === c.id)?.has_submitted ?? false;
-    const nextToReview = mine.data?.find((m) => !m.has_submitted && m.candidate_id !== c.id);
-    return (
-      <div className="flex flex-col gap-8">
-        <PageHeader
-          title={`Candidate ${candidateLabel(c.candidate_no)}`}
-          purpose="Use the interview kit, then score each criterion with a comment."
-          breadcrumb={
-            <Link
-              to="/me/candidates"
-              className="inline-flex items-center gap-1 hover:text-foreground"
-            >
-              <ChevronLeft aria-hidden="true" className="size-4" />
-              Back to My candidates
-            </Link>
-          }
-        />
-        {submitted && (
-          <Notice
-            tone="success"
-            action={
-              nextToReview ? (
-                <Button asChild className="h-10 px-4">
-                  <Link
-                    to="/candidates/$candidateId"
-                    params={{ candidateId: nextToReview.candidate_id }}
-                  >
-                    Next candidate to review
-                  </Link>
-                </Button>
-              ) : (
-                <Button asChild variant="outline" className="h-10 px-4">
-                  <Link to="/me/candidates">Back to My candidates</Link>
-                </Button>
-              )
-            }
-          >
-            Feedback submitted. Thank you.
-          </Notice>
-        )}
-        <InterviewerView c={c} />
-      </div>
-    );
+    return <InterviewerView c={c} mine={mine.data ?? []} />;
   }
 
   const list = ranked.data?.data ?? [];
@@ -399,22 +359,72 @@ export function CandidateDetailPage({ candidateId }: { candidateId: string }) {
   );
 }
 
-/** Interviewer layout, unchanged from before the review pane (stage 4 redoes it). */
-function InterviewerView({ c }: { c: CandidateDetail }) {
+/**
+ * The interviewer's feedback screen (Design.md 8.6): the form on the left, the interview kit on
+ * the right in a sticky scroll region. `justSubmitted` lives here, so the confirmation shows only
+ * for a submit made in this visit; a revisit shows the read-only form labelled Submitted.
+ */
+function InterviewerView({ c, mine }: { c: CandidateDetail; mine: MyCandidate[] }) {
+  const [justSubmitted, setJustSubmitted] = useState(false);
+  const next = nextAfter(mine, c.id);
   return (
-    <div className="grid gap-x-10 gap-y-8 lg:grid-cols-5">
-      <div className="flex min-w-0 flex-col gap-8 lg:col-span-3">
-        <FeedbackPanel key={c.id} candidateId={c.id} roleId={c.role_id} viewer="interviewer" />
-        <ScoresSection
-          c={c}
-          recruiter={false}
-          selectedId={null}
-          onSelect={() => undefined}
-          onOverride={() => undefined}
-        />
-      </div>
-      <div className="min-w-0 lg:col-span-2">
-        <KitQuestions roleId={c.role_id} />
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={`Candidate ${candidateLabel(c.candidate_no)}`}
+        purpose="Use the interview kit, then score each criterion with a comment."
+        breadcrumb={
+          <Link
+            to="/me/candidates"
+            className="inline-flex min-h-10 items-center gap-1 hover:text-foreground"
+          >
+            <ChevronLeft aria-hidden="true" className="size-4" />
+            Back to My candidates
+          </Link>
+        }
+      />
+      {justSubmitted && (
+        <Notice
+          tone="success"
+          action={
+            next ? (
+              <Button asChild className="h-10 px-4">
+                <Link to="/candidates/$candidateId" params={{ candidateId: next.candidate_id }}>
+                  Next candidate
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild className="h-10 px-4">
+                <Link to="/me/candidates">Back to My candidates</Link>
+              </Button>
+            )
+          }
+        >
+          Feedback submitted. Thank you.
+          {next ? "" : " That was your last candidate."}
+        </Notice>
+      )}
+      <div className="grid gap-x-10 gap-y-8 lg:grid-cols-5">
+        <div className="flex min-w-0 flex-col gap-8 lg:col-span-3">
+          <FeedbackPanel
+            key={c.id}
+            candidateId={c.id}
+            roleId={c.role_id}
+            viewer="interviewer"
+            onSubmitted={() => {
+              setJustSubmitted(true);
+            }}
+          />
+          <ScoresSection
+            c={c}
+            recruiter={false}
+            selectedId={null}
+            onSelect={() => undefined}
+            onOverride={() => undefined}
+          />
+        </div>
+        <div className="min-w-0 lg:sticky lg:top-20 lg:col-span-2 lg:review-rail lg:self-start lg:overflow-y-auto">
+          <KitQuestions roleId={c.role_id} />
+        </div>
       </div>
     </div>
   );
