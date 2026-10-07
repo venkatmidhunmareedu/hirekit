@@ -34,15 +34,19 @@ cp .env.example .env && chmod 600 .env && nano .env
 
 ## 3. Build and push the images (on your machine)
 ```
-echo "$GHCR_TOKEN" | docker login ghcr.io -u <github user> --password-stdin   # token: write:packages
-REGISTRY_NAMESPACE=<github user, lower case> ./deploy/oracle/build-push.sh
+docker login -u midhunmareedu        # password: a Docker Hub access token with write access
+REGISTRY_NAMESPACE=midhunmareedu ./deploy/oracle/build-push.sh
 ```
-It prints the tag. The packages are private by default; keep them that way.
+It prints the tag. The repositories are `hirekit-backend` and `hirekit-web` on Docker Hub.
+
+**They are public**, so anyone can pull them. The images hold the backend code, the prompts, the
+synthetic seed resumes and recordings, never `.env` files or keys (`.dockerignore`). The free Docker
+Hub plan allows one private repository, so two private ones need a paid plan. Do not bake a secret
+into an image; secrets reach the containers only through `.env` on the VM.
 
 ## 4. Start (on the VM)
 ```
-echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u <github user> --password-stdin   # token: read:packages only
-# in .env set REGISTRY_NAMESPACE and IMAGE_TAG (the tag from the build)
+# in .env set REGISTRY_NAMESPACE=midhunmareedu and IMAGE_TAG (the tag from the build)
 docker compose pull && docker compose up -d
 docker compose run --rm api alembic upgrade head
 docker compose run --rm api python -m app.seed      # first sign-in users; see backend/.env.example for SEED_PASSWORD_*

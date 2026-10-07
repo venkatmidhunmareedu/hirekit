@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Build the backend and web images on this machine and push them to GHCR.
-# Usage: REGISTRY_NAMESPACE=<github user or org, lower case> [IMAGE_TAG=<tag>] ./build-push.sh
-# Log in first: echo "$GHCR_TOKEN" | docker login ghcr.io -u <github user> --password-stdin
-# (a token with write:packages). The images are linux/amd64 for the free AMD Micro VM; for the Ampere
+# Build the backend and web images on this machine and push them to Docker Hub.
+# Usage: REGISTRY_NAMESPACE=<docker hub user> [IMAGE_TAG=<tag>] ./build-push.sh
+# Log in first: docker login -u <docker hub user> (a Docker Hub access token with write access).
+# The images are linux/amd64 for the free AMD Micro VM; for the Ampere
 # shape change platforms to linux/arm64 in docker-compose.build.yml.
 set -euo pipefail
 cd "$(dirname "$0")"
