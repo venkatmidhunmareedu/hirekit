@@ -10,6 +10,11 @@ x-backend: &backend
     MODEL_MODE: live
     OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env}
     KEY_CREDIT_LIMIT_CONFIRMED: "yes"
+    # The defaults are the code's own (OpenRouter, Haiku 4.5); set all four together for another provider.
+    MODEL_BASE_URL: ${MODEL_BASE_URL:-https://openrouter.ai/api/v1}
+    MODEL_ID: ${MODEL_ID:-anthropic/claude-haiku-4.5}
+    PRICE_INPUT_USD_PER_MTOK: ${PRICE_INPUT_USD_PER_MTOK:-1}
+    PRICE_OUTPUT_USD_PER_MTOK: ${PRICE_OUTPUT_USD_PER_MTOK:-5}
 
 services:
   # Runs once on every `up`, before the API and Worker start; they do not start if it fails.
