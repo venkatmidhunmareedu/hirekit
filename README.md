@@ -1,4 +1,20 @@
-# HireKit
+<p align="center">
+  <img src="docs/images/logo.svg" alt="HireKit" width="260">
+</p>
+
+<p align="center"><strong>Resume screening where every score shows its evidence.</strong></p>
+
+<p align="center">
+  <a href="https://github.com/venkatmidhunmareedu/hirekit/actions/workflows/ci.yml"><img src="https://github.com/venkatmidhunmareedu/hirekit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/python-3.14-blue" alt="Python 3.14">
+  <img src="https://img.shields.io/badge/FastAPI-009688" alt="FastAPI">
+  <img src="https://img.shields.io/badge/React-19-61dafb" alt="React 19">
+  <img src="https://img.shields.io/badge/PostgreSQL-336791" alt="PostgreSQL">
+</p>
+
+<p align="center">
+  <img src="docs/images/dashboard.png" alt="The HireKit dashboard: roles, candidates scored and model budget" width="900">
+</p>
 
 Structured, evidence-backed, anonymized resume screening. A recruiter defines a role and its criteria, uploads resumes, and reviews a ranked list where every score points to a quote found in the anonymized resume, or says "no evidence found". People make every decision; the model only proposes.
 
@@ -7,6 +23,15 @@ Structured, evidence-backed, anonymized resume screening. A recruiter defines a 
 - Build plan: [docs/designs/hirekit-build-plan.md](docs/designs/hirekit-build-plan.md)
 - Decisions: [docs/decisions.md](docs/decisions.md) (ADRs in [docs/adr/](docs/adr/))
 - Agent rules: [AGENTS.md](AGENTS.md)
+
+## Screenshots
+
+| | |
+| --- | --- |
+| ![Sign in](docs/images/sign-in.png) | ![Roles](docs/images/roles.png) |
+| Sign in, with an example of a score and its evidence | Roles, each with its own criteria, candidates and kit |
+| ![Criteria](docs/images/criteria.png) | ![Dashboard](docs/images/dashboard.png) |
+| A role's job description and editable criteria | Where each role stands, and the model budget |
 
 ## How it behaves
 
